@@ -1,0 +1,2 @@
+APP_NAME = 'JabsDLP'
+VERSION = '1.0.0'

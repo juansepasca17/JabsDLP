@@ -1,0 +1,4 @@
+-r requirements.txt
+pyinstaller>=6.16
+pillow>=11
+pytest>=8

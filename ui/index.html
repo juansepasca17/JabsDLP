@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+  <title>JabsDLP</title>
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="marca">
+      <img class="logo" src="logo.png" alt="">
+      <div><b>JabsDLP</b><small id="version">v1.0.0</small></div>
+    </div>
+    <button class="nav activo" data-vista="descargar"><i data-ico="download"></i>Descargar</button>
+    <button class="nav" data-vista="cola"><i data-ico="list"></i>Cola<span class="contador" id="contador-cola">0</span></button>
+    <button class="nav" data-vista="ajustes"><i data-ico="settings"></i>Ajustes</button>
+    <div class="pie">
+      <div class="estado-linea"><span class="punto" id="punto-ffmpeg"></span><span id="txt-ffmpeg">ffmpeg…</span></div>
+      <div class="estado-linea"><span class="punto" id="punto-gpu"></span><span id="txt-gpu">Detectando GPU…</span></div>
+      <div class="estado-linea"><span class="punto" id="punto-paralelo"></span><span id="txt-paralelo">Paralelo</span></div>
+    </div>
+  </aside>
+
+  <div class="principal">
+    <header class="barra">
+      <h1 id="titulo-vista">Descargar</h1>
+      <div class="derecha">
+        <button class="btn fantasma chico" data-accion="abrir-carpeta" title="Abrir la carpeta de descargas"><i data-ico="folder"></i>Carpeta</button>
+      </div>
+    </header>
+
+    <div class="contenido">
+      <!-- ================= DESCARGAR ================= -->
+      <section class="vista activa" id="vista-descargar">
+        <div class="card buscar">
+          <h2 class="titulo-seccion"><i data-ico="search"></i>Buscar</h2>
+          <div class="fila-buscar">
+            <input id="url" class="entrada" type="text" spellcheck="false" autocomplete="off"
+                   placeholder="Pega la URL de un video, playlist o canal (o varias URLs a la vez)">
+            <button class="btn icono" data-accion="pegar" title="Pegar desde el portapapeles"><i data-ico="clipboard"></i></button>
+            <button class="btn icono" data-accion="importar" title="Importar URLs desde un .txt"><i data-ico="file"></i></button>
+            <div class="segmentado" id="modo">
+              <button data-modo="video" class="activo"><i data-ico="video" class="sm"></i>Video</button>
+              <button data-modo="playlist"><i data-ico="playlist" class="sm"></i>Playlist</button>
+            </div>
+            <button class="btn primario" data-accion="analizar" id="btn-analizar"><i data-ico="search"></i>Analizar</button>
+          </div>
+        </div>
+
+        <div id="inicio"></div>
+        <div class="columnas" id="columnas">
+          <div class="columna-izq">
+            <div class="cabecera-col"><i data-ico="info"></i><span id="cab-meta">Metadatos</span></div>
+            <div id="metadatos"></div>
+          </div>
+          <div class="columna-der">
+            <div class="cabecera-col">
+              <i data-ico="download"></i>Opciones de descarga
+              <div class="derecha segmentado" id="tipo">
+                <button data-tipo="video" class="activo"><i data-ico="video" class="sm"></i>Video</button>
+                <button data-tipo="audio"><i data-ico="music" class="sm"></i>Audio</button>
+              </div>
+            </div>
+            <div class="card panel-opciones" id="opciones"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= COLA ================= -->
+      <section class="vista" id="vista-cola">
+        <div class="card controles-cola">
+          <label class="switch" title="Descargas en paralelo"><input type="checkbox" id="cola-paralelo" data-ajuste="paralelo"><span></span></label>
+          <div>
+            <b>Descargas paralelas</b>
+            <div class="dim" id="cola-limite-txt" style="font-size:12.5px">Sin límite</div>
+          </div>
+          <div class="resumen" id="resumen"></div>
+          <div class="derecha">
+            <button class="btn chico" data-accion="abrir-carpeta"><i data-ico="folder" class="sm"></i>Abrir carpeta</button>
+            <button class="btn chico" data-accion="limpiar"><i data-ico="trash" class="sm"></i>Limpiar terminadas</button>
+            <button class="btn chico peligro" data-accion="cancelar-todo"><i data-ico="x" class="sm"></i>Cancelar todo</button>
+          </div>
+        </div>
+        <div class="trabajos" id="trabajos"></div>
+      </section>
+
+      <!-- ================= AJUSTES ================= -->
+      <section class="vista" id="vista-ajustes">
+        <div class="rejilla-ajustes">
+          <div class="card pad">
+            <h2 class="titulo-seccion"><i data-ico="folder"></i>Descargas</h2>
+            <div class="ajuste">
+              <div class="txt"><b>Carpeta de destino</b><div class="ruta" id="aj-carpeta">—</div></div>
+              <button class="btn chico" data-accion="elegir-carpeta">Cambiar</button>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Opción recomendada automática</b><small>Muestra siempre una opción recomendada (Auto). Si la apagas, eliges a mano de la lista.</small></div>
+              <label class="switch"><input type="checkbox" data-ajuste="recomendacion"><span></span></label>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Criterio de la recomendación</b><small>Se recuerda el último que uses en Descargar.</small></div>
+              <select class="entrada chica" data-pref-ajuste="criterio">
+                <option value="equilibrado">Menor tamaño sin perder calidad</option>
+                <option value="ahorro">Menor tamaño (sacrifica calidad)</option>
+                <option value="calidad">Mejor calidad</option>
+              </select>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Subcarpeta por playlist</b><small>Guarda cada playlist en una carpeta con su nombre.</small></div>
+              <label class="switch"><input type="checkbox" data-ajuste="subcarpeta_playlist"><span></span></label>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Nombre de archivo</b><small>Plantilla de yt-dlp, p. ej. <code>%(title)s.%(ext)s</code> o <code>%(uploader)s - %(title)s.%(ext)s</code></small></div>
+              <input class="entrada chica" style="width:220px" data-ajuste="plantilla" spellcheck="false">
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Idiomas de subtítulos</b><small>Separados por comas (expresiones de yt-dlp).</small></div>
+              <input class="entrada chica" style="width:140px" data-ajuste="idiomas_subtitulos" spellcheck="false">
+            </div>
+          </div>
+
+          <div class="card pad">
+            <h2 class="titulo-seccion"><i data-ico="layers"></i>Descargas en paralelo</h2>
+            <div class="ajuste">
+              <div class="txt"><b>Activar descargas en paralelo</b><small>Si está apagado, se descarga un video detrás de otro.</small></div>
+              <label class="switch"><input type="checkbox" data-ajuste="paralelo"><span></span></label>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Máximo a la vez</b><small>0 = sin límite (todos los videos de la cola a la vez).</small></div>
+              <input class="entrada chica" type="number" min="0" max="999" data-ajuste="max_paralelo" data-numero>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Fragmentos simultáneos por video</b><small>Acelera videos troceados (HLS/DASH). Recomendado: 4.</small></div>
+              <input class="entrada chica" type="number" min="1" max="32" data-ajuste="fragmentos" data-numero>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Conversiones simultáneas</b><small>Cuántos videos se recodifican a la vez con ffmpeg (para no saturar la GPU).</small></div>
+              <input class="entrada chica" type="number" min="1" max="16" data-ajuste="max_conversiones" data-numero>
+            </div>
+          </div>
+
+          <div class="card pad">
+            <h2 class="titulo-seccion"><i data-ico="zap"></i>Aceleración por hardware</h2>
+            <div class="ajuste">
+              <div class="txt"><b>Codificador para H.265 / H.264</b><small id="aj-gpu-detectadas">Detectando…</small></div>
+              <select class="entrada chica" data-ajuste="gpu">
+                <option value="auto">Auto (mejor GPU disponible)</option>
+                <option value="amf">AMD AMF</option>
+                <option value="nvenc">NVIDIA NVENC</option>
+                <option value="qsv">Intel Quick Sync</option>
+                <option value="cpu">Desactivado (CPU)</option>
+              </select>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Decodificar con la GPU</b><small>Usa <code>-hwaccel auto</code> al leer el video original.</small></div>
+              <label class="switch"><input type="checkbox" data-ajuste="decodificar_gpu"><span></span></label>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Calidad de conversión</b><small>Menor = mejor calidad y más tamaño. <span id="aj-calidad-txt">26</span> (CPU usa CRF <span id="aj-crf-txt">28</span>)</small></div>
+              <input type="range" min="16" max="38" step="1" data-ajuste="calidad" data-numero>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Volver a detectar</b><small>Por si cambiaste de controlador o de ffmpeg.</small></div>
+              <button class="btn chico" data-accion="detectar-gpu"><i data-ico="refresh" class="sm"></i>Detectar</button>
+            </div>
+          </div>
+
+          <div class="card pad">
+            <h2 class="titulo-seccion"><i data-ico="cookie"></i>Cookies</h2>
+            <div class="ajuste">
+              <div class="txt"><b>Origen de las cookies</b><small>Para videos privados, con restricción de edad o si YouTube pide iniciar sesión.</small></div>
+              <div class="segmentado" id="aj-cookies-modo">
+                <button data-cookies="ninguna">Ninguna</button>
+                <button data-cookies="archivo">Archivo</button>
+                <button data-cookies="navegador">Navegador</button>
+              </div>
+            </div>
+            <div class="ajuste" id="aj-fila-archivo">
+              <div class="txt"><b>Archivo cookies.txt</b><div class="ruta" id="aj-cookies-archivo">Ninguno</div></div>
+              <button class="btn chico" data-accion="elegir-cookies">Elegir…</button>
+            </div>
+            <div class="ajuste" id="aj-fila-navegador">
+              <div class="txt"><b>Navegador</b><small>Debe estar cerrado mientras se leen las cookies.</small></div>
+              <select class="entrada chica" data-ajuste="cookies_navegador">
+                <option value="firefox">Firefox</option>
+                <option value="chrome">Chrome</option>
+                <option value="edge">Edge</option>
+                <option value="brave">Brave</option>
+                <option value="opera">Opera</option>
+                <option value="vivaldi">Vivaldi</option>
+              </select>
+            </div>
+            <div class="nota">El archivo se normaliza en una copia temporal que se borra al terminar cada descarga. La app solo guarda la <b>ruta</b>, nunca el contenido de las cookies. En Windows, Chrome y Edge cifran sus cookies y suelen fallar: usa Firefox o exporta un <code>cookies.txt</code>.</div>
+          </div>
+
+          <div class="card pad">
+            <h2 class="titulo-seccion"><i data-ico="wrench"></i>Herramientas</h2>
+            <div class="ajuste">
+              <div class="txt"><b>ffmpeg</b><div class="ruta" id="aj-ffmpeg">Buscando…</div></div>
+              <button class="btn chico" data-accion="elegir-ffmpeg">Elegir…</button>
+              <button class="btn chico" data-accion="descargar-ffmpeg" id="btn-ffmpeg"><i data-ico="download" class="sm"></i>Descargar</button>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Runtime de JavaScript</b><small id="aj-js">—</small></div>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Versiones</b><small id="aj-versiones">—</small></div>
+            </div>
+            <div class="nota">Las preferencias de formato (códec, resolución, audio, metadatos…) se recuerdan solas cada vez que descargas.</div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+<div class="toasts" id="toasts"></div>
+<div class="menu oculto" id="menu" role="menu"></div>
+<script src="mock.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

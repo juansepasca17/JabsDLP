@@ -1,0 +1,39 @@
+# Entornos y compilación
+.venv/
+venv/
+build/
+dist/
+__pycache__/
+*.py[cod]
+*.spec.bak
+.pytest_cache/
+
+# Datos personales: nunca subir
+cookies/
+cookies*/
+*cookies*.txt
+*.cookies
+settings.json
+historial.json
+*.log
+
+# Descargas y listas de enlaces
+videos/
+Enlaces/
+descargas/
+*.mp4
+*.mkv
+*.webm
+*.mp3
+*.m4a
+*.opus
+*.part
+*.ytdl
+
+# Herramientas locales
+ffmpeg/
+ffmpeg.exe
+ffprobe.exe
+.claude/
+.vs/
+.vscode/
