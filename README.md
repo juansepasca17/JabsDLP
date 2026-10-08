@@ -1,3 +1,5 @@
+<img width="256" height="256" alt="image" src="https://github.com/user-attachments/assets/894f90ec-2caa-4a99-9b49-22ef737c55bf" />
+
 # JabsDLP
 
 Descargador de videos para Windows: rápido, en paralelo y sin opciones de más. Pegas un enlace y te propone
