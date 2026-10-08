@@ -1,10 +1,12 @@
 """Puente entre la interfaz (JavaScript) y el motor. pywebview expone los métodos públicos."""
 import os
+import subprocess
+import sys
 import threading
 
 import yt_dlp
 
-from . import APP_NAME, VERSION
+from . import APP_NAME, VERSION, actualizador
 from .ajustes import Ajustes
 from .cookies import limpiar_temporales_huerfanos
 from .analizador import Analizador
@@ -32,6 +34,8 @@ class Api:
         self._gestor = Gestor(self._ajustes, self._herr)
         self._ventana = None
         threading.Thread(target=self._herr.detectar_gpu, daemon=True).start()
+        if self._ajustes.get('ytdlp_auto') and actualizador.toca_comprobar():
+            actualizador.actualizar_en_segundo_plano(self._ajustes.get('ytdlp_canal'))
 
     def _dialogo(self, tipo, **kwargs):
         import webview
@@ -56,6 +60,7 @@ class Api:
         estado = self._herr.estado()
         estado['encoder'] = self._herr.descripcion_encoder() if estado['gpu'] is not None else None
         estado['js'] = sorted(runtimes_js())
+        estado['ytdlp'] = actualizador.estado_publico(yt_dlp.version.__version__)
         return estado
 
     def detectar_gpu(self):
@@ -64,6 +69,26 @@ class Api:
 
     def descargar_ffmpeg(self):
         return self._herr.descargar_ffmpeg()
+
+    # ---------- yt-dlp ----------
+    def buscar_ytdlp(self):
+        actualizador.actualizar_en_segundo_plano(self._ajustes.get('ytdlp_canal'))
+        return self.herramientas()
+
+    def restaurar_ytdlp(self):
+        actualizador.restaurar()
+        return self.herramientas()
+
+    def reiniciar(self):
+        resumen = self._gestor.resumen()
+        if resumen['activos'] or resumen['en_cola']:
+            return {'ok': False, 'error': 'Hay descargas en curso: espera a que terminen o cancélalas antes de reiniciar.'}
+        comando = [sys.executable] if getattr(sys, 'frozen', False) else [sys.executable, os.path.abspath(sys.argv[0])]
+        entorno = dict(os.environ, PYINSTALLER_RESET_ENVIRONMENT='1')  # nueva instancia independiente del .exe
+        subprocess.Popen(comando, env=entorno, close_fds=True)
+        if self._ventana is not None:
+            threading.Timer(0.4, self._ventana.destroy).start()
+        return {'ok': True}
 
     # ---------- analizar ----------
     def analizar(self, url, modo='auto', prefs=None):

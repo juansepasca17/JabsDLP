@@ -760,9 +760,36 @@ function pintarEstado() {
     btn.disabled = d.estado === 'descargando' || d.estado === 'extrayendo';
     btn.innerHTML = d.estado === 'descargando' ? `${ico('loader', 'sm spin')}${Math.round(d.progreso * 100)}%`
       : d.estado === 'extrayendo' ? `${ico('loader', 'sm spin')}Extrayendo` : `${ico('download', 'sm')}${h.ffmpeg ? 'Reinstalar' : 'Descargar'}`;
+    pintarYtdlp(h.ytdlp);
     $('#aj-js').textContent = h.js?.length ? `Encontrado: ${h.js.join(', ')} (necesario para YouTube).`
       : 'No encontrado. Instala Node.js o Deno para que YouTube muestre todos los formatos.';
   }
+}
+
+function pintarYtdlp(y) {
+  if (!y) return;
+  const origen = y.actualizada ? `descargada (${y.nightly ? 'nightly' : 'estable'})` : 'incluida en la app';
+  $('#aj-ytdlp').textContent = `En uso: ${y.en_uso} · ${origen}` + (y.roto ? ' · la versión descargada falló al cargar' : '');
+  $$('#aj-ytdlp-canal button').forEach(b => b.classList.toggle('activo', b.dataset.canal === S.ajustes.ytdlp_canal));
+  const t = y.tarea || {};
+  const ocupado = t.estado === 'buscando' || t.estado === 'descargando';
+  if (t.mensaje) $('#aj-ytdlp-tarea').textContent = t.mensaje;
+  $('#aj-ytdlp-barra').classList.toggle('oculto', !ocupado);
+  $('#aj-ytdlp-barra').classList.toggle('indet', t.estado === 'buscando');
+  $('#aj-ytdlp-barra').firstElementChild.style.width = `${Math.round((t.progreso || 0) * 100)}%`;
+  const btn = $('#btn-ytdlp');
+  btn.disabled = ocupado;
+  btn.innerHTML = ocupado ? `${ico('loader', 'sm spin')}${t.estado === 'buscando' ? 'Buscando' : `${Math.round((t.progreso || 0) * 100)}%`}` : `${ico('refresh', 'sm')}Buscar`;
+  $('#btn-reiniciar').classList.toggle('oculto', !y.reiniciar);
+  $('#btn-restaurar-ytdlp').classList.toggle('oculto', !(y.descargada || y.actualizada) || ocupado);
+  $('#aj-versiones').textContent = `JabsDLP ${$('#version').textContent.replace('v', '')} · yt-dlp ${y.en_uso} (incluida ${y.incluida})`;
+  // Aviso único cuando termina una búsqueda (también la automática al abrir)
+  const clave = `${t.estado}|${t.mensaje}`;
+  if (pintarYtdlp.ultimo !== clave) {
+    if (t.estado === 'listo') toast(`${esc(t.mensaje)} <a data-accion="reiniciar">Reiniciar ahora</a>`, 'ok');
+    else if (t.estado === 'error' && S.ytdlpManual) toast(esc(t.mensaje), 'err');  // la búsqueda automática falla en silencio
+  }
+  pintarYtdlp.ultimo = clave;
 }
 
 async function guardarAjuste(cambios) {
@@ -776,7 +803,8 @@ async function refrescarHerramientas() {
   S.herr = await API.herramientas();
   pintarEstado();
   const d = S.herr.descarga || {};
-  if (d.estado === 'descargando' || d.estado === 'extrayendo' || !S.herr.gpu) {
+  const tareaYtdlp = S.herr.ytdlp?.tarea?.estado;
+  if (d.estado === 'descargando' || d.estado === 'extrayendo' || !S.herr.gpu || tareaYtdlp === 'buscando' || tareaYtdlp === 'descargando') {
     setTimeout(refrescarHerramientas, 1000);
   } else if (d.estado === 'error' && !refrescarHerramientas.avisado) {
     refrescarHerramientas.avisado = true;
@@ -805,7 +833,7 @@ document.addEventListener('click', async e => {
     if (mismo) return;
   }
 
-  const el = e.target.closest('[data-vista],[data-modo],[data-tipo],[data-pref],[data-sel],[data-audio],[data-pl],[data-cookies],[data-abrir],[data-accion],[data-tarea]');
+  const el = e.target.closest('[data-vista],[data-modo],[data-tipo],[data-pref],[data-sel],[data-audio],[data-pl],[data-cookies],[data-canal],[data-abrir],[data-accion],[data-tarea]');
   if (!el || el.disabled) return;
   const d = el.dataset;
   if (d.vista) return irA(d.vista);
@@ -834,6 +862,14 @@ document.addEventListener('click', async e => {
     return renderOpciones();
   }
   if (d.cookies) return guardarAjuste({ cookies_modo: d.cookies });
+  if (d.canal) {
+    if (d.canal === S.ajustes.ytdlp_canal) return;
+    await guardarAjuste({ ytdlp_canal: d.canal });
+    S.ytdlpManual = true;
+    S.herr = await API.buscar_ytdlp();
+    pintarEstado();
+    return refrescarHerramientas();
+  }
   if (d.tarea) {
     const id = el.closest('.trabajo').dataset.id;
     const mapa = { cancelar: 'cancelar', reintentar: 'reintentar', quitar: 'quitar', abrir: 'abrir_archivo', carpeta: 'abrir_carpeta' };
@@ -883,6 +919,13 @@ document.addEventListener('click', async e => {
       return;
     }
     case 'detectar-gpu': S.herr = await API.detectar_gpu(); pintarEstado(); return toast('Detección de GPU actualizada.', 'ok');
+    case 'buscar-ytdlp': S.ytdlpManual = true; S.herr = await API.buscar_ytdlp(); pintarEstado(); return refrescarHerramientas();
+    case 'restaurar-ytdlp': S.herr = await API.restaurar_ytdlp(); pintarEstado(); return toast('Se usará la versión incluida al reiniciar.', 'ok');
+    case 'reiniciar': {
+      const r = await API.reiniciar();
+      if (!r.ok) toast(esc(r.error), 'err');
+      return;
+    }
     case 'descargar-ffmpeg':
       refrescarHerramientas.avisado = refrescarHerramientas.listo = false;
       await API.descargar_ffmpeg(); return refrescarHerramientas();
@@ -936,7 +979,6 @@ cuandoListo(async () => {
   S.prefs = { ...r.ajustes.prefs };
   S.herr = r.herramientas;
   $('#version').textContent = `v${r.version}`;
-  $('#aj-versiones').textContent = `${r.app} ${r.version} · yt-dlp ${r.ytdlp}`;
   pintarAjustes();
   renderDescargar();
   refrescarHerramientas();

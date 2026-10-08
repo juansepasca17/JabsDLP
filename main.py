@@ -9,7 +9,16 @@ if sys.stderr is None:
 
 import webview  # noqa: E402
 
-from jabsdlp import APP_NAME  # noqa: E402
+from jabsdlp import APP_NAME, actualizador  # noqa: E402
+
+# yt-dlp actualizado (si se descargó uno más nuevo que el incluido); si no importa bien, se usa el incluido
+if actualizador.activar():
+    try:
+        import yt_dlp  # noqa: F401
+        import yt_dlp.postprocessor  # noqa: F401
+    except Exception:  # noqa: BLE001
+        actualizador.desactivar()
+
 from jabsdlp.api import Api  # noqa: E402
 
 
@@ -23,7 +32,8 @@ def diagnostico(salida, url=None):
     import json
     import yt_dlp
     api = Api()
-    informe = {'app': APP_NAME, 'ytdlp': yt_dlp.version.__version__, 'herramientas': api.detectar_gpu()}
+    informe = {'app': APP_NAME, 'ytdlp': yt_dlp.version.__version__, 'ytdlp_modulo': yt_dlp.__file__,
+               'herramientas': api.detectar_gpu()}
     if url:
         r = api.analizar(url, 'auto', None)
         datos = r.get('datos') or {}

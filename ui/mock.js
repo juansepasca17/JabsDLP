@@ -23,12 +23,14 @@
     cookies_modo: 'ninguna', cookies_archivo: '', cookies_navegador: 'firefox', paralelo: true, max_paralelo: 0,
     fragmentos: 4, max_conversiones: 2, gpu: 'auto', decodificar_gpu: true, calidad: 26, ffmpeg_ruta: '', idiomas_subtitulos: 'es.*,en.*',
     prefs: { tipo: 'video', codec: 'auto', resolucion: 'auto', contenedor: 'auto', audio: 'auto', audio_calidad: 'alta', criterio: 'equilibrado', formato_audio: 'auto', metadatos: true, miniatura: true, subtitulos: false },
-    recomendacion: true,
+    recomendacion: true, ytdlp_canal: 'estable', ytdlp_auto: true,
   };
   const herramientas = {
     ffmpeg: 'C:\\ffmpeg\\bin\\ffmpeg.exe', ffprobe: 'C:\\ffmpeg\\bin\\ffprobe.exe',
     gpu: { nvenc: false, amf: true, qsv: false }, encoder: { tipo: 'amf', nombre: 'AMD AMF', encoder: 'hevc_amf', gpu: true },
     descarga: { estado: 'inactivo', progreso: 0 }, js: ['node'],
+    ytdlp: { en_uso: '2026.08.19', actualizada: false, nightly: false, incluida: '2026.8.19', descargada: null, roto: false, reiniciar: false,
+             tarea: { estado: 'inactivo', progreso: 0, mensaje: '' } },
   };
 
   const PISTAS = [
@@ -153,6 +155,18 @@
     async herramientas() { return herramientas; },
     async detectar_gpu() { return herramientas; },
     async descargar_ffmpeg() { return herramientas.descarga; },
+    async buscar_ytdlp() {
+      const nightly = ajustes.ytdlp_canal === 'nightly';
+      const y = herramientas.ytdlp;
+      y.tarea = { estado: 'descargando', progreso: 0.4, mensaje: nightly ? 'Descargando yt-dlp 2026.9.27.232945.dev0…' : 'Buscando la última versión…' };
+      setTimeout(() => {
+        if (nightly) { y.descargada = '2026.9.27.232945.dev0'; y.reiniciar = true; y.tarea = { estado: 'listo', progreso: 1, mensaje: 'yt-dlp 2026.9.27.232945.dev0 descargado; reinicia para usarlo.' }; }
+        else { y.descargada = null; y.reiniciar = false; y.tarea = { estado: 'al_dia', progreso: 1, mensaje: 'Ya tienes la última versión estable (2026.8.19, incluida en la app).' }; }
+      }, 1500);
+      return herramientas;
+    },
+    async restaurar_ytdlp() { herramientas.ytdlp.descargada = null; herramientas.ytdlp.reiniciar = false; return herramientas; },
+    async reiniciar() { return { ok: false, error: 'Hay descargas en curso: espera a que terminen o cancélalas antes de reiniciar.' }; },
     async analizar(texto, modo, prefs) {
       await dormir(900);
       const urls = texto.match(/https?:\/\/\S+/g) || [];
@@ -198,6 +212,7 @@
     await esperar(300);
     if (demo === 'cola') { clic('[data-vista="cola"]'); return; }
     if (demo === 'ajustes') { clic('[data-vista="ajustes"]'); return; }
+    if (demo === 'nightly') { clic('[data-vista="ajustes"]'); await esperar(300); clic('[data-canal="nightly"]'); await esperar(2500); document.querySelector('#aj-ytdlp').scrollIntoView(); return; }
     document.querySelector('#url').value = demo === 'playlist' ? 'https://www.youtube.com/playlist?list=demo' : 'https://www.youtube.com/watch?v=demo';
     document.querySelector('#url').dispatchEvent(new Event('input'));
     clic('[data-accion="analizar"]');

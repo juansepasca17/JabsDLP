@@ -57,16 +57,19 @@ AJUSTES_POR_DEFECTO = {
     'ffmpeg_ruta': '',
     'idiomas_subtitulos': 'es.*,en.*',
     'recomendacion': True,              # mostrar siempre una opción recomendada (Auto)
+    'ytdlp_canal': 'estable',           # estable | nightly
+    'ytdlp_auto': True,                 # buscar actualización de yt-dlp al abrir (máx. una vez al día)
     'prefs': PREFS_POR_DEFECTO,
 }
 
 
-BOOLEANOS = ('subcarpeta_playlist', 'paralelo', 'decodificar_gpu', 'recomendacion')
+BOOLEANOS = ('subcarpeta_playlist', 'paralelo', 'decodificar_gpu', 'recomendacion', 'ytdlp_auto')
 ENTEROS = {'max_paralelo': (0, 999), 'fragmentos': (1, 32), 'max_conversiones': (1, 16), 'calidad': (10, 45)}
 OPCIONES = {
     'cookies_modo': ('ninguna', 'archivo', 'navegador'),
     'cookies_navegador': NAVEGADORES,
     'gpu': ('auto', 'amf', 'nvenc', 'qsv', 'cpu'),
+    'ytdlp_canal': ('estable', 'nightly'),
 }
 OPCIONES_PREFS = {
     'tipo': ('video', 'audio'),

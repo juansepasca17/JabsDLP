@@ -13,7 +13,7 @@
   <aside class="sidebar">
     <div class="marca">
       <img class="logo" src="logo.png" alt="">
-      <div><b>JabsDLP</b><small id="version">v1.0.0</small></div>
+      <div><b>JabsDLP</b><small id="version">v1.1.0</small></div>
     </div>
     <button class="nav activo" data-vista="descargar"><i data-ico="download"></i>Descargar</button>
     <button class="nav" data-vista="cola"><i data-ico="list"></i>Cola<span class="contador" id="contador-cola">0</span></button>
@@ -206,6 +206,29 @@
             </div>
             <div class="ajuste">
               <div class="txt"><b>Runtime de JavaScript</b><small id="aj-js">—</small></div>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>yt-dlp</b><small id="aj-ytdlp">—</small></div>
+              <div class="segmentado" id="aj-ytdlp-canal" title="Canal de actualización">
+                <button data-canal="estable">Estable</button>
+                <button data-canal="nightly">Nightly</button>
+              </div>
+            </div>
+            <div class="ajuste ajuste-ytdlp">
+              <div class="txt">
+                <b>Actualizar yt-dlp</b>
+                <small id="aj-ytdlp-tarea">Cuando YouTube cambia, se arregla actualizando yt-dlp; no hace falta reinstalar la app.</small>
+                <div class="barra-progreso oculto" id="aj-ytdlp-barra" style="margin-top:8px"><div></div></div>
+              </div>
+              <div class="botones">
+                <button class="btn chico" data-accion="buscar-ytdlp" id="btn-ytdlp"><i data-ico="refresh" class="sm"></i>Buscar</button>
+                <button class="btn chico primario oculto" data-accion="reiniciar" id="btn-reiniciar"><i data-ico="refresh" class="sm"></i>Reiniciar</button>
+                <button class="btn chico fantasma oculto" data-accion="restaurar-ytdlp" id="btn-restaurar-ytdlp">Usar la incluida</button>
+              </div>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Buscar actualizaciones al abrir</b><small>Como mucho una vez al día, en segundo plano. Nightly trae los arreglos antes, pero está menos probada.</small></div>
+              <label class="switch"><input type="checkbox" data-ajuste="ytdlp_auto"><span></span></label>
             </div>
             <div class="ajuste">
               <div class="txt"><b>Versiones</b><small id="aj-versiones">—</small></div>

@@ -21,6 +21,10 @@ y [ffmpeg](https://ffmpeg.org).
 - **Conversión a H.265/H.264 con la GPU** (AMD AMF, NVIDIA NVENC o Intel Quick Sync), con decodificación por GPU. Se puede dejar en Auto o desactivar para usar la CPU.
 - **Descargas en paralelo sin límite**: se pueden desactivar o limitar, y hay un límite aparte de conversiones simultáneas para no saturar la GPU.
 - **Cookies** desde un archivo `cookies.txt` o desde el navegador, para videos privados, con restricción de edad o cuando YouTube pide iniciar sesión.
+- **yt-dlp se actualiza sin reinstalar la app**, desde *Ajustes → Herramientas*. Puedes elegir el canal **Estable** o **Nightly**, que trae antes los arreglos para YouTube.
+  - Baja la versión de PyPI junto con el yt-dlp-ejs que le corresponde y verifica el SHA-256 de ambos.
+  - Puede buscar actualizaciones al abrir, como mucho una vez al día.
+  - Solo guarda la última versión descargada. La que va dentro del `.exe` queda siempre como respaldo y la app vuelve a ella si la descargada falla.
 
 ## Requisitos
 
@@ -30,8 +34,8 @@ y [ffmpeg](https://ffmpeg.org).
 
 ## Privacidad
 
-- No hay telemetría ni cuentas. La app solo se conecta a los sitios de los que descargas y, si lo pides, a GitHub para bajar ffmpeg.
-- Los ajustes y el historial se guardan solo en tu equipo, en `%APPDATA%\JabsDLP`.
+- No hay telemetría ni cuentas. La app solo se conecta a los sitios de los que descargas, a PyPI para buscar actualizaciones de yt-dlp y, si lo pides, a GitHub para bajar ffmpeg.
+- Los ajustes y el historial se guardan solo en tu equipo, en `%APPDATA%\JabsDLP`. Las versiones de yt-dlp descargadas van a `%LOCALAPPDATA%\JabsDLP\yt-dlp`.
 - De las cookies solo se guarda la **ruta** del archivo, nunca su contenido. Para cada descarga se usa una copia temporal normalizada que se borra al terminar. Si la app se cierra de golpe, esa copia se borra al volver a abrirla.
 
 ## Compilar el .exe
@@ -55,6 +59,7 @@ Para ejecutarla desde el código: `python main.py` (con `--debug` se abren las h
 | `jabsdlp/trabajo.py` | Cada descarga con yt-dlp, su progreso y la conversión por GPU |
 | `jabsdlp/ffmpeg_tools.py` | Localizar o descargar ffmpeg, detectar la GPU y recodificar |
 | `jabsdlp/cookies.py` | Normalización de cookies Netscape |
+| `jabsdlp/actualizador.py` | Actualización de yt-dlp (estable o nightly) sin recompilar |
 | `ui/` | Interfaz (HTML, CSS y JS sin dependencias externas) |
 
 ## Aviso
