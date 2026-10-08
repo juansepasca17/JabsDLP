@@ -1,4 +1,4 @@
-<img width="256" height="256" alt="image" src="https://github.com/user-attachments/assets/894f90ec-2caa-4a99-9b49-22ef737c55bf" />
+<img width="144" height="144" alt="image" src="https://github.com/user-attachments/assets/894f90ec-2caa-4a99-9b49-22ef737c55bf" />
 
 # JabsDLP
 
