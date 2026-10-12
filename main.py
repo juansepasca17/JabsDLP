@@ -10,6 +10,9 @@ if sys.stderr is None:
 import webview  # noqa: E402
 
 from jabsdlp import APP_NAME, actualizador  # noqa: E402
+from jabsdlp import procesos  # noqa: E402
+
+procesos.proteger()  # ffmpeg/aria2 mueren con la app aunque se cierre de golpe
 
 # yt-dlp actualizado (si se descargó uno más nuevo que el incluido); si no importa bien, se usa el incluido
 if actualizador.activar():
@@ -60,7 +63,36 @@ def main():
         background_color='#09090b',
     )
     api._ventana = ventana
-    ventana.events.closing += lambda: api.cancelar_todo()
+    # La X cierra la app: con "retomar" se guardan los pendientes para continuarlos al reabrir
+    ventana.events.closing += lambda: api.cerrar()
+
+    # Minimizar → se oculta en la bandeja y las descargas siguen
+    bandeja = None
+    png = recurso('assets', 'icono.png')
+    if os.path.exists(png):
+        from jabsdlp.bandeja import Bandeja
+
+        def mostrar():
+            ventana.show()
+            ventana.restore()
+
+        bandeja = Bandeja(
+            png, mostrar=mostrar,
+            pausar=lambda pausar: api.pausar_cola(pausar),
+            abrir_carpeta=lambda: api.abrir_carpeta(None),
+            salir=ventana.destroy,
+            estado=lambda: (api._gestor.resumen()['activos'], api._gestor.pausado),
+            textos=api.textos,
+        )
+
+        def al_minimizar():
+            if api._ajustes.get('bandeja_al_minimizar'):
+                ventana.hide()
+                bandeja.mostrar_icono()
+
+        ventana.events.minimized += al_minimizar
+        ventana.events.closed += bandeja.ocultar
+
     icono = recurso('assets', 'icono.ico')
     webview.start(debug='--debug' in sys.argv, icon=icono if os.path.exists(icono) else None)
 

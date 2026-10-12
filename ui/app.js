@@ -40,6 +40,12 @@ const ICONOS = {
   film: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/>',
   hand: '<path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>',
   zap: '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+  pause: '<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>',
+  gauge: '<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>',
+  terminal: '<polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/>',
+  scissors: '<circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/>',
+  ban: '<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
+  languages: '<path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/>',
 };
 
 const ico = (nombre, clase = '') => `<svg class="ico ${clase}" viewBox="0 0 24 24" aria-hidden="true">${ICONOS[nombre] || ''}</svg>`;
@@ -75,6 +81,11 @@ const fmt = {
     const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60, p = n => String(n).padStart(2, '0');
     return h ? `${h}:${p(m)}:${p(x)}` : `${m}:${p(x)}`;
   },
+  tiempo(s) {
+    s = Math.max(1, Math.round(s));
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
+    return h ? `${h} h ${m} min` : m ? `${m} min ${x} s` : `${x} s`;
+  },
   num(n) {
     if (n == null) return '—';
     if (n >= 1e9) return `${(n / 1e9).toFixed(1)} B`;
@@ -104,9 +115,84 @@ const ESTADOS = {
   en_cola: ['En cola', ''], iniciando: ['Iniciando', 'acento'], descargando: ['Descargando', 'acento'],
   procesando: ['Procesando', 'acento'], esperando_gpu: ['Esperando turno', 'warn'], convirtiendo: ['Convirtiendo', 'warn'],
   completado: ['Completado', 'ok'], error: ['Error', 'err'], cancelado: ['Cancelado', ''],
+  reintentando: ['Reintentando', 'warn'], omitido: ['Ya descargado', ''], pausado: ['En pausa', 'warn'],
 };
-const ACTIVOS = ['en_cola', 'iniciando', 'descargando', 'procesando', 'esperando_gpu', 'convirtiendo'];
+const ACTIVOS = ['en_cola', 'iniciando', 'descargando', 'procesando', 'esperando_gpu', 'convirtiendo', 'reintentando'];
+const CATEGORIAS_SPONSOR = [
+  ['sponsor', 'Patrocinio', 'Publicidad pagada dentro del video'],
+  ['selfpromo', 'Autopromoción', 'Merch, Patreon, otros canales del creador'],
+  ['interaction', 'Recordatorio de suscripción', '"Dale like y suscríbete"'],
+  ['intro', 'Intro', 'Animación o cuenta atrás inicial'],
+  ['outro', 'Cierre', 'Créditos y pantallas finales'],
+  ['preview', 'Avance', 'Resumen de lo que viene o lo que pasó'],
+  ['music_offtopic', 'Parte sin música', 'En videos musicales, lo que no es la canción'],
+  ['filler', 'Relleno', 'Bromas o desvíos que no aportan al tema'],
+];
+const IDIOMAS_COMUNES = [['es', 'Español'], ['en', 'English'], ['pt', 'Português'], ['fr', 'Français'], ['de', 'Deutsch'],
+  ['it', 'Italiano'], ['ja', '日本語'], ['ko', '한국어'], ['zh', '中文'], ['ru', 'Русский'], ['ar', 'العربية'], ['hi', 'हिन्दी']];
 const esUrlPlaylist = u => /list=|\/playlist|\/sets\/|\/album\//i.test(u || '');
+
+/* ================= avisos de seguridad ================= */
+const AVISOS = {
+  torrent: ['Vas a descargar un torrent (P2P)', [
+    'El contenido lo comparten desconocidos: puede traer malware. No abras programas (.exe, .bat…) que vengan dentro.',
+    'Mientras se descarga, tu IP es visible para los demás participantes y se suben fragmentos (limitado en Ajustes).',
+    'Al terminar, JabsDLP deja de compartir al instante (sin seed).',
+    'Descarga solo contenido que tengas derecho a descargar.']],
+  http: ['Conexión sin cifrar (http://)', [
+    'Alguien en tu red podría ver lo que descargas o modificar el archivo por el camino.',
+    'Si existe, usa la versión https:// del enlace.']],
+  generico: ['Sitio no reconocido', [
+    'yt-dlp no tiene soporte específico para esta web y usa su extractor genérico.',
+    'Asegúrate de que confías en la página antes de descargar.']],
+  ejecutable: ['El enlace apunta a un programa o archivo comprimido', [
+    'Los ejecutables y comprimidos pueden contener software malicioso.',
+    'JabsDLP nunca los abre directamente: solo te los muestra en su carpeta.']],
+  aria2: ['Motor aria2', [
+    'aria2 solo se usa en descargas directas (http/ftp). Los streams HLS y DASH siempre van con el motor nativo de yt-dlp.',
+    'Así se evita la vulnerabilidad CVE-2026-50574 (inyección de opciones en aria2c desde manifiestos DASH), ya corregida en el yt-dlp que trae la app.',
+    'aria2 tampoco seguirá enlaces .torrent ni metalink que pueda devolver un servidor.']],
+};
+
+function confirmarAviso(tipos) {
+  const ocultos = new Set(S.ajustes.avisos_ocultos || []);
+  const pendientes = (tipos || []).filter(t => AVISOS[t] && !ocultos.has(t));
+  if (!pendientes.length) return Promise.resolve(true);
+  const modal = $('#modal');
+  $('#modal-titulo span').textContent = pendientes.length === 1 ? AVISOS[pendientes[0]][0] : 'Aviso de seguridad';
+  $('#modal-cuerpo').innerHTML = pendientes.map(t => `${pendientes.length > 1 ? `<b>${esc(AVISOS[t][0])}</b>` : ''}
+    <ul>${AVISOS[t][1].map(l => `<li>${esc(l)}</li>`).join('')}</ul>`).join('');
+  $('#modal-no-mostrar').checked = false;
+  modal.classList.remove('oculto');
+  modal.querySelector('[data-modal="si"]').focus();
+  // El clic con el que se eligió la opción de un <select> puede soltarse ya sobre el aviso: se ignoran los
+  // clics de los primeros instantes y el fondo solo cierra si el clic empezó en él.
+  const abierto = performance.now();
+  let pulsadoEnFondo = false;
+  return new Promise(resolver => {
+    const alPulsar = e => { pulsadoEnFondo = e.target === modal; };
+    const cerrar = async ok => {
+      modal.classList.add('oculto');
+      modal.removeEventListener('click', alHacerClic);
+      modal.removeEventListener('pointerdown', alPulsar);
+      document.removeEventListener('keydown', alTeclear, true);
+      if (ok && $('#modal-no-mostrar').checked) {
+        await guardarAjuste({ avisos_ocultos: [...ocultos, ...pendientes] });
+      }
+      resolver(ok);
+    };
+    const alHacerClic = e => {
+      if (performance.now() - abierto < 350) return;
+      const b = e.target.closest('[data-modal]');
+      if (b) cerrar(b.dataset.modal === 'si');
+      else if (e.target === modal && pulsadoEnFondo) cerrar(false);
+    };
+    const alTeclear = e => { if (e.key === 'Escape') { e.stopPropagation(); cerrar(false); } };
+    modal.addEventListener('pointerdown', alPulsar);
+    modal.addEventListener('click', alHacerClic);
+    document.addEventListener('keydown', alTeclear, true);
+  });
+}
 
 function toast(html, tipo = '') {
   const el = document.createElement('div');
@@ -130,6 +216,9 @@ const S = {
   seleccion: null,      // spec elegido en Personalizado
   audioId: null,        // pista elegida con Audio: Personalizado
   verManual: false,
+  recorte: null,        // ['1:20', '3:45'] para el video analizado
+  quitarAnuncios: false, // "Quitar anuncios" (SponsorBlock): solo actúa si lo activas
+  sponsor: null,        // {cargando, segmentos, total, soportado, error}
   calc: null,
   plSel: new Set(),
   ajustes: {},
@@ -173,6 +262,13 @@ function renderMeta() {
       <small>Funciona con videos, playlists y canales de YouTube y de cientos de sitios más. También puedes pegar varias URLs o importar un .txt.</small></div>`;
     return;
   }
+  if (a.tipo === 'torrent') {
+    cont.innerHTML = `<div class="card pad">
+      <div class="meta-titulo no-traducir" style="margin-top:0">${esc(a.titulo)}</div>
+      <div class="meta-canal">Torrent / magnet · P2P</div>
+      <div class="meta-origen">${ico('alert', 'sm')}Fuente desconocida: revisa lo que descargas antes de abrirlo.</div></div>`;
+    return;
+  }
   if (a.tipo === 'lote') {
     cont.innerHTML = `<div class="card pad">
       <div class="meta-titulo" style="margin-top:0">${a.cantidad} enlaces</div>
@@ -184,8 +280,8 @@ function renderMeta() {
   if (a.tipo === 'playlist') {
     cont.innerHTML = `
       <div class="miniatura">${img}<div class="tipo-lista">${ico('playlist', 'lg')}<span>${a.cantidad} videos</span></div></div>
-      <div class="meta-titulo">${esc(a.titulo)}</div>
-      <div class="meta-canal">${esc(a.canal || '')}</div>
+      <div class="meta-titulo no-traducir">${esc(a.titulo)}</div>
+      <div class="meta-canal no-traducir">${esc(a.canal || '')}</div>
       <div class="meta-fila">
         <span>${ico('playlist', 'sm')}${a.cantidad} videos</span>
         ${a.duracion ? `<span>${ico('clock', 'sm')}${fmt.dur(a.duracion)} en total</span>` : ''}
@@ -196,8 +292,9 @@ function renderMeta() {
   const datos = [a.resolucion, fmt.kbps(a.tbr), a.fps ? `${Math.round(a.fps)} fps` : null].filter(Boolean);
   cont.innerHTML = `
     <div class="miniatura">${img}${a.duracion ? `<span class="duracion">${fmt.dur(a.duracion)}</span>` : ''}</div>
-    <div class="meta-titulo" title="${esc(a.titulo)}">${esc(a.titulo)}</div>
-    <div class="meta-canal">${esc(a.canal || '')}</div>
+    <div class="meta-titulo no-traducir" title="${esc(a.titulo)}">${esc(a.titulo)}</div>
+    <div class="meta-canal no-traducir">${esc(a.canal || '')}</div>
+    ${a.ya_descargado ? `<div class="aviso" style="margin:0 0 10px">${ico('check', 'sm')}<span>Ya descargado antes (se saltará con "No repetir descargas")</span></div>` : ''}
     <div class="meta-fila">
       <span>${ico('clock', 'sm')}${fmt.dur(a.duracion)}</span>
       <span>${ico('eye', 'sm')}${fmt.num(a.vistas)}</span>
@@ -226,6 +323,10 @@ const MENUS = {
     ['auto', 'Con audio', 'La mejor pista automáticamente'], ['no', 'Sin audio', 'Solo la imagen'],
     ['custom', 'Personalizado', 'Elige la pista o la calidad del audio']] },
   extras: { titulo: 'Metadatos y extras', casillas: true },
+  idioma_audio: { titulo: 'Idioma de la pista de audio', dinamico: true },
+  subs: { titulo: 'Subtítulos', casillas: true },
+  recortar: { titulo: 'Recortar el video', panel: true },
+  anuncios: { titulo: 'Quitar anuncios (SponsorBlock)', casillas: true },
   formato_audio: { titulo: 'Formato de audio', opciones: [
     ['auto', 'Auto', 'Sin recodificar (Opus o M4A según la fuente)'], ['mp3', 'MP3', 'Compatible con todo'],
     ['m4a', 'M4A', 'AAC, ideal para móviles y Apple'], ['opus', 'OPUS', 'El más eficiente'], ['flac', 'FLAC', 'Sin pérdida (más pesado)']] },
@@ -304,10 +405,47 @@ function filaPrefsHTML() {
     html += chipPref('contenedor', 'box', 'Contenedor', NOMBRES.contenedor[p.contenedor], p.contenedor !== 'auto');
     html += chipPref('audio', 'music', 'Audio', NOMBRES.audio[p.audio], p.audio !== 'auto');
   }
-  const extras = (p.metadatos && p.miniatura ? 1 : 0) + (p.tipo !== 'audio' && p.subtitulos ? 1 : 0);
-  const valorExtras = p.metadatos ? `Metadatos${extras ? ` +${extras}` : ''}` : (extras ? 'Subtítulos' : 'Ninguno');
-  html += chipPref('extras', 'tag', 'Extras', valorExtras, !p.metadatos);
-  return `<div class="etiqueta-grupo" style="margin-top:14px">${ico('sliders', 'sm')}Preferencias de formato</div><div class="fila-prefs">${html}</div>`;
+  if (p.audio !== 'no' || p.tipo === 'audio') {
+    html += chipPref('idioma_audio', 'languages', 'Idioma audio',
+      p.idioma_audio && p.idioma_audio !== 'original' ? nombreIdioma(p.idioma_audio) : 'Original', p.idioma_audio && p.idioma_audio !== 'original');
+  }
+  if (p.tipo !== 'audio') {
+    const subs = (p.idioma_subs || 'es').split(',').filter(Boolean);
+    html += chipPref('subs', 'captions', 'Subtítulos', p.subtitulos ? subs.join(', ') + (p.subs_auto ? ' +auto' : '') : 'No', p.subtitulos);
+  }
+  html += chipPref('extras', 'tag', 'Extras', p.metadatos ? `Metadatos${p.miniatura ? ' +1' : ''}` : 'Ninguno', !p.metadatos);
+  if (S.analisis?.tipo === 'video') {
+    html += chipPref('recortar', 'scissors', 'Recortar', S.recorte ? `${S.recorte[0]}–${S.recorte[1]}` : 'Entero', !!S.recorte);
+  }
+  if (esYoutube()) {
+    let valor = 'No';
+    if (S.quitarAnuncios) {
+      valor = esLista() ? 'Sí' : S.sponsor?.cargando ? 'Buscando…' : S.sponsor?.total ? `−${fmt.dur(S.sponsor.total)}` : 'Ninguno';
+    }
+    html += chipPref('anuncios', 'ban', 'Quitar anuncios', valor, S.quitarAnuncios);
+  }
+  return `<div class="etiqueta-grupo" style="margin-top:14px">${ico('sliders', 'sm')}Preferencias de formato</div><div class="fila-prefs">${html}</div>`
+    + anunciosHTML() + (S.calc?.aviso_idioma && !esLista() ? `<div class="aviso">${ico('alert', 'sm')}<span>${esc(S.calc.aviso_idioma)}</span></div>` : '');
+}
+
+const esYoutube = () => !!S.analisis && (S.analisis.sitio_clave === 'Youtube' || S.analisis.extractor === 'YouTube'
+  || (S.analisis.tipo === 'lote' && S.analisis.urls.some(u => /youtu\.?be/i.test(u))));
+
+function nombreIdioma(codigo) {
+  const delVideo = (S.analisis?.idiomas_audio || []).find(i => i.codigo === codigo);
+  if (delVideo) return delVideo.nombre.replace(/\s*-\s*dubbed$/i, '').replace(/\s*original \(default\)/i, '') || codigo;
+  return (IDIOMAS_COMUNES.find(([c]) => c === codigo) || [codigo, codigo])[1];
+}
+
+function anunciosHTML() {
+  if (!S.quitarAnuncios || esLista() || !S.sponsor) return '';
+  const s = S.sponsor;
+  if (s.cargando) return `<div class="nota">${ico('loader', 'sm spin')} Buscando segmentos en SponsorBlock…</div>`;
+  if (s.error) return `<div class="aviso">${ico('alert', 'sm')}<span>${esc(s.error)}</span></div>`;
+  if (!s.segmentos?.length) return '<div class="nota">SponsorBlock no tiene segmentos marcados en este video: se descargará entero.</div>';
+  const nombres = Object.fromEntries(CATEGORIAS_SPONSOR.map(([c, n]) => [c, n]));
+  return `<div class="nota anuncios"><b>${s.segmentos.length} ${s.segmentos.length === 1 ? 'segmento' : 'segmentos'} · ${fmt.dur(s.total)} que se quitarán</b>
+    <div class="tramos">${s.segmentos.map(g => `<span class="insignia warn">${fmt.dur(g.inicio)}–${fmt.dur(g.fin)} · ${esc(nombres[g.categoria] || g.categoria)}</span>`).join('')}</div></div>`;
 }
 
 function seleccionHTML() {
@@ -345,7 +483,7 @@ function pieHTML(texto, habilitado) {
 function listaPlaylistHTML() {
   const a = S.analisis;
   const items = a.tipo === 'playlist'
-    ? a.entradas.map(e => ({ clave: e.indice, n: e.indice, titulo: e.titulo, dur: e.duracion, img: e.miniatura }))
+    ? a.entradas.map(e => ({ clave: e.indice, n: e.indice, titulo: e.titulo, dur: e.duracion, img: e.miniatura, ya: e.ya_descargado }))
     : a.urls.map((u, i) => ({ clave: i, n: i + 1, titulo: u, dur: null, img: null }));
   const todos = S.plSel.size === items.length;
   return `<div class="etiqueta-grupo">${ico('playlist', 'sm')}${a.tipo === 'playlist' ? 'Videos de la playlist' : 'Enlaces'}
@@ -356,8 +494,8 @@ function listaPlaylistHTML() {
         <span class="casilla ${S.plSel.has(it.clave) ? 'on' : ''}"></span>
         <span class="n">${it.n}</span>
         ${it.img ? `<img src="${esc(it.img)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : '<span class="sin-img"></span>'}
-        <span class="t" title="${esc(it.titulo)}">${esc(it.titulo)}</span>
-        <span class="n">${it.dur ? fmt.dur(it.dur) : ''}</span>
+        <span class="t no-traducir" title="${esc(it.titulo)}">${esc(it.titulo)}</span>
+        <span class="n">${it.ya ? '<span class="insignia ok">Ya descargado</span> ' : ''}${it.dur ? fmt.dur(it.dur) : ''}</span>
       </div>`).join('')}
     </div>`;
 }
@@ -376,6 +514,14 @@ function renderOpciones() {
   const cont = $('#opciones');
   const scroll = [...cont.querySelectorAll('.lista-formatos, .lista-playlist, .fila-prefs')].map(e => [e.scrollTop, e.scrollLeft]);
   $$('#tipo button').forEach(b => b.classList.toggle('activo', b.dataset.tipo === (S.prefs.tipo || 'video')));
+  if (S.analisis?.tipo === 'torrent') {
+    const a = S.analisis;
+    cont.innerHTML = `<div class="etiqueta-grupo" style="margin-top:14px">${ico('download', 'sm')}Torrent</div>
+      <div class="nota">Se descarga con aria2, con la subida limitada a ${esc(String(S.ajustes.subida_torrent_kb || 20))} KB/s y <b>sin seed</b>: al terminar deja de compartir.</div>
+      ${a.aria2 ? '' : `<div class="aviso">${ico('alert', 'sm')}<span>Los torrents necesitan aria2. Instálalo en <a data-vista="ajustes">Ajustes → Red y velocidad</a>.</span></div>`}
+      ${pieHTML('Descargar torrent', !!a.aria2)}`;
+    return;
+  }
   let html = filaPrefsHTML() + seleccionHTML() + audioPersonalizadoHTML();
 
   if (S.cargando) {
@@ -443,19 +589,67 @@ function renderDescargar() {
 }
 
 /* ================= menús desplegables ================= */
+function filaCasilla(atributos, on, texto, desc, habilitado = true) {
+  return `<button class="menu-item" ${atributos} ${habilitado ? '' : 'disabled'}>
+      <span class="casilla ${on ? 'on' : ''}" style="width:16px;height:16px;margin-top:1px"></span><span><b>${esc(texto)}</b>${desc ? `<small>${esc(desc)}</small>` : ''}</span></button>`;
+}
+
 function casillasExtras() {
   const p = S.prefs;
-  const filas = [
-    ['metadatos', 'Metadatos', 'Título, autor, fecha y capítulos dentro del archivo', true],
-    ['miniatura', p.tipo === 'audio' ? 'Portada incrustada' : 'Miniatura incrustada', 'Necesita los metadatos activados', p.metadatos],
-  ];
-  if (p.tipo !== 'audio') filas.push(['subtitulos', 'Subtítulos', 'Idiomas configurables en Ajustes', true]);
-  return filas.map(([clave, texto, desc, habilitado]) => {
-    const on = !!p[clave] && habilitado;
-    return `<button class="menu-item" data-menu-casilla="${clave}" ${habilitado ? '' : 'disabled'}>
-        <span class="casilla ${on ? 'on' : ''}" style="width:16px;height:16px;margin-top:1px"></span><span><b>${esc(texto)}</b><small>${esc(desc)}</small></span></button>`;
-  }).join('');
+  return filaCasilla('data-menu-casilla="metadatos"', p.metadatos, 'Metadatos', 'Título, autor, fecha y capítulos dentro del archivo')
+    + filaCasilla('data-menu-casilla="miniatura"', p.metadatos && p.miniatura, p.tipo === 'audio' ? 'Portada incrustada' : 'Miniatura incrustada',
+      'Necesita los metadatos activados', p.metadatos);
 }
+
+function casillasSubs() {
+  const p = S.prefs;
+  const elegidos = new Set((p.idioma_subs || 'es').split(',').filter(Boolean));
+  const info = S.analisis?.idiomas_subs;
+  let idiomas = info?.manuales?.length ? info.manuales.map(m => [m.codigo, m.nombre]) : IDIOMAS_COMUNES;
+  elegidos.forEach(c => { if (!idiomas.some(([x]) => x === c)) idiomas = [[c, c], ...idiomas]; });
+  let html = filaCasilla('data-menu-casilla="subtitulos"', p.subtitulos, 'Incrustar subtítulos', 'Se meten dentro del video (puedes activarlos o no al verlo)');
+  html += filaCasilla('data-menu-casilla="subs_auto"', p.subs_auto, 'Incluir automáticos',
+    info && !info.hay_automaticos ? 'Este video no tiene subtítulos automáticos' : 'Si no hay manuales en ese idioma, usa los generados por YouTube', p.subtitulos);
+  html += `<div class="menu-sep"></div><div class="menu-titulo">${info?.manuales?.length ? 'Idiomas de este video' : 'Idiomas'}</div>`;
+  return html + idiomas.slice(0, 40).map(([c, n]) =>
+    filaCasilla(`data-menu-sub="${esc(c)}"`, elegidos.has(c), n === c ? c : `${n} (${c})`, '', p.subtitulos)).join('');
+}
+
+function casillasAnuncios() {
+  const elegidas = new Set((S.prefs.sponsor_cats || 'sponsor,selfpromo').split(',').filter(Boolean));
+  let html = filaCasilla('data-menu-anuncios="activar"', S.quitarAnuncios, 'Quitar anuncios de este video',
+    'Usa SponsorBlock (YouTube). Solo se consulta si lo activas.');
+  html += '<div class="menu-sep"></div><div class="menu-titulo">Qué se quita</div>';
+  return html + CATEGORIAS_SPONSOR.map(([c, n, d]) => filaCasilla(`data-menu-cat="${c}"`, elegidas.has(c), n, d)).join('');
+}
+
+function opcionesIdiomaAudio() {
+  const delVideo = S.analisis?.idiomas_audio || [];
+  const lista = delVideo.length
+    ? delVideo.filter(i => !i.original).map(i => [i.codigo, nombreIdioma(i.codigo), i.codigo])
+    : IDIOMAS_COMUNES.map(([c, n]) => [c, n, c]);
+  const original = delVideo.find(i => i.original);
+  return [['original', 'Original', original ? `${nombreIdioma(original.codigo)} (${original.codigo})` : 'El idioma en que se grabó el video'], ...lista];
+}
+
+function panelRecorte() {
+  const [ini, fin] = S.recorte || ['0:00', fmt.dur(S.analisis?.duracion || 0)];
+  return `<div class="panel-recorte">
+      <label>Desde<input class="entrada chica" id="recorte-ini" value="${esc(ini)}" placeholder="1:20" spellcheck="false"></label>
+      <label>Hasta<input class="entrada chica" id="recorte-fin" value="${esc(fin)}" placeholder="3:45" spellcheck="false"></label>
+      <small class="dim">Formato m:ss o h:mm:ss. Duración: ${fmt.dur(S.analisis?.duracion)}. Se descarga el video y se recorta en tu equipo.</small>
+      <div class="acciones-recorte">
+        <button class="btn chico fantasma" data-recorte="quitar">Video entero</button>
+        <button class="btn chico primario" data-recorte="aplicar">Aplicar</button>
+      </div>
+    </div>`;
+}
+
+const aSegundos = texto => {
+  const partes = String(texto || '').trim().split(':').map(Number);
+  if (!partes.length || partes.length > 3 || partes.some(n => isNaN(n) || n < 0)) return null;
+  return partes.reduce((t, n) => t * 60 + n, 0);
+};
 
 function posicionarMenu(ancla) {
   const menu = $('#menu');
@@ -474,11 +668,18 @@ function abrirMenu(clave, ancla) {
   menu.dataset.clave = clave;
   menu.classList.remove('oculto');
   if (def.casillas) {
-    menu.innerHTML = `<div class="menu-titulo">${esc(def.titulo)}</div>${casillasExtras()}`;
+    const contenido = { extras: casillasExtras, subs: casillasSubs, anuncios: casillasAnuncios }[clave]();
+    menu.innerHTML = `<div class="menu-titulo">${esc(def.titulo)}</div>${contenido}`;
     return posicionarMenu(ancla);
   }
+  if (def.panel) {
+    menu.innerHTML = `<div class="menu-titulo">${esc(def.titulo)}</div>${panelRecorte()}`;
+    posicionarMenu(ancla);
+    return $('#recorte-ini')?.focus();
+  }
+  const opciones = def.dinamico ? opcionesIdiomaAudio() : def.opciones;
   const actual = clave === 'criterio' ? (enAuto() ? S.prefs.criterio : 'manual') : String(S.prefs[clave]);
-  menu.innerHTML = `<div class="menu-titulo">${esc(def.titulo)}</div>` + def.opciones.map(([valor, texto, desc]) => {
+  menu.innerHTML = `<div class="menu-titulo">${esc(def.titulo)}</div>` + opciones.map(([valor, texto, desc]) => {
     if (valor === '-') return '<div class="menu-sep"></div>';
     const activo = valor === actual;
     const deshabilitado = clave === 'criterio' && valor === 'manual' && esLista();
@@ -518,6 +719,7 @@ async function analizar() {
   cerrarMenu();
   S.cargando = true; S.error = null; S.analisis = null; S.calc = null;
   S.seleccion = null; S.audioId = null; S.verManual = false;
+  S.recorte = null; S.quitarAnuncios = false; S.sponsor = null;
   S.modoSel = S.ajustes.recomendacion === false ? 'manual' : 'auto';
   renderDescargar();
   let r;
@@ -533,10 +735,12 @@ async function analizar() {
     S.analisis = r.datos;
     if (r.datos.tipo === 'video') {
       S.calc = { recomendado: r.datos.recomendado, opciones: r.datos.opciones, audios: r.datos.audios,
-                 audio_elegido: r.datos.audio_elegido, encoder: r.datos.encoder };
+                 audio_elegido: r.datos.audio_elegido, encoder: r.datos.encoder, aviso_idioma: r.datos.aviso_idioma };
       if (S.prefs.audio === 'custom') S.audioId = r.datos.audio_elegido;
     } else if (r.datos.tipo === 'playlist') {
-      S.plSel = new Set(r.datos.entradas.map(e => e.indice));
+      S.plSel = new Set(r.datos.entradas.filter(e => !e.ya_descargado).map(e => e.indice));
+    } else if (r.datos.tipo === 'torrent') {
+      S.plSel = new Set();
     } else {
       S.plSel = new Set(r.datos.urls.map((_, i) => i));
     }
@@ -571,19 +775,43 @@ function cambiarPref(clave, valor) {
 async function descargar() {
   const a = S.analisis;
   if (!a) return;
+  if (!(await confirmarAviso(a.riesgos))) return;
   let solicitud;
-  if (a.tipo === 'video') {
-    solicitud = { tipo: 'video', id: a.id, spec: enAuto() ? null : S.seleccion,
-                  audio_id: S.prefs.audio === 'custom' ? S.audioId : null, prefs: S.prefs };
+  const anuncios = esYoutube() && S.quitarAnuncios;
+  if (a.tipo === 'torrent') {
+    solicitud = { tipo: 'torrent', url: a.url };
+  } else if (a.tipo === 'video') {
+    solicitud = { tipo: 'video', id: a.id, spec: enAuto() ? null : S.seleccion, recorte: S.recorte,
+                  audio_id: S.prefs.audio === 'custom' ? S.audioId : null, prefs: S.prefs, quitar_anuncios: anuncios };
   } else if (a.tipo === 'playlist') {
-    solicitud = { tipo: 'playlist', id: a.id, indices: [...S.plSel], prefs: S.prefs };
+    solicitud = { tipo: 'playlist', id: a.id, indices: [...S.plSel], prefs: S.prefs, quitar_anuncios: anuncios };
   } else {
-    solicitud = { tipo: 'lote', urls: a.urls.filter((_, i) => S.plSel.has(i)), prefs: S.prefs };
+    solicitud = { tipo: 'lote', urls: a.urls.filter((_, i) => S.plSel.has(i)), prefs: S.prefs, quitar_anuncios: anuncios };
   }
   const r = await API.descargar(solicitud);
   if (r.ok) toast(`${r.agregados} ${r.agregados === 1 ? 'descarga añadida' : 'descargas añadidas'} a la cola. <a data-vista="cola">Ver cola</a>`, 'ok');
   else toast(esc(r.error), 'err');
   refrescarCola();
+}
+
+async function consultarAnuncios() {
+  if (!S.quitarAnuncios || S.analisis?.tipo !== 'video') { renderOpciones(); return; }
+  S.sponsor = { cargando: true };
+  renderOpciones();
+  const r = await API.sponsor_segmentos(S.analisis.id, S.prefs.sponsor_cats);
+  S.sponsor = r.ok ? r : { error: r.error };
+  renderOpciones();
+}
+
+function aplicarRecorte() {
+  const ini = $('#recorte-ini')?.value.trim(), fin = $('#recorte-fin')?.value.trim();
+  const a = aSegundos(ini), b = aSegundos(fin), dur = S.analisis?.duracion;
+  if (a == null || b == null) return toast('Escribe el tiempo como m:ss, por ejemplo 1:20.', 'err');
+  if (b <= a) return toast('"Hasta" tiene que ser mayor que "Desde".', 'err');
+  if (dur && a >= dur) return toast(`El video dura ${fmt.dur(dur)}.`, 'err');
+  S.recorte = (a <= 0 && dur && b >= dur) ? null : [fmt.dur(a), fmt.dur(Math.min(b, dur || b))];
+  cerrarMenu();
+  renderOpciones();
 }
 
 function alCambiarUrl() {
@@ -610,7 +838,8 @@ function accionesTrabajo(t) {
   const b = (tarea, icono, titulo, extra = '') => `<button class="btn chico icono ${extra}" data-tarea="${tarea}" title="${titulo}">${ico(icono, 'sm')}</button>`;
   if (ACTIVOS.includes(t.estado)) return b('cancelar', 'x', 'Cancelar', 'peligro');
   if (t.estado === 'completado') return b('abrir', 'play', 'Abrir archivo') + b('carpeta', 'folder', 'Mostrar en la carpeta') + b('quitar', 'trash', 'Quitar de la lista');
-  return b('reintentar', 'refresh', 'Reintentar') + b('quitar', 'trash', 'Quitar de la lista');
+  if (t.estado === 'omitido') return b('quitar', 'trash', 'Quitar de la lista');
+  return b('reintentar', t.estado === 'pausado' ? 'play' : 'refresh', t.estado === 'pausado' ? 'Continuar' : 'Reintentar') + b('quitar', 'trash', 'Quitar de la lista');
 }
 
 function actualizarTrabajo(el, t) {
@@ -621,6 +850,7 @@ function actualizarTrabajo(el, t) {
   }
   el.querySelector('.t').textContent = t.titulo;
   el.querySelector('.t').title = t.titulo;
+  el.querySelector('.t').classList.add('no-traducir');
   const [nombreEstado, claseEstado] = ESTADOS[t.estado] || [t.estado, ''];
   el.querySelector('.sub').innerHTML = `<span class="insignia ${claseEstado}">${esc(nombreEstado)}</span>
     ${ico(t.tipo === 'audio' ? 'music' : 'video', 'sm')}<span>${esc([t.canal, t.titulo_formato, t.fase && t.fase !== nombreEstado ? t.fase : null].filter(Boolean).join(' · '))}</span>`;
@@ -632,7 +862,8 @@ function actualizarTrabajo(el, t) {
   else if (t.estado === 'error') { barra.classList.add('err'); ancho = 100; }
   else if (t.estado === 'convirtiendo') { barra.classList.add('conv'); ancho = t.progreso_conversion * 100; }
   else if (['iniciando', 'procesando', 'esperando_gpu'].includes(t.estado)) barra.classList.add('indet');
-  else if (t.estado === 'cancelado') ancho = 0;
+  else if (t.estado === 'omitido') { barra.classList.add('ok'); ancho = 100; }
+  else if (['cancelado', 'reintentando'].includes(t.estado)) ancho = 0;
   barra.firstElementChild.style.width = `${ancho.toFixed(1)}%`;
 
   let stats = [];
@@ -643,12 +874,22 @@ function actualizarTrabajo(el, t) {
   } else if (t.estado === 'convirtiendo') {
     stats = [`${(t.progreso_conversion * 100).toFixed(1)}%`, t.velocidad_conversion ? `velocidad ${t.velocidad_conversion}` : null, t.encoder].map(esc);
   } else if (t.estado === 'completado') {
-    stats = [fmt.bytes(t.total), t.encoder ? `Convertido con ${t.encoder}` : null].map(esc);
+    const tardo = t.inicio && t.terminado && t.terminado >= t.inicio ? `en ${fmt.tiempo(t.terminado - t.inicio)}` : null;
+    stats = [fmt.bytes(t.total), tardo, t.encoder ? `Convertido con ${t.encoder}` : null].map(esc);
   } else if (t.estado === 'error') {
     stats = [`<span class="err">${esc(t.error)}</span>`];
+    if (t.intentos) stats.push(esc(`Tras ${t.intentos} ${t.intentos === 1 ? 'reintento' : 'reintentos'}`));
+  } else if (t.estado === 'reintentando') {
+    const quedan = Math.max(0, Math.round((t.reintento_en || 0) - Date.now() / 1000));
+    stats = [`<span class="err">${esc(t.error)}</span>`, esc(`${t.fase} en ${quedan} s`)];
   } else if (t.estado === 'en_cola') {
-    stats = ['Esperando turno'];
+    stats = [S.resumen.pausado ? 'Cola en pausa' : 'Esperando turno'];
+  } else if (t.estado === 'pausado') {
+    stats = ['Se continuará desde donde se quedó'];
+  } else if (t.estado === 'omitido') {
+    stats = ['Ya estaba en el registro de descargas'];
   }
+  if (t.motor === 'aria2' && ['descargando', 'completado'].includes(t.estado)) stats.push(esc('con aria2'));
   if (t.aviso) stats.push(`<span class="warn">${esc(t.aviso)}</span>`);
   el.querySelector('.stats').innerHTML = stats.filter(Boolean).map(s => `<span>${s}</span>`).join('');
 
@@ -666,8 +907,11 @@ function renderCola() {
     r.activos ? `<span class="insignia acento">${r.activos} activas</span>` : '',
     r.en_cola ? `<span class="insignia">${r.en_cola} en cola</span>` : '',
     r.completados ? `<span class="insignia ok">${r.completados} completadas</span>` : '',
+    r.omitidos ? `<span class="insignia">${r.omitidos} ya descargadas</span>` : '',
     r.errores ? `<span class="insignia err">${r.errores} con error</span>` : '',
   ].join('');
+  $('#btn-pausar').innerHTML = r.pausado ? `${ico('play', 'sm')}Reanudar` : `${ico('pause', 'sm')}Pausar`;
+  $('#btn-pausar').classList.toggle('primario', !!r.pausado);
   if (!lista.length) {
     cont.innerHTML = `<div class="vacio"><div class="circulo">${ico('list')}</div><b>La cola está vacía</b>
       <small>Analiza un video o una playlist y pulsa Descargar.</small></div>`;
@@ -729,7 +973,30 @@ function pintarAjustes() {
   $('#aj-crf-txt').textContent = (+a.calidad || 26) + 2;
   $('#cola-limite-txt').textContent = !a.paralelo ? 'Desactivado: de una en una'
     : (+a.max_paralelo > 0 ? `Hasta ${a.max_paralelo} a la vez` : 'Sin límite');
+  const vel = +a.limite_velocidad || 0;
+  const predefinida = [0, 5, 10, 20].includes(vel);
+  const selector = $('#aj-velocidad'), propio = $('#aj-velocidad-custom');
+  if (document.activeElement !== selector) selector.value = predefinida && !velocidadUI.personalizado ? String(vel) : 'custom';
+  propio.classList.toggle('oculto', selector.value !== 'custom');
+  if (document.activeElement !== propio) propio.value = vel || '';
+  $('#cola-velocidad-txt').textContent = vel ? `Máx. ${vel} MB/s en total` : 'Sin límite';
+  $$('#aj-tema button').forEach(b => b.classList.toggle('activo', b.dataset.tema === (a.tema || 'oscuro')));
+  aplicarTema();
+  aplicarIdioma();
   pintarEstado();
+}
+const velocidadUI = { personalizado: false };  // el usuario eligió "Personalizado…" aunque el valor sea 5/10/20
+
+function aplicarTema() {
+  const tema = S.ajustes.tema || 'oscuro';
+  const claro = tema === 'claro' || (tema === 'sistema' && window.matchMedia('(prefers-color-scheme: light)').matches);
+  document.documentElement.dataset.tema = claro ? 'claro' : 'oscuro';
+}
+
+function aplicarIdioma() {
+  const elegido = S.ajustes.idioma || 'auto';
+  const idioma = elegido === 'auto' ? ((navigator.language || 'es').toLowerCase().startsWith('es') ? 'es' : 'en') : elegido;
+  if (window.I18N && I18N.idioma !== idioma) I18N.cambiar(idioma);
 }
 
 function pintarEstado() {
@@ -761,6 +1028,13 @@ function pintarEstado() {
     btn.innerHTML = d.estado === 'descargando' ? `${ico('loader', 'sm spin')}${Math.round(d.progreso * 100)}%`
       : d.estado === 'extrayendo' ? `${ico('loader', 'sm spin')}Extrayendo` : `${ico('download', 'sm')}${h.ffmpeg ? 'Reinstalar' : 'Descargar'}`;
     pintarYtdlp(h.ytdlp);
+    const ar = h.aria2 || {}, da = ar.descarga || {};
+    $('#aj-aria2').textContent = ar.ruta || `No instalado (versión ${ar.version || '1.37.0'} disponible)`;
+    $('#aj-aria2').title = ar.ruta || '';
+    $('#btn-aria2').disabled = da.estado === 'descargando';
+    $('#btn-aria2').innerHTML = da.estado === 'descargando' ? `${ico('loader', 'sm spin')}${Math.round((da.progreso || 0) * 100)}%`
+      : `${ico('download', 'sm')}${ar.ruta ? 'Reinstalar' : 'Descargar'}`;
+    $('#btn-aria2-quitar').hidden = !ar.de_la_app || da.estado === 'descargando';
     $('#aj-js').textContent = h.js?.length ? `Encontrado: ${h.js.join(', ')} (necesario para YouTube).`
       : 'No encontrado. Instala Node.js o Deno para que YouTube muestre todos los formatos.';
   }
@@ -804,7 +1078,12 @@ async function refrescarHerramientas() {
   pintarEstado();
   const d = S.herr.descarga || {};
   const tareaYtdlp = S.herr.ytdlp?.tarea?.estado;
-  if (d.estado === 'descargando' || d.estado === 'extrayendo' || !S.herr.gpu || tareaYtdlp === 'buscando' || tareaYtdlp === 'descargando') {
+  const aria = S.herr.aria2?.descarga || {};
+  if (aria.estado === 'error' && refrescarHerramientas.aria !== 'error') toast(`No se pudo descargar aria2: ${esc(aria.error)}`, 'err');
+  if (aria.estado === 'listo' && refrescarHerramientas.aria === 'descargando') toast('aria2 descargado e instalado.', 'ok');
+  refrescarHerramientas.aria = aria.estado;
+  if (d.estado === 'descargando' || d.estado === 'extrayendo' || !S.herr.gpu || tareaYtdlp === 'buscando' || tareaYtdlp === 'descargando'
+      || aria.estado === 'descargando') {
     setTimeout(refrescarHerramientas, 1000);
   } else if (d.estado === 'error' && !refrescarHerramientas.avisado) {
     refrescarHerramientas.avisado = true;
@@ -818,14 +1097,39 @@ async function refrescarHerramientas() {
 /* ================= eventos ================= */
 document.addEventListener('click', async e => {
   const menu = $('#menu');
+  const botonRecorte = e.target.closest('[data-recorte]');
+  if (botonRecorte) {
+    if (botonRecorte.dataset.recorte === 'quitar') { S.recorte = null; cerrarMenu(); return renderOpciones(); }
+    return aplicarRecorte();
+  }
   const itemMenu = e.target.closest('.menu-item');
   if (itemMenu) {
     if (itemMenu.disabled) return;
-    if (itemMenu.dataset.menuCasilla) {
-      await cambiarPref(itemMenu.dataset.menuCasilla, 'toggle');
-      return abrirMenu('extras', $('[data-abrir="extras"]'));
+    const m = itemMenu.dataset, clave = menu.dataset.clave;
+    const reabrir = () => abrirMenu(clave, $(`[data-abrir="${clave}"]`));
+    if (m.menuCasilla) {
+      await cambiarPref(m.menuCasilla, 'toggle');
+      return reabrir();
     }
-    return elegirDeMenu(itemMenu.dataset.menuValor);
+    if (m.menuSub) {
+      const lista = new Set((S.prefs.idioma_subs || '').split(',').filter(Boolean));
+      lista.has(m.menuSub) ? lista.delete(m.menuSub) : lista.add(m.menuSub);
+      await cambiarPref('idioma_subs', [...lista].join(',') || 'es');
+      return reabrir();
+    }
+    if (m.menuAnuncios) {
+      S.quitarAnuncios = !S.quitarAnuncios;
+      reabrir();
+      return consultarAnuncios();
+    }
+    if (m.menuCat) {
+      const cats = new Set((S.prefs.sponsor_cats || '').split(',').filter(Boolean));
+      cats.has(m.menuCat) ? cats.delete(m.menuCat) : cats.add(m.menuCat);
+      await cambiarPref('sponsor_cats', [...cats].join(','));
+      reabrir();
+      return consultarAnuncios();
+    }
+    return elegirDeMenu(m.menuValor);
   }
   if (!menu.classList.contains('oculto') && !menu.contains(e.target)) {
     const mismo = e.target.closest('[data-abrir]')?.dataset.abrir === menu.dataset.clave;
@@ -833,10 +1137,11 @@ document.addEventListener('click', async e => {
     if (mismo) return;
   }
 
-  const el = e.target.closest('[data-vista],[data-modo],[data-tipo],[data-pref],[data-sel],[data-audio],[data-pl],[data-cookies],[data-canal],[data-abrir],[data-accion],[data-tarea]');
+  const el = e.target.closest('[data-vista],[data-modo],[data-tipo],[data-pref],[data-sel],[data-audio],[data-pl],[data-cookies],[data-canal],button[data-tema],[data-abrir],[data-accion],[data-tarea]');
   if (!el || el.disabled) return;
   const d = el.dataset;
   if (d.vista) return irA(d.vista);
+  if (d.tema) return guardarAjuste({ tema: d.tema });
   if (d.abrir) {
     if (d.abrir === 'criterio' && !enAuto()) { S.modoSel = 'auto'; renderOpciones(); }
     const ancla = $(`[data-abrir="${d.abrir}"]`);
@@ -874,7 +1179,8 @@ document.addEventListener('click', async e => {
     const id = el.closest('.trabajo').dataset.id;
     const mapa = { cancelar: 'cancelar', reintentar: 'reintentar', quitar: 'quitar', abrir: 'abrir_archivo', carpeta: 'abrir_carpeta' };
     const ok = await API[mapa[d.tarea]](id);
-    if (!ok && (d.tarea === 'abrir' || d.tarea === 'carpeta')) toast('No se encontró el archivo (¿lo moviste o borraste?).', 'err');
+    if (ok?.aviso) toast(esc(ok.aviso), 'err');
+    else if (!ok && (d.tarea === 'abrir' || d.tarea === 'carpeta')) toast('No se encontró el archivo (¿lo moviste o borraste?).', 'err');
     return refrescarCola();
   }
   switch (d.accion) {
@@ -929,14 +1235,82 @@ document.addEventListener('click', async e => {
     case 'descargar-ffmpeg':
       refrescarHerramientas.avisado = refrescarHerramientas.listo = false;
       await API.descargar_ffmpeg(); return refrescarHerramientas();
+    case 'descargar-aria2': await API.descargar_aria2(); return refrescarHerramientas();
+    case 'desinstalar-aria2': {
+      const r = await API.desinstalar_aria2();
+      if (!r.ok) return toast(esc(r.error), 'err');
+      S.ajustes = r.ajustes; pintarAjustes(); await refrescarHerramientas();
+      return toast(r.otro ? `aria2 de JabsDLP desinstalado. Sigue habiendo otro aria2 en tu equipo: ${esc(r.otro)}`
+        : 'aria2 desinstalado. El motor vuelve a ser yt-dlp.', 'ok');
+    }
+    case 'elegir-aria2': {
+      const r = await API.elegir_aria2();
+      if (r?.aviso) toast(esc(r.aviso), 'err');
+      if (r) { S.ajustes = r; pintarAjustes(); refrescarHerramientas(); }
+      return;
+    }
+    case 'pausar-cola': S.resumen = await API.pausar_cola(!S.resumen.pausado); return refrescarCola();
+    case 'restablecer-avisos': await guardarAjuste({ avisos_ocultos: [] }); return toast('Los avisos de seguridad se volverán a mostrar.', 'ok');
+    case 'olvidar-descargados': await API.olvidar_descargados(); return toast('Registro de descargas borrado: ya no se saltará ningún video.', 'ok');
+    case 'probar-args': {
+      const texto = $('[data-ajuste="args_extra"]').value;
+      await guardarAjuste({ args_extra: texto });
+      const r = await API.probar_args(texto);
+      const salida = $('#aj-args-resultado');
+      salida.className = r.ok ? 'ok-texto' : 'err-texto';
+      salida.textContent = !r.ok ? r.error : !texto.trim() ? 'Vacío: no se añade nada.'
+        : `Correcto: ${[...r.opciones, ...r.postprocesadores].join(', ') || 'sin cambios respecto a lo normal'}`;
+      return;
+    }
   }
 });
+
+/* ================= arrastrar y soltar · Ctrl+V ================= */
+function recibirEnlaces(texto) {
+  texto = (texto || '').trim();
+  if (!/https?:\/\/|magnet:\?/i.test(texto)) return toast('Eso no parece un enlace (debe empezar por http).', 'err');
+  irA('descargar');
+  $('#url').value = texto.split(/\s+/).filter(t => /^(https?:\/\/|magnet:\?)/i.test(t)).join(' ');
+  S.modoManual = false; alCambiarUrl();
+  analizar();
+}
+
+let contadorArrastre = 0;
+document.addEventListener('dragenter', e => {
+  if (![...(e.dataTransfer?.types || [])].some(t => t === 'text/uri-list' || t === 'text/plain')) return;
+  contadorArrastre++;
+  $('#soltar').classList.remove('oculto');
+});
+document.addEventListener('dragover', e => { e.preventDefault(); });
+document.addEventListener('dragleave', () => { if (--contadorArrastre <= 0) { contadorArrastre = 0; $('#soltar').classList.add('oculto'); } });
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  contadorArrastre = 0;
+  $('#soltar').classList.add('oculto');
+  recibirEnlaces(e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain'));
+});
+
+document.addEventListener('keydown', async e => {
+  const enCampo = e.target.closest('input, textarea, select, [contenteditable]');
+  if (!enCampo && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+    e.preventDefault();
+    recibirEnlaces(await API.portapapeles());
+  }
+  if (e.key === 'Enter' && e.target.closest('.panel-recorte')) aplicarRecorte();
+});
+window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => aplicarTema());
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarMenu(); });
 window.addEventListener('resize', () => posicionarMenu($(`[data-abrir="${$('#menu').dataset.clave}"]`)));
 document.addEventListener('scroll', e => { if (!$('#menu').contains(e.target)) cerrarMenu(); }, true);
 
 document.addEventListener('change', e => {
+  if (e.target.id === 'aj-velocidad') {
+    velocidadUI.personalizado = e.target.value === 'custom';
+    if (velocidadUI.personalizado) { $('#aj-velocidad-custom').classList.remove('oculto'); return $('#aj-velocidad-custom').focus(); }
+    return guardarAjuste({ limite_velocidad: +e.target.value });
+  }
+  if (e.target.id === 'aj-velocidad-custom') return guardarAjuste({ limite_velocidad: Math.max(0, +e.target.value || 0) });
   const pref = e.target.closest('[data-pref-ajuste]');
   if (pref) {
     S.prefs[pref.dataset.prefAjuste] = pref.value;
@@ -946,6 +1320,13 @@ document.addEventListener('change', e => {
   }
   const el = e.target.closest('[data-ajuste]');
   if (!el) return;
+  if (el.dataset.ajuste === 'motor' && el.value !== 'ytdlp') {
+    const anterior = S.ajustes.motor;
+    return confirmarAviso(['aria2']).then(ok => {
+      if (ok) guardarAjuste({ motor: el.value });
+      else el.value = anterior;
+    });
+  }
   let valor = el.type === 'checkbox' ? el.checked : el.value;
   if ('numero' in el.dataset) valor = Math.max(0, parseInt(valor, 10) || 0);
   guardarAjuste({ [el.dataset.ajuste]: valor });

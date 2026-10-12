@@ -34,6 +34,34 @@ def leer_urls_txt(ruta):
     return urls
 
 
+EXT_PELIGROSAS = ('exe', 'msi', 'bat', 'cmd', 'com', 'scr', 'pif', 'ps1', 'vbs', 'js', 'jse', 'wsf', 'hta', 'lnk',
+                  'jar', 'reg', 'dll', 'cpl', 'msc', 'apk', 'appx', 'msix', 'iso', 'img', 'vhd', 'zip', 'rar', '7z')
+EXT_MEDIOS = ('mp4', 'mkv', 'webm', 'mov', 'm4v', 'avi', 'flv', 'ts', 'mp3', 'm4a', 'opus', 'ogg', 'oga', 'flac', 'wav',
+              'aac', 'wma', 'wmv', 'mka', '3gp', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'srt', 'vtt', 'ass')
+
+
+def es_torrent(texto):
+    texto = (texto or '').strip()
+    return texto.lower().startswith('magnet:?') or bool(re.match(r'^\S+\.torrent$', texto, re.I))
+
+
+def nombre_torrent(texto):
+    m = re.search(r'[?&]dn=([^&]+)', texto or '')
+    if m:
+        from urllib.parse import unquote_plus
+        return unquote_plus(m.group(1))[:200]
+    return os.path.basename(texto.split('?')[0]) if texto.lower().endswith('.torrent') else 'Torrent'
+
+
+def extension_peligrosa(ruta_o_url):
+    ext = os.path.splitext((ruta_o_url or '').split('?')[0].split('#')[0])[1].lower().lstrip('.')
+    return ext in EXT_PELIGROSAS
+
+
+def es_medio(ruta):
+    return os.path.splitext(ruta or '')[1].lower().lstrip('.') in EXT_MEDIOS
+
+
 def es_url_playlist(url):
     url = (url or '').lower()
     return 'list=' in url or '/playlist' in url or '/sets/' in url or '/album/' in url
@@ -49,38 +77,60 @@ def runtimes_js():
     return encontrados
 
 
+# (texto que aparece en el error de yt-dlp, código para traducir en la UI, mensaje en español, ¿es temporal?)
+# Los temporales se reintentan solos; los definitivos (privado, no disponible...) no.
 ERRORES = [
-    ('HTTP Error 410', 'No se puede descargar: error 410. La página no se descargó desde el servidor. '
-                       'Probablemente lo bloqueó por no coincidir el hash del video.'),
-    ('Sign in to confirm', 'YouTube pide iniciar sesión para confirmar que no eres un bot. Configura cookies en Ajustes.'),
-    ('not a bot', 'YouTube pide iniciar sesión para confirmar que no eres un bot. Configura cookies en Ajustes.'),
-    ('confirm your age', 'Video con restricción de edad: configura cookies de una cuenta en Ajustes.'),
-    ('age-restricted', 'Video con restricción de edad: configura cookies de una cuenta en Ajustes.'),
-    ('Private video', 'El video es privado.'),
-    ('members-only', 'Video solo para miembros: necesitas cookies de una cuenta con acceso.'),
-    ('Video unavailable', 'El video no está disponible.'),
-    ('is unavailable', 'El video no está disponible.'),
-    ('playlist does not exist', 'La playlist no existe o es privada.'),
-    ('is not available', 'El video no está disponible.'),
-    ('Unsupported URL', 'Esta URL no es compatible.'),
-    ('Requested format is not available', 'El formato elegido ya no está disponible. Prueba con Auto.'),
-    ('ffmpeg is not installed', 'Falta ffmpeg. Descárgalo desde Ajustes → Herramientas.'),
-    ('ffprobe and ffmpeg not found', 'Falta ffmpeg. Descárgalo desde Ajustes → Herramientas.'),
-    ('Could not copy', 'No se pudieron leer las cookies del navegador (ciérralo o usa un archivo cookies.txt).'),
-    ('Failed to decrypt', 'No se pudieron descifrar las cookies del navegador. Usa Firefox o un archivo cookies.txt.'),
-    ('HTTP Error 403', 'El servidor rechazó la descarga (403). Prueba con cookies o actualiza la app.'),
-    ('HTTP Error 429', 'Demasiadas peticiones (429). Espera un poco o usa cookies.'),
+    ('HTTP Error 410', 'http410', 'No se puede descargar: error 410. La página no se descargó desde el servidor. '
+                                  'Probablemente lo bloqueó por no coincidir el hash del video.', True),
+    ('Sign in to confirm', 'bot', 'YouTube pide iniciar sesión para confirmar que no eres un bot. Configura cookies en Ajustes.', False),
+    ('not a bot', 'bot', 'YouTube pide iniciar sesión para confirmar que no eres un bot. Configura cookies en Ajustes.', False),
+    ('confirm your age', 'edad', 'Video con restricción de edad: configura cookies de una cuenta en Ajustes.', False),
+    ('age-restricted', 'edad', 'Video con restricción de edad: configura cookies de una cuenta en Ajustes.', False),
+    ('Private video', 'privado', 'El video es privado.', False),
+    ('members-only', 'miembros', 'Video solo para miembros: necesitas cookies de una cuenta con acceso.', False),
+    ('Video unavailable', 'no_disponible', 'El video no está disponible.', False),
+    ('is unavailable', 'no_disponible', 'El video no está disponible.', False),
+    ('playlist does not exist', 'playlist_no_existe', 'La playlist no existe o es privada.', False),
+    ('is not available', 'no_disponible', 'El video no está disponible.', False),
+    ('Unsupported URL', 'no_soportada', 'Esta URL no es compatible.', False),
+    ('Requested format is not available', 'formato', 'El formato elegido ya no está disponible. Prueba con Auto.', False),
+    ('ffmpeg is not installed', 'ffmpeg', 'Falta ffmpeg. Descárgalo desde Ajustes → Herramientas.', False),
+    ('ffprobe and ffmpeg not found', 'ffmpeg', 'Falta ffmpeg. Descárgalo desde Ajustes → Herramientas.', False),
+    ('Could not copy', 'cookies_copiar', 'No se pudieron leer las cookies del navegador (ciérralo o usa un archivo cookies.txt).', False),
+    ('Failed to decrypt', 'cookies_descifrar', 'No se pudieron descifrar las cookies del navegador. Usa Firefox o un archivo cookies.txt.', False),
+    ('HTTP Error 403', 'http403', 'El servidor rechazó la descarga (403). Prueba con cookies o actualiza la app.', True),
+    ('HTTP Error 429', 'http429', 'Demasiadas peticiones (429). Espera un poco o usa cookies.', True),
+    ('HTTP Error 5', 'http5xx', 'El servidor tuvo un error temporal (5xx).', True),
+    ('timed out', 'red', 'La conexión tardó demasiado en responder.', True),
+    ('Connection reset', 'red', 'Se cortó la conexión con el servidor.', True),
+    ('Connection aborted', 'red', 'Se cortó la conexión con el servidor.', True),
+    ('Remote end closed', 'red', 'Se cortó la conexión con el servidor.', True),
+    ('getaddrinfo failed', 'red', 'Sin conexión a internet (no se pudo resolver el servidor).', True),
+    ('urlopen error', 'red', 'Error de red al conectar con el servidor.', True),
+    ('IncompleteRead', 'red', 'La descarga se interrumpió a mitad.', True),
+    ('fragment', 'fragmento', 'Falló la descarga de un fragmento del video.', True),
+    ('Did not get any data blocks', 'fragmento', 'El servidor dejó de enviar datos.', True),
+    ('aria2c exited with code', 'aria2', 'aria2 no pudo completar la descarga.', True),
 ]
 
 
-def error_amigable(mensaje):
+def _limpiar_mensaje(mensaje):
     texto = re.sub(r'\x1b\[[0-9;]*m', '', str(mensaje or '')).strip()
     texto = re.sub(r'^ERROR:\s*', '', texto)
-    texto = re.sub(r'^\[[\w:]+\]\s*[\w-]+:\s*', '', texto)
-    for clave, amigable in ERRORES:
+    return re.sub(r'^\[[\w:]+\]\s*[\w-]+:\s*', '', texto)
+
+
+def clasificar_error(mensaje):
+    """(código, mensaje en español, ¿temporal?) para un error de yt-dlp."""
+    texto = _limpiar_mensaje(mensaje)
+    for clave, codigo, amigable, temporal in ERRORES:
         if clave.lower() in texto.lower():
-            return amigable
-    return texto[:300] or 'Error desconocido'
+            return codigo, amigable, temporal
+    return None, texto[:300] or 'Error desconocido', False
+
+
+def error_amigable(mensaje):
+    return clasificar_error(mensaje)[1]
 
 
 def leer_portapapeles():
@@ -111,6 +161,10 @@ def leer_portapapeles():
 def abrir_en_explorador(ruta, seleccionar=False):
     if not ruta or not os.path.exists(ruta):
         return False
+    # Nunca se ejecuta un archivo descargado que no sea multimedia (p. ej. un .exe de un torrent):
+    # en su lugar se muestra en su carpeta.
+    if not seleccionar and os.path.isfile(ruta) and not es_medio(ruta):
+        seleccionar = True
     if os.name == 'nt':
         if seleccionar:
             subprocess.Popen(['explorer', '/select,', os.path.normpath(ruta)], creationflags=SIN_VENTANA)

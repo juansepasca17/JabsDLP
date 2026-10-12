@@ -1,4 +1,5 @@
 """Elección de formatos: la opción recomendada (según el criterio Auto) y las listas manuales."""
+import re
 
 FAMILIAS_VIDEO = (
     ('av1', ('av01', 'av1')),
@@ -82,7 +83,21 @@ def normalizar(prefs):
     p.setdefault('resolucion', 'auto')
     p.setdefault('contenedor', 'auto')
     p.setdefault('formato_audio', 'auto')
+    if not p.get('idioma_audio'):
+        p['idioma_audio'] = 'original'
     return p
+
+
+def coincide_idioma(f, idioma):
+    """'es' coincide con es, es-US, es-419...; 'es-US' solo con es-US."""
+    if not idioma or idioma == 'original':
+        return False
+    lengua, idioma = (f.get('language') or '').lower(), idioma.lower()
+    return bool(lengua) and (lengua == idioma or lengua.startswith(idioma + '-'))
+
+
+def idioma_disponible(formatos, idioma):
+    return any(clase(f) == 'audio' and coincide_idioma(f, idioma) for f in formatos)
 
 
 def clase(f):
@@ -133,9 +148,10 @@ def _abr(f):
     return f.get('abr') or f.get('tbr') or 0
 
 
-def _clave_audio(f, preferir=None):
+def _clave_audio(f, preferir=None, idioma=None):
     fam = familia_audio(f.get('acodec'))
     return (
+        coincide_idioma(f, idioma),
         _preferencia_idioma(f),
         not es_drc(f),
         fam == preferir,
@@ -145,15 +161,17 @@ def _clave_audio(f, preferir=None):
     )
 
 
-def audio_por_nivel(formatos, nivel='alta', preferir=None):
+def audio_por_nivel(formatos, nivel='alta', preferir=None, idioma=None):
     audios = [f for f in formatos if clase(f) == 'audio']
     if not audios:
         return None
+    if idioma_disponible(audios, idioma):
+        audios = [f for f in audios if coincide_idioma(f, idioma)]
     if nivel == 'alta':
-        return max(audios, key=lambda f: _clave_audio(f, preferir))
+        return max(audios, key=lambda f: _clave_audio(f, preferir, idioma))
     limpios = [f for f in audios if not es_drc(f)] or audios
-    idioma = max(_preferencia_idioma(f) for f in limpios)
-    limpios = [f for f in limpios if _preferencia_idioma(f) == idioma]
+    preferencia = max(_preferencia_idioma(f) for f in limpios)
+    limpios = [f for f in limpios if _preferencia_idioma(f) == preferencia]
     tope = UMBRAL_MEDIA if nivel == 'media' else UMBRAL_BAJA
     debajo = [f for f in limpios if 0 < _abr(f) <= tope]
     if debajo:
@@ -180,7 +198,7 @@ def elegir_audio(formatos, prefs, audio_id=None):
         nivel = prefs['audio_calidad']
     else:
         nivel = 'media' if prefs['criterio'] == 'ahorro' else 'alta'
-    return audio_por_nivel(formatos, nivel, preferir)
+    return audio_por_nivel(formatos, nivel, preferir, prefs['idioma_audio'])
 
 
 def contenedor_para(vfam, afam, preferido='auto', recodificar=None):
@@ -377,7 +395,8 @@ def opciones_audio(info, prefs):
             'audio': True,
             'recodificar': recodificar,
             'ids': f['format_id'],
-            '_clave': _clave_audio(f, AUDIO_FORMATO_FAMILIA.get(formato_audio)),
+            'idioma_codigo': f.get('language'),
+            '_clave': _clave_audio(f, AUDIO_FORMATO_FAMILIA.get(formato_audio), prefs['idioma_audio']),
         })
     opciones.sort(key=lambda o: o['_clave'], reverse=True)
     return opciones
@@ -389,9 +408,10 @@ def recomendar_audio(opciones, info, prefs):
     prefs = normalizar(prefs)
     criterio = prefs['criterio']
     if criterio == 'calidad':
-        elegida = max(opciones, key=lambda o: (o['_clave'][0], o['abr'] or 0))
+        elegida = max(opciones, key=lambda o: (o['_clave'][0], o['_clave'][1], o['abr'] or 0))
     elif criterio == 'ahorro':
-        media = audio_por_nivel(info.get('formats') or [], 'media', AUDIO_FORMATO_FAMILIA.get(prefs['formato_audio']))
+        media = audio_por_nivel(info.get('formats') or [], 'media', AUDIO_FORMATO_FAMILIA.get(prefs['formato_audio']),
+                                prefs['idioma_audio'])
         elegida = next((o for o in opciones if media and o['spec'] == media['format_id']), opciones[-1])
     else:
         elegida = opciones[0]
@@ -421,7 +441,12 @@ def calcular(info, prefs, audio_id=None):
         elegido = audio['format_id'] if audio else None
     for o in opciones + pistas + ([recomendado] if recomendado else []):
         o.pop('_clave', None)
-    return {'recomendado': recomendado, 'opciones': opciones, 'audios': pistas, 'audio_elegido': elegido}
+    idioma = prefs['idioma_audio']
+    aviso_idioma = None
+    if prefs['audio'] != 'no' and idioma != 'original' and not idioma_disponible(info.get('formats') or [], idioma):
+        aviso_idioma = f'Este video no tiene audio en «{idioma}»; se usa el idioma original.'
+    return {'recomendado': recomendado, 'opciones': opciones, 'audios': pistas, 'audio_elegido': elegido,
+            'aviso_idioma': aviso_idioma}
 
 
 def _unir(*partes):
@@ -435,8 +460,13 @@ def _unir(*partes):
 SIN_DRC = '[format_id!*=drc]'  # las pistas DRC (volumen comprimido) solo como último recurso
 
 
-def _audios_selector(filtro='', tope=''):
-    return [f'ba{SIN_DRC}{filtro}{tope}', f'ba{SIN_DRC}{tope}', f'ba{filtro}{tope}', f'ba{tope}', f'ba{SIN_DRC}', 'ba']
+def _audios_selector(filtro='', tope='', idioma='original'):
+    base = [f'ba{SIN_DRC}{filtro}{tope}', f'ba{SIN_DRC}{tope}', f'ba{filtro}{tope}', f'ba{tope}', f'ba{SIN_DRC}', 'ba']
+    if not idioma or idioma == 'original' or not re.match(r'^[A-Za-z0-9-]+$', idioma):
+        return base
+    # Primero el idioma pedido (es coincide con es-US, es-419...), luego el original
+    lengua = f'[language^={idioma}]'
+    return [f'ba{lengua}{SIN_DRC}{filtro}{tope}', f'ba{lengua}{SIN_DRC}{tope}', f'ba{lengua}{SIN_DRC}', f'ba{lengua}'] + base
 
 
 def selector_por_preferencias(prefs):
@@ -448,7 +478,7 @@ def selector_por_preferencias(prefs):
         filtro = {'aac': '[acodec^=mp4a]', 'opus': '[acodec=opus]', 'mp3': '[acodec=mp3]'}.get(familia, '')
         tope = f'[abr<=?{UMBRAL_MEDIA}]' if criterio == 'ahorro' else ''
         orden = ['lang', 'abr', 'acodec'] if criterio == 'calidad' else ['lang', 'acodec', 'abr']
-        return _unir(*_audios_selector(filtro, tope), 'b'), orden
+        return _unir(*_audios_selector(filtro, tope, prefs['idioma_audio']), 'b'), orden
 
     codec = prefs['codec']
     filtro = FILTRO_CODEC.get(codec, '')
@@ -458,7 +488,7 @@ def selector_por_preferencias(prefs):
         nivel = prefs['audio_calidad'] if prefs['audio'] == 'custom' else ('media' if criterio == 'ahorro' else 'alta')
         tope = {'media': f'[abr<=?{UMBRAL_MEDIA}]', 'baja': f'[abr<=?{UMBRAL_BAJA}]'}.get(nivel, '')
         filtro_audio = '[acodec^=mp4a]' if codec in CODECS_RECODIFICABLES else ''
-        formato = _unir(*(f'bv{filtro}+{a}' for a in _audios_selector(filtro_audio, tope)),
+        formato = _unir(*(f'bv{filtro}+{a}' for a in _audios_selector(filtro_audio, tope, prefs['idioma_audio'])),
                         f'bv+ba{SIN_DRC}', 'bv+ba', f'b{filtro}', 'b')
     resolucion = prefs['resolucion']
     if str(resolucion).isdigit():

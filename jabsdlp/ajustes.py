@@ -1,6 +1,7 @@
 import copy
 import json
 import os
+import re
 import threading
 
 from . import APP_NAME
@@ -38,6 +39,10 @@ PREFS_POR_DEFECTO = {
     'metadatos': True,
     'miniatura': True,
     'subtitulos': False,
+    'idioma_audio': 'original',  # original | código de idioma (es, en, pt-BR...)
+    'idioma_subs': 'es',         # códigos separados por comas
+    'subs_auto': False,          # usar subtítulos generados automáticamente si no hay manuales
+    'sponsor_cats': 'sponsor,selfpromo',  # categorías de SponsorBlock que se quitan con "Quitar anuncios"
 }
 
 AJUSTES_POR_DEFECTO = {
@@ -59,18 +64,46 @@ AJUSTES_POR_DEFECTO = {
     'recomendacion': True,              # mostrar siempre una opción recomendada (Auto)
     'ytdlp_canal': 'estable',           # estable | nightly
     'ytdlp_auto': True,                 # buscar actualización de yt-dlp al abrir (máx. una vez al día)
+    'reintentos': 3,                    # reintentos automáticos de fallos temporales (0 = no reintentar)
+    'retomar_cola': True,               # al reabrir, continuar las descargas pendientes
+    'limite_velocidad': 5.0,            # MB/s en total entre todas las descargas (0 = sin límite)
+    'notificaciones': True,
+    'notificar_modo': 'grupo',          # cada (cada video) | grupo (una vez por playlist o lote)
+    'bandeja_al_minimizar': True,
+    'tema': 'oscuro',                   # oscuro | claro | sistema
+    'idioma': 'auto',                   # auto | es | en
+    'numerar_playlist': False,
+    'no_repetir': False,
+    'motor': 'ytdlp',                   # ytdlp | aria2 | auto (yt-dlp y, si falla la descarga, aria2)
+    'aria2_ruta': '',
+    'corte_exacto': False,              # recortes y anuncios con corte exacto (recodifica los bordes)
+    'args_extra': '',                   # argumentos extra de yt-dlp (Ajustes → Avanzado)
+    'args_extra_activo': False,
+    'avisos_ocultos': [],               # avisos de seguridad marcados como "no volver a mostrar"
+    'subida_torrent_kb': 20,            # KB/s de subida máxima mientras se descarga un torrent
     'prefs': PREFS_POR_DEFECTO,
 }
 
 
-BOOLEANOS = ('subcarpeta_playlist', 'paralelo', 'decodificar_gpu', 'recomendacion', 'ytdlp_auto')
-ENTEROS = {'max_paralelo': (0, 999), 'fragmentos': (1, 32), 'max_conversiones': (1, 16), 'calidad': (10, 45)}
+BOOLEANOS = ('subcarpeta_playlist', 'paralelo', 'decodificar_gpu', 'recomendacion', 'ytdlp_auto', 'retomar_cola',
+             'notificaciones', 'bandeja_al_minimizar', 'numerar_playlist', 'no_repetir', 'corte_exacto',
+             'args_extra_activo')
+ENTEROS = {'max_paralelo': (0, 999), 'fragmentos': (1, 32), 'max_conversiones': (1, 16), 'calidad': (10, 45),
+           'reintentos': (0, 10), 'subida_torrent_kb': (1, 100000)}
+AVISOS = ('torrent', 'http', 'generico', 'ejecutable', 'aria2')
+DECIMALES = {'limite_velocidad': (0, 10000)}
 OPCIONES = {
     'cookies_modo': ('ninguna', 'archivo', 'navegador'),
     'cookies_navegador': NAVEGADORES,
     'gpu': ('auto', 'amf', 'nvenc', 'qsv', 'cpu'),
     'ytdlp_canal': ('estable', 'nightly'),
+    'notificar_modo': ('cada', 'grupo'),
+    'tema': ('oscuro', 'claro', 'sistema'),
+    'idioma': ('auto', 'es', 'en'),
+    'motor': ('ytdlp', 'aria2', 'auto'),
 }
+CATEGORIAS_SPONSOR = ('sponsor', 'selfpromo', 'interaction', 'intro', 'outro', 'preview', 'music_offtopic', 'filler')
+PATRON_IDIOMA = re.compile(r'^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{1,8})*$')
 OPCIONES_PREFS = {
     'tipo': ('video', 'audio'),
     'codec': ('auto', 'h264', 'h265', 'av1', 'vp9'),
@@ -94,6 +127,14 @@ def validar(clave, valor):
             return max(minimo, min(maximo, int(valor)))
         except (TypeError, ValueError):
             return NO_VALIDO
+    if clave == 'avisos_ocultos':
+        return sorted({a for a in valor if a in AVISOS}) if isinstance(valor, list) else NO_VALIDO
+    if clave in DECIMALES:
+        try:
+            minimo, maximo = DECIMALES[clave]
+            return round(max(minimo, min(maximo, float(valor))), 2)
+        except (TypeError, ValueError):
+            return NO_VALIDO
     if clave in OPCIONES:
         return valor if valor in OPCIONES[clave] else NO_VALIDO
     if not isinstance(valor, str):
@@ -105,6 +146,12 @@ def validar(clave, valor):
         es_exe = os.path.basename(valor).lower() == 'ffmpeg.exe' and os.path.isfile(valor)
         es_carpeta = os.path.isfile(os.path.join(valor, 'ffmpeg.exe'))
         return valor if es_exe or es_carpeta else NO_VALIDO
+    if clave == 'aria2_ruta':
+        if not valor:
+            return ''
+        return valor if os.path.basename(valor).lower() == 'aria2c.exe' and os.path.isfile(valor) else NO_VALIDO
+    if clave == 'args_extra':
+        return valor[:2000]  # se valida al usarse (argumentos.py bloquea las opciones peligrosas)
     if clave == 'plantilla':
         partes = valor.replace('\\', '/').split('/')
         absoluta = os.path.isabs(valor) or valor.startswith(('/', '\\')) or ':' in valor.split('%')[0]
@@ -124,8 +171,16 @@ def validar_prefs(prefs):
                 limpias[clave] = str(valor)
             elif clave == 'audio' and isinstance(valor, bool):
                 limpias[clave] = valor
-        elif clave in ('metadatos', 'miniatura', 'subtitulos'):
+        elif clave in ('metadatos', 'miniatura', 'subtitulos', 'subs_auto'):
             limpias[clave] = bool(valor)
+        elif clave == 'idioma_audio' and isinstance(valor, str):
+            if valor == 'original' or PATRON_IDIOMA.match(valor):
+                limpias[clave] = valor
+        elif clave == 'idioma_subs' and isinstance(valor, str):
+            codigos = [c.strip() for c in valor.split(',') if PATRON_IDIOMA.match(c.strip())]
+            limpias[clave] = ','.join(codigos[:10])
+        elif clave == 'sponsor_cats' and isinstance(valor, str):
+            limpias[clave] = ','.join(c for c in valor.split(',') if c in CATEGORIAS_SPONSOR)
     return limpias
 
 

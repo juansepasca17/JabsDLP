@@ -13,7 +13,7 @@
   <aside class="sidebar">
     <div class="marca">
       <img class="logo" src="logo.png" alt="">
-      <div><b>JabsDLP</b><small id="version">v1.1.0</small></div>
+      <div><b>JabsDLP</b><small id="version">v1.2.0</small></div>
     </div>
     <button class="nav activo" data-vista="descargar"><i data-ico="download"></i>Descargar</button>
     <button class="nav" data-vista="cola"><i data-ico="list"></i>Cola<span class="contador" id="contador-cola">0</span></button>
@@ -78,8 +78,13 @@
             <b>Descargas paralelas</b>
             <div class="dim" id="cola-limite-txt" style="font-size:12.5px">Sin límite</div>
           </div>
+          <div>
+            <b>Velocidad</b>
+            <div class="dim" id="cola-velocidad-txt" style="font-size:12.5px">Sin límite</div>
+          </div>
           <div class="resumen" id="resumen"></div>
           <div class="derecha">
+            <button class="btn chico" data-accion="pausar-cola" id="btn-pausar"><i data-ico="pause" class="sm"></i>Pausar</button>
             <button class="btn chico" data-accion="abrir-carpeta"><i data-ico="folder" class="sm"></i>Abrir carpeta</button>
             <button class="btn chico" data-accion="limpiar"><i data-ico="trash" class="sm"></i>Limpiar terminadas</button>
             <button class="btn chico peligro" data-accion="cancelar-todo"><i data-ico="x" class="sm"></i>Cancelar todo</button>
@@ -118,8 +123,62 @@
               <input class="entrada chica" style="width:220px" data-ajuste="plantilla" spellcheck="false">
             </div>
             <div class="ajuste">
-              <div class="txt"><b>Idiomas de subtítulos</b><small>Separados por comas (expresiones de yt-dlp).</small></div>
+              <div class="txt"><b>Idiomas de subtítulos por defecto</b><small>Separados por comas. Se usan en playlists y cuando no eliges otros en Descargar.</small></div>
               <input class="entrada chica" style="width:140px" data-ajuste="idiomas_subtitulos" spellcheck="false">
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Numerar los archivos de una playlist</b><small>Añade el orden al nombre: <code>01 - título.mp4</code>.</small></div>
+              <label class="switch"><input type="checkbox" data-ajuste="numerar_playlist"><span></span></label>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>No repetir descargas</b><small>Recuerda lo que ya bajaste y lo salta (útil para canales que vas actualizando).</small></div>
+              <button class="btn chico fantasma" data-accion="olvidar-descargados" title="Borrar el registro de descargas">Olvidar</button>
+              <label class="switch"><input type="checkbox" data-ajuste="no_repetir"><span></span></label>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Retomar descargas al reabrir</b><small>Si cierras la app a mitad, al volver a abrirla continúa donde se quedó. Apagado: se cancelan al cerrar.</small></div>
+              <label class="switch"><input type="checkbox" data-ajuste="retomar_cola"><span></span></label>
+            </div>
+          </div>
+
+          <div class="card pad">
+            <h2 class="titulo-seccion"><i data-ico="gauge"></i>Red y velocidad</h2>
+            <div class="ajuste">
+              <div class="txt"><b>Límite de velocidad</b><small>Total, repartido entre todas las descargas, para no saturar tu internet.</small></div>
+              <input class="entrada chica oculto" type="number" min="0.1" max="10000" step="0.1" id="aj-velocidad-custom" style="width:90px" title="MB/s">
+              <select class="entrada chica" id="aj-velocidad">
+                <option value="0">Sin límite</option>
+                <option value="5">5 MB/s</option>
+                <option value="10">10 MB/s</option>
+                <option value="20">20 MB/s</option>
+                <option value="custom">Personalizado…</option>
+              </select>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Reintentos automáticos</b><small>Si una descarga falla por la red o el servidor, se reintenta sola (espera 5 s, 15 s, 45 s…). 0 = no reintentar.</small></div>
+              <input class="entrada chica" type="number" min="0" max="10" data-ajuste="reintentos" data-numero>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Motor de descarga</b><small>aria2 abre varias conexiones por archivo. yt-dlp sigue analizando la página: aria2 no arregla errores de análisis.</small></div>
+              <select class="entrada chica" data-ajuste="motor">
+                <option value="ytdlp">yt-dlp (nativo)</option>
+                <option value="aria2">aria2</option>
+                <option value="auto">Auto (aria2 si falla yt-dlp)</option>
+              </select>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Subida máxima en torrents</b><small>KB/s que se comparten mientras se descarga un torrent. Al terminar nunca se sigue compartiendo (sin seed).</small></div>
+              <input class="entrada chica" type="number" min="1" max="100000" data-ajuste="subida_torrent_kb" data-numero>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Avisos de seguridad</b><small>Torrents, conexiones sin cifrar, sitios no reconocidos y archivos ejecutables.</small></div>
+              <button class="btn chico" data-accion="restablecer-avisos">Volver a mostrarlos</button>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>aria2</b><div class="ruta" id="aj-aria2">Buscando…</div></div>
+              <button class="btn chico" data-accion="elegir-aria2">Elegir…</button>
+              <button class="btn chico" data-accion="descargar-aria2" id="btn-aria2"><i data-ico="download" class="sm"></i>Descargar</button>
+              <button class="btn chico" data-accion="desinstalar-aria2" id="btn-aria2-quitar" hidden><i data-ico="trash" class="sm"></i>Desinstalar</button>
             </div>
           </div>
 
@@ -235,6 +294,55 @@
             </div>
             <div class="nota">Las preferencias de formato (códec, resolución, audio, metadatos…) se recuerdan solas cada vez que descargas.</div>
           </div>
+
+          <div class="card pad">
+            <h2 class="titulo-seccion"><i data-ico="monitor"></i>Ventana, avisos y apariencia</h2>
+            <div class="ajuste">
+              <div class="txt"><b>Notificaciones de Windows</b><small>Aviso al terminar, con botón para abrir la carpeta.</small></div>
+              <select class="entrada chica" data-ajuste="notificar_modo">
+                <option value="grupo">Al terminar cada playlist o lote</option>
+                <option value="cada">Por cada video</option>
+              </select>
+              <label class="switch"><input type="checkbox" data-ajuste="notificaciones"><span></span></label>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Minimizar a la bandeja</b><small>Al minimizar, la ventana se oculta junto al reloj y las descargas siguen. La X cierra la app.</small></div>
+              <label class="switch"><input type="checkbox" data-ajuste="bandeja_al_minimizar"><span></span></label>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Tema</b></div>
+              <div class="segmentado" id="aj-tema">
+                <button data-tema="oscuro">Oscuro</button>
+                <button data-tema="claro">Claro</button>
+                <button data-tema="sistema">Sistema</button>
+              </div>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Idioma</b></div>
+              <select class="entrada chica" data-ajuste="idioma">
+                <option value="auto">Automático (del sistema)</option>
+                <option value="es">Español</option>
+                <option value="en">English</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="card pad">
+            <h2 class="titulo-seccion"><i data-ico="terminal"></i>Avanzado</h2>
+            <div class="ajuste">
+              <div class="txt"><b>Corte exacto</b><small>Al recortar o quitar anuncios, corta en el fotograma exacto (recodifica los bordes, más lento). Apagado: corta en el fotograma clave más cercano.</small></div>
+              <label class="switch"><input type="checkbox" data-ajuste="corte_exacto"><span></span></label>
+            </div>
+            <div class="ajuste ajuste-ytdlp">
+              <div class="txt"><b>Comando personalizado</b><small>Argumentos extra de yt-dlp, como en la consola. Ej.: <code>--embed-chapters --geo-bypass</code>. Por seguridad no se permiten opciones que ejecutan programas.</small></div>
+              <label class="switch"><input type="checkbox" data-ajuste="args_extra_activo"><span></span></label>
+            </div>
+            <textarea class="entrada area" data-ajuste="args_extra" spellcheck="false" rows="3" placeholder="--embed-chapters --sleep-requests 1"></textarea>
+            <div class="fila-prueba">
+              <button class="btn chico" data-accion="probar-args"><i data-ico="check" class="sm"></i>Probar</button>
+              <small id="aj-args-resultado" class="dim"></small>
+            </div>
+          </div>
         </div>
       </section>
     </div>
@@ -242,6 +350,19 @@
 </div>
 <div class="toasts" id="toasts"></div>
 <div class="menu oculto" id="menu" role="menu"></div>
+<div class="modal oculto" id="modal" role="dialog" aria-modal="true">
+  <div class="caja">
+    <h3 id="modal-titulo"><i data-ico="alert"></i><span>Aviso de seguridad</span></h3>
+    <div id="modal-cuerpo"></div>
+    <label class="no-mostrar"><input type="checkbox" id="modal-no-mostrar"> No volver a mostrar este aviso</label>
+    <div class="acciones">
+      <button class="btn" data-modal="no">Cancelar</button>
+      <button class="btn primario" data-modal="si">Seguir</button>
+    </div>
+  </div>
+</div>
+<div class="soltar oculto" id="soltar"><div><i data-ico="link"></i><b>Suelta el enlace para analizarlo</b></div></div>
+<script src="i18n.js"></script>
 <script src="mock.js"></script>
 <script src="app.js"></script>
 </body>

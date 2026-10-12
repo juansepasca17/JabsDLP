@@ -22,13 +22,21 @@
     carpeta: '', carpeta_efectiva: 'C:\\Users\\usuario\\Videos\\JabsDLP', subcarpeta_playlist: true, plantilla: '%(title)s.%(ext)s',
     cookies_modo: 'ninguna', cookies_archivo: '', cookies_navegador: 'firefox', paralelo: true, max_paralelo: 0,
     fragmentos: 4, max_conversiones: 2, gpu: 'auto', decodificar_gpu: true, calidad: 26, ffmpeg_ruta: '', idiomas_subtitulos: 'es.*,en.*',
-    prefs: { tipo: 'video', codec: 'auto', resolucion: 'auto', contenedor: 'auto', audio: 'auto', audio_calidad: 'alta', criterio: 'equilibrado', formato_audio: 'auto', metadatos: true, miniatura: true, subtitulos: false },
-    recomendacion: true, ytdlp_canal: 'estable', ytdlp_auto: true,
+    prefs: { idioma_audio: 'original', idioma_subs: 'es', subs_auto: false, sponsor_cats: 'sponsor,selfpromo', tipo: 'video', codec: 'auto', resolucion: 'auto', contenedor: 'auto', audio: 'auto', audio_calidad: 'alta', criterio: 'equilibrado', formato_audio: 'auto', metadatos: true, miniatura: true, subtitulos: false },
+    recomendacion: true, ytdlp_canal: 'estable', ytdlp_auto: true, reintentos: 3, retomar_cola: true, limite_velocidad: 5,
+    notificaciones: true, notificar_modo: 'grupo', bandeja_al_minimizar: true, tema: 'oscuro', idioma: 'auto',
+    numerar_playlist: false, no_repetir: false, motor: 'ytdlp', aria2_ruta: '', corte_exacto: false, args_extra: '', args_extra_activo: false,
   };
+  // Capturas: index.html?mock=1&idioma=en&tema=claro
+  const param = n => (location.search.match(new RegExp(`[?&]${n}=(\\w+)`)) || [])[1];
+  if (param('idioma')) ajustes.idioma = param('idioma');
+  if (param('tema')) ajustes.tema = param('tema');
+
   const herramientas = {
     ffmpeg: 'C:\\ffmpeg\\bin\\ffmpeg.exe', ffprobe: 'C:\\ffmpeg\\bin\\ffprobe.exe',
     gpu: { nvenc: false, amf: true, qsv: false }, encoder: { tipo: 'amf', nombre: 'AMD AMF', encoder: 'hevc_amf', gpu: true },
     descarga: { estado: 'inactivo', progreso: 0 }, js: ['node'],
+    aria2: { ruta: null, version: '1.37.0', descarga: { estado: 'inactivo', progreso: 0 } },
     ytdlp: { en_uso: '2026.08.19', actualizada: false, nightly: false, incluida: '2026.8.19', descargada: null, roto: false, reiniciar: false,
              tarea: { estado: 'inactivo', progreso: 0, mensaje: '' } },
   };
@@ -106,7 +114,7 @@
 
   const ahora = Date.now() / 1000;
   let cola = [
-    { id: 'a1', titulo: 'Atardecer en la Patagonia · Timelapse 4K', miniatura: miniatura(22, 280, 'Patagonia'), canal: 'Viajes Lumen', tipo: 'video', titulo_formato: '2160p · AV1 + Opus', estado: 'completado', fase: 'Completado', progreso: 1, total: 1288490188, encoder: null, creado: ahora - 900 },
+    { id: 'a1', titulo: 'Atardecer en la Patagonia · Timelapse 4K', miniatura: miniatura(22, 280, 'Patagonia'), canal: 'Viajes Lumen', tipo: 'video', titulo_formato: '2160p · AV1 + Opus', estado: 'completado', fase: 'Completado', progreso: 1, total: 1288490188, encoder: null, creado: ahora - 900, inicio: ahora - 900, terminado: ahora - 742 },
     { id: 'a2', titulo: 'Curso de C++ desde cero · Variables y tipos de datos', miniatura: miniatura(200, 250, 'C++ 01'), canal: 'Aprende Código', tipo: 'video', titulo_formato: '1080p · VP9 + AAC', estado: 'convirtiendo', fase: 'Convirtiendo a H.265', progreso: 1, progreso_conversion: 0.62, velocidad_conversion: '4.8x', encoder: 'AMD AMF (hevc_amf)', creado: ahora - 300 },
     { id: 'a3', titulo: 'Curso de C++ desde cero · Punteros y referencias', miniatura: miniatura(205, 255, 'C++ 02'), canal: 'Aprende Código', tipo: 'video', titulo_formato: 'Auto', estado: 'descargando', fase: 'Descargando video (1/2)', progreso: 0.45, descargado: 104857600, total: 233016320, velocidad: 12582912, eta: 11, creado: ahora - 200 },
     { id: 'a4', titulo: 'Layla Unplugged · Lección de guitarra', miniatura: miniatura(35, 10, 'Guitarra'), canal: 'Lecciones Eric', tipo: 'audio', titulo_formato: 'Opus · 130 kbps', estado: 'descargando', fase: 'Descargando', progreso: 0.78, descargado: 3355443, total: 4299161, velocidad: 2097152, eta: 1, creado: ahora - 150 },
@@ -123,35 +131,41 @@
         if (t.progreso >= 1) { t.estado = 'convirtiendo'; t.fase = 'Convirtiendo a H.265'; t.progreso_conversion = 0; t.encoder = 'AMD AMF (hevc_amf)'; t.velocidad_conversion = '5.1x'; }
       } else if (t.estado === 'convirtiendo') {
         t.progreso_conversion = Math.min(1, (t.progreso_conversion || 0) + 0.03);
-        if (t.progreso_conversion >= 1) { t.estado = 'completado'; t.fase = 'Completado'; }
+        if (t.progreso_conversion >= 1) { t.estado = 'completado'; t.fase = 'Completado'; t.inicio = t.inicio || t.creado; t.terminado = Date.now() / 1000; }
       } else if (t.estado === 'en_cola' && cola.filter(x => ['descargando', 'convirtiendo'].includes(x.estado)).length < (ajustes.paralelo ? 99 : 1)) {
         t.estado = 'descargando'; t.fase = 'Descargando'; t.total = 180000000; t.velocidad = 9000000;
       }
     }
   }
 
+  let pausado = false;
   const resumen = () => ({
     activos: cola.filter(t => ['iniciando', 'descargando', 'procesando', 'convirtiendo', 'esperando_gpu'].includes(t.estado)).length,
     en_cola: cola.filter(t => t.estado === 'en_cola').length,
     completados: cola.filter(t => t.estado === 'completado').length,
     errores: cola.filter(t => t.estado === 'error').length,
     total: cola.length,
+    omitidos: cola.filter(t => t.estado === 'omitido').length,
+    pausado,
   });
 
   const analisisVideo = () => ({
     tipo: 'video', id: 'v1', url: 'https://www.youtube.com/watch?v=demo', titulo: 'Paisajes de Islandia en 4K · Vuelo con dron sobre glaciares y volcanes',
     canal: 'Viajes Lumen', duracion: DUR, vistas: 411800, likes: 7600, fecha: '20260904', miniatura: miniatura(190, 260, 'Islandia 4K'),
-    extractor: 'Youtube', resolucion: '3840x2160', fps: 25, tbr: 2100,
+    extractor: 'YouTube', sitio_clave: 'Youtube', video_id: 'demo', resolucion: '3840x2160', fps: 25, tbr: 2100,
+    idiomas_audio: [{ codigo: 'es-US', nombre: 'Español (US) original (default)', original: true }, { codigo: 'en', nombre: 'English - dubbed', original: false },
+      { codigo: 'pt', nombre: 'Português - dubbed', original: false }, { codigo: 'fr', nombre: 'Français - dubbed', original: false }],
+    idiomas_subs: { manuales: [{ codigo: 'es', nombre: 'Español' }, { codigo: 'en', nombre: 'English' }, { codigo: 'pt', nombre: 'Português' }], hay_automaticos: true, automaticos: ['es', 'en'] },
   });
   const analisisPlaylist = () => ({
     tipo: 'playlist', id: 'p1', url: 'https://www.youtube.com/playlist?list=demo', titulo: 'Curso de C++ desde cero', canal: 'Aprende Código', cantidad: 8,
-    miniatura: miniatura(205, 255, 'Curso C++'), extractor: 'YoutubeTab', duracion: 8 * 1420,
+    miniatura: miniatura(205, 255, 'Curso C++'), extractor: 'YouTube', duracion: 8 * 1420,
     entradas: ['Introducción e instalación', 'Variables y tipos de datos', 'Condicionales', 'Bucles for y while', 'Funciones', 'Punteros y referencias', 'Clases y objetos', 'Proyecto final']
       .map((t, i) => ({ indice: i + 1, url: `https://www.youtube.com/watch?v=c${i}`, titulo: `C++ ${String(i + 1).padStart(2, '0')} · ${t}`, duracion: 900 + i * 137, miniatura: miniatura(200 + i * 6, 250, `C++ ${i + 1}`) })),
   });
 
   window.__MOCK_API__ = {
-    async iniciar() { return { ok: true, app: 'JabsDLP', version: '1.0.0', ytdlp: '2026.08.19', ajustes, herramientas }; },
+    async iniciar() { return { ok: true, app: 'JabsDLP', version: '1.2.0', ytdlp: '2026.08.19', ajustes, herramientas }; },
     async herramientas() { return herramientas; },
     async detectar_gpu() { return herramientas; },
     async descargar_ffmpeg() { return herramientas.descarga; },
@@ -169,6 +183,7 @@
     async reiniciar() { return { ok: false, error: 'Hay descargas en curso: espera a que terminen o cancélalas antes de reiniciar.' }; },
     async analizar(texto, modo, prefs) {
       await dormir(900);
+      if (/^magnet:/i.test(texto)) return { ok: true, datos: { tipo: 'torrent', url: texto, titulo: 'Big Buck Bunny (1080p)', riesgos: ['torrent'], aria2: true } };
       const urls = texto.match(/https?:\/\/\S+/g) || [];
       if (urls.length > 1) return { ok: true, datos: { tipo: 'lote', urls, cantidad: urls.length } };
       if (!urls.length) return { ok: false, error: 'Pega una URL válida (debe empezar por http).' };
@@ -176,6 +191,20 @@
       return { ok: true, datos: { ...analisisVideo(), ...calcular(prefs) } };
     },
     async opciones(id, prefs, audioId) { return calcular(prefs, audioId); },
+    async sponsor_segmentos() {
+      await dormir(700);
+      const segmentos = [{ inicio: 62, fin: 101, categoria: 'sponsor' }, { inicio: 1490, fin: 1512, categoria: 'selfpromo' }, { inicio: 1800, fin: 1837, categoria: 'outro' }];
+      return { ok: true, soportado: true, segmentos, total: 98 };
+    },
+    async probar_args(texto) {
+      if (/--exec/.test(texto)) return { ok: false, error: 'No se permiten por seguridad o porque la app ya los gestiona: --exec' };
+      return { ok: true, opciones: [], postprocesadores: ['FFmpegMetadata'] };
+    },
+    async olvidar_descargados() { return true; },
+    async pausar_cola(p) { pausado = !!p; return resumen(); },
+    async descargar_aria2() { herramientas.aria2.ruta = 'C:\\Users\\usuario\\AppData\\Local\\JabsDLP\\aria2\\aria2c.exe'; herramientas.aria2.de_la_app = true; return herramientas.aria2.descarga; },
+    async elegir_aria2() { return null; },
+    async desinstalar_aria2() { herramientas.aria2.ruta = null; herramientas.aria2.de_la_app = false; return { ok: true, ajustes: S.ajustes, otro: null }; },
     async descargar(sol) {
       const n = sol.tipo === 'playlist' ? sol.indices.length : sol.tipo === 'lote' ? sol.urls.length : 1;
       for (let i = 0; i < n; i++) {
@@ -212,13 +241,21 @@
     await esperar(300);
     if (demo === 'cola') { clic('[data-vista="cola"]'); return; }
     if (demo === 'ajustes') { clic('[data-vista="ajustes"]'); return; }
+    if (demo === 'ingles') { await window.__MOCK_API__.guardar_ajustes({ idioma: 'en' }); }
+    if (demo === 'claro') { await window.__MOCK_API__.guardar_ajustes({ tema: 'claro' }); }
     if (demo === 'nightly') { clic('[data-vista="ajustes"]'); await esperar(300); clic('[data-canal="nightly"]'); await esperar(2500); document.querySelector('#aj-ytdlp').scrollIntoView(); return; }
-    document.querySelector('#url').value = demo === 'playlist' ? 'https://www.youtube.com/playlist?list=demo' : 'https://www.youtube.com/watch?v=demo';
+    document.querySelector('#url').value = demo === 'playlist' ? 'https://www.youtube.com/playlist?list=demo'
+      : demo === 'torrent' ? 'magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c&dn=Big+Buck+Bunny' : 'https://www.youtube.com/watch?v=demo';
     document.querySelector('#url').dispatchEvent(new Event('input'));
     clic('[data-accion="analizar"]');
     await esperar(1200);
     if (demo === 'menu') clic('[data-abrir="criterio"]');
     if (demo === 'extras') clic('[data-abrir="extras"]');
+    if (demo === 'subs') clic('[data-abrir="subs"]');
+    if (demo === 'torrent') { await esperar(200); clic('[data-accion="descargar"]'); }
+    if (demo === 'idioma') clic('[data-abrir="idioma_audio"]');
+    if (demo === 'recortar') clic('[data-abrir="recortar"]');
+    if (demo === 'anuncios') { clic('[data-abrir="anuncios"]'); await esperar(150); clic('.menu-item[data-menu-anuncios]'); }
     if (demo === 'manual') clic('[data-accion="modo-manual"]');
     if (demo === 'audio') {
       clic('[data-abrir="audio"]'); await esperar(150);

@@ -26,6 +26,31 @@ y [ffmpeg](https://ffmpeg.org).
   - Puede buscar actualizaciones al abrir, como mucho una vez al día.
   - Solo guarda la última versión descargada. La que va dentro del `.exe` queda siempre como respaldo y la app vuelve a ella si la descargada falla.
 
+### Novedades de la 1.2.0
+
+- **Idioma de la pista de audio**, ideal para los videos doblados de YouTube, e **idioma de los subtítulos**, manuales o automáticos.
+- **Quitar anuncios** con [SponsorBlock](https://sponsor.ajay.app). Quita patrocinios, autopromoción, intros… Solo actúa si lo activas, y te enseña antes los tramos que va a quitar.
+- **Recortar**: descarga solo el tramo que te interesa, por ejemplo de 1:20 a 3:45. El recorte se hace en tu equipo.
+- **Reintentos automáticos** ante fallos de red o del servidor, configurables.
+- **Retomar descargas** al volver a abrir la app, continuando los `.part`.
+- **Límite de velocidad** total, repartido entre todas las descargas. Por defecto 5 MB/s; puedes ponerlo sin límite o personalizarlo.
+- **Arrastrar y soltar** enlaces, o pulsar **Ctrl+V** en cualquier parte.
+- **Notificaciones de Windows** al terminar, con botón para abrir la carpeta, e **icono en la bandeja** al minimizar.
+- **Tema claro** e **inglés**.
+- **Numerar** los archivos de una playlist (`01 - título.mp4`) y **no repetir descargas**.
+- **aria2** como motor alternativo (opcional) y **torrents/magnet** sin seed.
+- **Comando personalizado**: argumentos extra de yt-dlp.
+
+## Seguridad
+
+- **aria2 nunca recibe streams HLS/DASH**: solo descargas directas (http/ftp). Así se evita [CVE-2026-50574](https://github.com/advisories/GHSA-vx4q-3cr2-7cg2), una inyección de opciones en aria2c desde manifiestos DASH. Además, el yt-dlp incluido (2026.8.19 o posterior) ya trae la corrección, y aria2 se desactiva si alguna vez se cargara un yt-dlp anterior a 2026.6.9.
+- aria2 se ejecuta sin leer configuraciones externas (`--no-conf`) y sin seguir enlaces `.torrent` ni metalink que devuelva un servidor. Se copia a una carpeta propia para no meter otros ejecutables en el PATH.
+- **Torrents**: se descargan con `--seed-time=0`, así que no se comparten al terminar. Mientras se descargan se sube un poco, limitado en Ajustes. Antes de empezar se avisa de los riesgos.
+- **Avisos de fuente de riesgo**: torrents, enlaces `http://` sin cifrar, sitios no reconocidos (extractor genérico) y ejecutables o comprimidos. Puedes seguir o cancelar, y marcar "No volver a mostrar".
+- JabsDLP **nunca ejecuta** un archivo descargado que no sea multimedia: lo muestra en su carpeta.
+- Las notificaciones escapan el título del video, de modo que un título malicioso no puede ejecutar código en PowerShell. El comando personalizado bloquea `--exec`, `--plugin-dirs`, `--downloader` y otras opciones que ejecutan programas.
+- ffmpeg, aria2 y el resto de procesos hijos se cierran con la app aunque esta termine de golpe (*Job Object* de Windows).
+
 ## Requisitos
 
 - Windows 10 u 11 con **Microsoft Edge WebView2**, que ya viene en Windows 11.

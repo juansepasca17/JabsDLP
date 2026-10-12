@@ -4,7 +4,7 @@
 from PyInstaller.utils.hooks import collect_submodules, copy_metadata
 
 # Metadatos de yt-dlp: el actualizador lee así la versión incluida sin importarla.
-datas = [('ui', 'ui'), ('assets/icono.ico', 'assets')] + copy_metadata('yt-dlp') + copy_metadata('yt-dlp-ejs')
+datas = [('ui', 'ui'), ('assets/icono.ico', 'assets'), ('assets/icono.png', 'assets')] + copy_metadata('yt-dlp') + copy_metadata('yt-dlp-ejs')
 
 # Biblioteca estándar que una versión futura de yt-dlp (descargada por el actualizador) podría usar.
 estandar = []
@@ -25,7 +25,7 @@ a = Analysis(
     hiddenimports=estandar,
     hookspath=[],
     runtime_hooks=[],
-    excludes=['tkinter', 'numpy', 'PIL', 'pytest', 'IPython', 'webview.platforms.qt', 'webview.platforms.gtk',
+    excludes=['tkinter', 'numpy', 'pytest', 'IPython', 'webview.platforms.qt', 'webview.platforms.gtk',
               'webview.platforms.cocoa', 'webview.platforms.android', 'webview.platforms.cef'],
     noarchive=False,
     optimize=1,

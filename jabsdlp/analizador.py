@@ -8,7 +8,7 @@ import yt_dlp
 
 from .cookies import borrar_temporal, opciones_cookies
 from .formatos import clase
-from .utilidades import es_url_playlist, runtimes_js
+from .utilidades import EXT_PELIGROSAS, es_url_playlist, extension_peligrosa, runtimes_js
 
 MAX_CACHE = 40
 
@@ -38,6 +38,42 @@ def _miniatura(info, ancho_max=None):
 def nombre_sitio(info):
     clave = re.sub(r'(Tab|Playlist|Channel|User|Search|Clip)$', '', info.get('extractor_key') or info.get('extractor') or '')
     return {'youtube': 'YouTube', 'vimeo': 'Vimeo', 'twitch': 'Twitch', 'tiktok': 'TikTok'}.get(clave.lower(), clave or None)
+
+
+def riesgos(url, info):
+    """Avisos para fuentes de riesgo: sin cifrar, sitio no soportado (extractor genérico) o archivo ejecutable."""
+    lista = []
+    if (info.get('webpage_url') or url or '').lower().startswith('http://'):
+        lista.append('http')
+    if (info.get('extractor_key') or '') in ('Generic', 'HTML5MediaEmbed'):
+        lista.append('generico')
+    if extension_peligrosa(url) or (info.get('ext') or '').lower() in EXT_PELIGROSAS:
+        lista.append('ejecutable')
+    return lista
+
+
+def idiomas_audio(formatos):
+    """Idiomas de las pistas de audio (YouTube marca el original con language_preference alto)."""
+    vistos = {}
+    for f in formatos:
+        if clase(f) != 'audio' or not f.get('language'):
+            continue
+        codigo = f['language']
+        nota = (f.get('format_note') or '').lower()
+        original = (f.get('language_preference') or 0) >= 10 or 'original' in nota
+        if codigo not in vistos or original:
+            nombre = re.sub(r',?\s*(low|medium|high|ultralow|DRC)\b.*$', '', f.get('format_note') or '', flags=re.I).strip(' ,')
+            vistos[codigo] = {'codigo': codigo, 'nombre': nombre or codigo, 'original': original}
+    return sorted(vistos.values(), key=lambda i: (not i['original'], i['codigo']))
+
+
+def idiomas_subtitulos(info):
+    manuales = [{'codigo': c, 'nombre': (v[0].get('name') if v else None) or c, 'auto': False}
+                for c, v in (info.get('subtitles') or {}).items() if c != 'live_chat']
+    automaticos = info.get('automatic_captions') or {}
+    originales = [c for c in automaticos if c.endswith('-orig')]
+    return {'manuales': manuales, 'hay_automaticos': bool(automaticos),
+            'automaticos': sorted(c for c in automaticos if '-' not in c or c in originales)[:120]}
 
 
 class Analizador:
@@ -107,6 +143,11 @@ class Analizador:
             'fps': mejor.get('fps') or info.get('fps'),
             'tbr': mejor.get('tbr') or info.get('tbr'),
             'en_vivo': bool(info.get('is_live')),
+            'video_id': info.get('id'),
+            'sitio_clave': info.get('extractor_key'),
+            'idiomas_audio': idiomas_audio(formatos),
+            'idiomas_subs': idiomas_subtitulos(info),
+            'riesgos': riesgos(url, info),
         }
         self._guardar({**datos, '_info': {'formats': formatos, 'duration': info.get('duration')}})
         return datos
@@ -128,6 +169,8 @@ class Analizador:
                 'duracion': e.get('duration'),
                 'miniatura': _miniatura(e, ancho_max=480),
                 'canal': e.get('channel') or e.get('uploader'),
+                'video_id': e.get('id'),
+                'sitio_clave': e.get('ie_key') or info.get('extractor_key'),
             })
         if not entradas:
             raise ValueError('La playlist está vacía o no se pudieron leer sus videos.')
