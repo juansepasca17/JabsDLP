@@ -34,8 +34,11 @@ def diagnostico(salida, url=None):
     """JabsDLP.exe --diagnostico informe.json [URL]: versiones, ffmpeg, GPU y (opcional) análisis de una URL."""
     import json
     import yt_dlp
+    from jabsdlp.impersonacion import impersonation_disponible
     api = Api()
+    disponible, motivo = impersonation_disponible()
     informe = {'app': APP_NAME, 'ytdlp': yt_dlp.version.__version__, 'ytdlp_modulo': yt_dlp.__file__,
+               'impersonacion': {'disponible': disponible, 'motivo': motivo},
                'herramientas': api.detectar_gpu()}
     if url:
         r = api.analizar(url, 'auto', None)

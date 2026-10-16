@@ -151,6 +151,11 @@
     'Avanzado': 'Advanced', 'Corte exacto': 'Exact cut',
     'Al recortar o quitar anuncios, corta en el fotograma exacto (recodifica los bordes, más lento). Apagado: corta en el fotograma clave más cercano.':
       'When trimming or removing ads, cuts at the exact frame (re-encodes the edges, slower). Off: cuts at the nearest keyframe.',
+    'Suplantar navegador (impersonation)': 'Impersonate browser (impersonation)',
+    'Hace que las peticiones parezcan venir de Chrome. Ayuda con sitios que bloquean descargas con errores 403/410. Requiere el componente curl_cffi.':
+      'Makes requests look like they come from Chrome. Helps with sites that block downloads with 403/410 errors. Requires the curl_cffi component.',
+    'Falta el componente curl_cffi.': 'The curl_cffi component is missing.',
+    'La versión de yt-dlp en uso no admite suplantar a Chrome.': "The yt-dlp version in use doesn't support impersonating Chrome.",
     'Comando personalizado': 'Custom command', 'Argumentos extra de yt-dlp, como en la consola. Ej.:': 'Extra yt-dlp arguments, like in the console. E.g.:',
     '. Por seguridad no se permiten opciones que ejecutan programas.': '. For safety, options that run programs are not allowed.', 'Probar': 'Test',
     'Ninguno ': 'None', 'ffmpeg listo': 'ffmpeg ready', 'Falta ffmpeg': 'ffmpeg missing', 'GPU desactivada (CPU)': 'GPU off (CPU)',
@@ -272,6 +277,10 @@
     [/^No se permiten por seguridad o porque la app ya los gestiona: (.+)$/, m => `Not allowed for safety or because the app already handles them: ${m[1]}`],
     [/^No se permiten estas opciones: (.+)$/, m => `These options are not allowed: ${m[1]}`], [/^Argumentos no válidos: (.+)$/, m => `Invalid arguments: ${m[1]}`],
     [/^Comillas sin cerrar: (.+)$/, m => `Unclosed quotes: ${m[1]}`], [/^No se pudo consultar SponsorBlock: (.+)$/, m => `Couldn't query SponsorBlock: ${m[1]}`],
+    [/^No disponible: (.+)$/, m => `Not available: ${m[1]}`],
+    [/^No se pudo aplicar --impersonate del comando personalizado: (.+)$/, m => `Couldn't apply --impersonate from the custom command: ${m[1]}`],
+    [/^No se pudo activar la suplantación de navegador: (.+)$/, m => `Couldn't enable browser impersonation: ${m[1]}`],
+    [/^No se pudo comprobar la disponibilidad de impersonation: (.+)$/, m => `Couldn't check impersonation availability: ${m[1]}`],
     // Genéricos al final (los específicos de arriba tienen prioridad)
     [/^(.+) en total$/, m => `${m[1]} in total`],
     [/^(.+) de (.+)$/, m => /\d/.test(m[1]) && /\d/.test(m[2]) && /B$/.test(m[2]) ? `${m[1]} of ${m[2]}` : null],

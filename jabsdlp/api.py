@@ -17,6 +17,7 @@ from .analizador import Analizador
 from .ffmpeg_tools import Herramientas
 from .formatos import NOMBRE_CRITERIO, calcular, normalizar
 from .gestor import Gestor
+from .impersonacion import impersonation_disponible
 from .trabajo import TERMINADOS, Trabajo, ruta_archivo_descargados
 from .utilidades import abrir_en_explorador, error_amigable, es_torrent, extraer_urls, nombre_torrent, es_medio, leer_portapapeles, leer_urls_txt, runtimes_js
 
@@ -134,6 +135,9 @@ class Api:
         estado['encoder'] = self._herr.descripcion_encoder() if estado['gpu'] is not None else None
         estado['js'] = sorted(runtimes_js())
         estado['ytdlp'] = actualizador.estado_publico(yt_dlp.version.__version__)
+        disponible, motivo = impersonation_disponible()
+        estado['impersonacion'] = {'disponible': disponible, 'motivo': motivo,
+                                   'activo': bool(self._ajustes.get('impersonar'))}
         estado['aria2'] = {'ruta': aria2.ruta(self._ajustes), 'version': aria2.VERSION, 'descarga': dict(aria2.descarga),
                            'de_la_app': aria2.instalado_por_la_app()}
         return estado

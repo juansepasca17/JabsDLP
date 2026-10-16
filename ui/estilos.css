@@ -311,6 +311,8 @@ select.entrada { padding-right: 30px; }
 .switch input:checked + span { background: var(--accent-strong); border-color: var(--accent-strong); }
 .switch input:checked + span::after { transform: translateX(18px); background: #fff; }
 .switch input:focus-visible + span { box-shadow: 0 0 0 3px var(--accent-bg); }
+.switch input:disabled + span { opacity: 0.45; cursor: default; }
+#aj-impersonar-motivo { color: var(--warn); }
 
 /* ---------- ajustes ---------- */
 .rejilla-ajustes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }

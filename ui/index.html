@@ -333,6 +333,10 @@
               <div class="txt"><b>Corte exacto</b><small>Al recortar o quitar anuncios, corta en el fotograma exacto (recodifica los bordes, más lento). Apagado: corta en el fotograma clave más cercano.</small></div>
               <label class="switch"><input type="checkbox" data-ajuste="corte_exacto"><span></span></label>
             </div>
+            <div class="ajuste">
+              <div class="txt"><b>Suplantar navegador (impersonation)</b><small>Hace que las peticiones parezcan venir de Chrome. Ayuda con sitios que bloquean descargas con errores 403/410. Requiere el componente curl_cffi.<span id="aj-impersonar-motivo"></span></small></div>
+              <label class="switch"><input type="checkbox" data-ajuste="impersonar" id="aj-impersonar"><span></span></label>
+            </div>
             <div class="ajuste ajuste-ytdlp">
               <div class="txt"><b>Comando personalizado</b><small>Argumentos extra de yt-dlp, como en la consola. Ej.: <code>--embed-chapters --geo-bypass</code>. Por seguridad no se permiten opciones que ejecutan programas.</small></div>
               <label class="switch"><input type="checkbox" data-ajuste="args_extra_activo"><span></span></label>

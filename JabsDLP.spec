@@ -1,10 +1,15 @@
 # -*- mode: python ; coding: utf-8 -*-
 # Compila un único JabsDLP.exe sin consola. Uso: .\build.ps1  (o: python -m PyInstaller --clean JabsDLP.spec)
 # yt-dlp (incluidos los scripts de yt-dlp-ejs) y pywebview traen sus propios hooks de PyInstaller.
-from PyInstaller.utils.hooks import collect_submodules, copy_metadata
+from PyInstaller.utils.hooks import collect_all, collect_submodules, copy_metadata
 
 # Metadatos de yt-dlp: el actualizador lee así la versión incluida sin importarla.
 datas = [('ui', 'ui'), ('assets/icono.ico', 'assets'), ('assets/icono.png', 'assets')] + copy_metadata('yt-dlp') + copy_metadata('yt-dlp-ejs')
+
+# curl_cffi: impersonation (huella TLS de navegador) para yt-dlp. Trae sus DLLs de libcurl;
+# PyInstaller ya traza el import desde yt_dlp.dependencies, pero se recolecta todo por si acaso.
+curl_datas, curl_binaries, curl_hidden = collect_all('curl_cffi')
+datas += curl_datas
 
 # Biblioteca estándar que una versión futura de yt-dlp (descargada por el actualizador) podría usar.
 estandar = []
@@ -20,9 +25,9 @@ estandar += ['hmac', 'secrets', 'uuid', 'zipfile', 'tarfile', 'lzma', 'bz2', 'gz
 a = Analysis(
     ['main.py'],
     pathex=[],
-    binaries=[],
+    binaries=curl_binaries,
     datas=datas,
-    hiddenimports=estandar,
+    hiddenimports=estandar + curl_hidden,
     hookspath=[],
     runtime_hooks=[],
     excludes=['tkinter', 'numpy', 'pytest', 'IPython', 'webview.platforms.qt', 'webview.platforms.gtk',

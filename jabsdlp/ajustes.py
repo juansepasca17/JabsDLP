@@ -77,6 +77,7 @@ AJUSTES_POR_DEFECTO = {
     'motor': 'ytdlp',                   # ytdlp | aria2 | auto (yt-dlp y, si falla la descarga, aria2)
     'aria2_ruta': '',
     'corte_exacto': False,              # recortes y anuncios con corte exacto (recodifica los bordes)
+    'impersonar': False,                # suplantar la huella de Chrome con curl_cffi (sitios que dan 403/410)
     'args_extra': '',                   # argumentos extra de yt-dlp (Ajustes → Avanzado)
     'args_extra_activo': False,
     'avisos_ocultos': [],               # avisos de seguridad marcados como "no volver a mostrar"
@@ -87,7 +88,7 @@ AJUSTES_POR_DEFECTO = {
 
 BOOLEANOS = ('subcarpeta_playlist', 'paralelo', 'decodificar_gpu', 'recomendacion', 'ytdlp_auto', 'retomar_cola',
              'notificaciones', 'bandeja_al_minimizar', 'numerar_playlist', 'no_repetir', 'corte_exacto',
-             'args_extra_activo')
+             'impersonar', 'args_extra_activo')
 ENTEROS = {'max_paralelo': (0, 999), 'fragmentos': (1, 32), 'max_conversiones': (1, 16), 'calidad': (10, 45),
            'reintentos': (0, 10), 'subida_torrent_kb': (1, 100000)}
 AVISOS = ('torrent', 'http', 'generico', 'ejecutable', 'aria2')

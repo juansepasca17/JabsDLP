@@ -25,7 +25,8 @@
     prefs: { idioma_audio: 'original', idioma_subs: 'es', subs_auto: false, sponsor_cats: 'sponsor,selfpromo', tipo: 'video', codec: 'auto', resolucion: 'auto', contenedor: 'auto', audio: 'auto', audio_calidad: 'alta', criterio: 'equilibrado', formato_audio: 'auto', metadatos: true, miniatura: true, subtitulos: false },
     recomendacion: true, ytdlp_canal: 'estable', ytdlp_auto: true, reintentos: 3, retomar_cola: true, limite_velocidad: 5,
     notificaciones: true, notificar_modo: 'grupo', bandeja_al_minimizar: true, tema: 'oscuro', idioma: 'auto',
-    numerar_playlist: false, no_repetir: false, motor: 'ytdlp', aria2_ruta: '', corte_exacto: false, args_extra: '', args_extra_activo: false,
+    numerar_playlist: false, no_repetir: false, motor: 'ytdlp', aria2_ruta: '', corte_exacto: false, impersonar: false,
+    args_extra: '', args_extra_activo: false,
   };
   // Capturas: index.html?mock=1&idioma=en&tema=claro
   const param = n => (location.search.match(new RegExp(`[?&]${n}=(\\w+)`)) || [])[1];
@@ -36,6 +37,7 @@
     ffmpeg: 'C:\\ffmpeg\\bin\\ffmpeg.exe', ffprobe: 'C:\\ffmpeg\\bin\\ffprobe.exe',
     gpu: { nvenc: false, amf: true, qsv: false }, encoder: { tipo: 'amf', nombre: 'AMD AMF', encoder: 'hevc_amf', gpu: true },
     descarga: { estado: 'inactivo', progreso: 0 }, js: ['node'],
+    impersonacion: { disponible: true, motivo: null, activo: false },
     aria2: { ruta: null, version: '1.37.0', descarga: { estado: 'inactivo', progreso: 0 } },
     ytdlp: { en_uso: '2026.08.19', actualizada: false, nightly: false, incluida: '2026.8.19', descargada: null, roto: false, reiniciar: false,
              tarea: { estado: 'inactivo', progreso: 0, mensaje: '' } },

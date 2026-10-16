@@ -1037,6 +1037,12 @@ function pintarEstado() {
     $('#btn-aria2-quitar').hidden = !ar.de_la_app || da.estado === 'descargando';
     $('#aj-js').textContent = h.js?.length ? `Encontrado: ${h.js.join(', ')} (necesario para YouTube).`
       : 'No encontrado. Instala Node.js o Deno para que YouTube muestre todos los formatos.';
+    const imp = h.impersonacion || {}, chkImp = $('#aj-impersonar'), motivoImp = $('#aj-impersonar-motivo');
+    if (chkImp) {
+      chkImp.disabled = !imp.disponible;
+      motivoImp.textContent = imp.disponible ? '' : ` No disponible: ${imp.motivo || 'sin soporte'}`;
+      chkImp.closest('.ajuste')?.classList.toggle('inactivo', !imp.disponible);
+    }
   }
 }
 

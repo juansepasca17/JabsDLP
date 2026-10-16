@@ -17,6 +17,7 @@ from .ajustes import carpeta_datos
 from .argumentos import interpretar
 from .cookies import borrar_temporal, opciones_cookies
 from .formatos import NOMBRE_VIDEO, familia_audio, necesita_recodificar, normalizar, selector_por_preferencias, tamano
+from .impersonacion import aplicar_impersonacion
 from .sponsor import categorias_validas
 from .utilidades import Cancelado, clasificar_error, runtimes_js
 
@@ -545,6 +546,10 @@ def ejecutar(trabajo, ajustes, herramientas, cubeta=None, limite_aria2=0):
 
         extra_cookies, cookies_tmp = opciones_cookies(ajustes)
         opciones.update(extra_cookies)
+
+        aviso_impersonacion = aplicar_impersonacion(opciones, ajustes)
+        if aviso_impersonacion:
+            trabajo.aviso = f'{trabajo.aviso} · {aviso_impersonacion}' if trabajo.aviso else aviso_impersonacion
 
         with yt_dlp.YoutubeDL(opciones) as ydl:
             if categorias:

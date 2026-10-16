@@ -8,6 +8,7 @@ import yt_dlp
 
 from .cookies import borrar_temporal, opciones_cookies
 from .formatos import clase
+from .impersonacion import aplicar_impersonacion
 from .utilidades import EXT_PELIGROSAS, es_url_playlist, extension_peligrosa, runtimes_js
 
 MAX_CACHE = 40
@@ -92,6 +93,7 @@ class Analizador:
         runtimes = runtimes_js()
         if runtimes:
             opciones['js_runtimes'] = runtimes
+        aplicar_impersonacion(opciones, self._ajustes)
         return opciones
 
     def analizar(self, url, modo='auto'):

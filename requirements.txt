@@ -1,4 +1,5 @@
 pywebview>=6.2
 yt-dlp[default]>=2026.8.19
+curl_cffi>=0.10,<0.17
 pystray>=0.19
 pillow>=11
