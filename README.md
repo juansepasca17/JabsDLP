@@ -26,6 +26,15 @@ y [ffmpeg](https://ffmpeg.org).
   - Puede buscar actualizaciones al abrir, como mucho una vez al día.
   - Solo guarda la última versión descargada. La que va dentro del `.exe` queda siempre como respaldo y la app vuelve a ella si la descargada falla.
 
+### Novedades de la 1.3.0
+
+- **Suplantar navegador (impersonation)**, nuevo ajuste en *Ajustes → Avanzado*: hace que las peticiones de
+  yt-dlp parezcan venir de Chrome. Ayuda con sitios que bloquean la descarga con errores 403/410. Va
+  **desactivado por defecto** y usa [curl_cffi](https://github.com/lexiforest/curl_cffi), incluido en el `.exe`.
+  - Si el componente no está disponible, el switch aparece deshabilitado y se ve el motivo.
+  - Si en el **comando personalizado** ya has escrito `--impersonate`, manda ese valor y el ajuste no lo pisa.
+  - Con el motor **aria2**, la descarga en sí no usa impersonation (aria2 no lo soporta); solo el análisis y las peticiones de yt-dlp.
+
 ### Novedades de la 1.2.0
 
 - **Idioma de la pista de audio**, ideal para los videos doblados de YouTube, e **idioma de los subtítulos**, manuales o automáticos.
@@ -60,6 +69,7 @@ y [ffmpeg](https://ffmpeg.org).
 ## Privacidad
 
 - No hay telemetría ni cuentas. La app solo se conecta a los sitios de los que descargas, a PyPI para buscar actualizaciones de yt-dlp y, si lo pides, a GitHub para bajar ffmpeg.
+- **curl_cffi** va dentro del `.exe` y solo se usa para las peticiones que ya hace yt-dlp (suplantando a Chrome si activas ese ajuste); no abre conexiones propias ni añade seguimiento.
 - Los ajustes y el historial se guardan solo en tu equipo, en `%APPDATA%\JabsDLP`. Las versiones de yt-dlp descargadas van a `%LOCALAPPDATA%\JabsDLP\yt-dlp`.
 - De las cookies solo se guarda la **ruta** del archivo, nunca su contenido. Para cada descarga se usa una copia temporal normalizada que se borra al terminar. Si la app se cierra de golpe, esa copia se borra al volver a abrirla.
 

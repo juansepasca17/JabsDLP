@@ -167,7 +167,7 @@
   });
 
   window.__MOCK_API__ = {
-    async iniciar() { return { ok: true, app: 'JabsDLP', version: '1.2.0', ytdlp: '2026.08.19', ajustes, herramientas }; },
+    async iniciar() { return { ok: true, app: 'JabsDLP', version: '1.3.0', ytdlp: '2026.08.19', ajustes, herramientas }; },
     async herramientas() { return herramientas; },
     async detectar_gpu() { return herramientas; },
     async descargar_ffmpeg() { return herramientas.descarga; },
