@@ -19,8 +19,14 @@ if actualizador.activar():
     try:
         import yt_dlp  # noqa: F401
         import yt_dlp.postprocessor  # noqa: F401
-    except Exception:  # noqa: BLE001
-        actualizador.desactivar()
+    except Exception as e:  # noqa: BLE001
+        import traceback
+        actualizador.desactivar(f'{type(e).__name__}: {e}')
+        try:
+            with open(os.path.join(actualizador.carpeta(), 'error-carga.txt'), 'w', encoding='utf-8') as f:
+                traceback.print_exc(file=f)
+        except OSError:
+            pass
 
 from jabsdlp.api import Api  # noqa: E402
 

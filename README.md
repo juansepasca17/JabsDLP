@@ -26,6 +26,15 @@ y [ffmpeg](https://ffmpeg.org).
   - Puede buscar actualizaciones al abrir, como mucho una vez al día.
   - Solo guarda la última versión descargada. La que va dentro del `.exe` queda siempre como respaldo y la app vuelve a ella si la descargada falla.
 
+### Novedades de la 1.4.0
+
+- **Una versión de yt-dlp que falla al cargar ya no se reintenta en bucle**: si la descargada no se puede importar,
+  la app sigue usando la incluida y espera a que PyPI publique una más nueva antes de volver a descargarla.
+  - Antes, cada búsqueda volvía a descargar la misma versión rota y borraba la marca de fallo.
+- **El fallo de carga deja rastro**: el motivo del error y la versión que falló se guardan en el `estado.json` y se
+  muestran en *Ajustes → Herramientas*; el traceback completo queda en
+  `%LOCALAPPDATA%\JabsDLP\yt-dlp\error-carga.txt`.
+
 ### Novedades de la 1.3.0
 
 - **Suplantar navegador (impersonation)**, nuevo ajuste en *Ajustes → Avanzado*: hace que las peticiones de

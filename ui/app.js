@@ -1050,6 +1050,11 @@ function pintarYtdlp(y) {
   if (!y) return;
   const origen = y.actualizada ? `descargada (${y.nightly ? 'nightly' : 'estable'})` : 'incluida en la app';
   $('#aj-ytdlp').textContent = `En uso: ${y.en_uso} · ${origen}` + (y.roto ? ' · la versión descargada falló al cargar' : '');
+  const motivo = $('#aj-ytdlp-motivo');
+  if (motivo) {
+    motivo.textContent = y.roto ? `Motivo: ${y.motivo_roto || 'desconocido'}` : '';
+    motivo.classList.toggle('oculto', !y.roto);
+  }
   $$('#aj-ytdlp-canal button').forEach(b => b.classList.toggle('activo', b.dataset.canal === S.ajustes.ytdlp_canal));
   const t = y.tarea || {};
   const ocupado = t.estado === 'buscando' || t.estado === 'descargando';

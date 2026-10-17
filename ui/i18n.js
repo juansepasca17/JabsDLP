@@ -264,6 +264,7 @@
     [/^No instalado \(versión (.+) disponible\)$/, m => `Not installed (version ${m[1]} available)`],
     [/^Encontrado: (.+) \(necesario para YouTube\)\.$/, m => `Found: ${m[1]} (needed for YouTube).`],
     [/^En uso: (.+)$/, m => `In use: ${m[1]}`], [/^descargada \((nightly|estable)\)$/, m => `downloaded (${m[1] === 'estable' ? 'stable' : 'nightly'})`],
+    [/^Motivo: (.+)$/, m => `Reason: ${m[1]}`],
     [/^yt-dlp (.+) \(incluida (.+)\)$/, m => `yt-dlp ${m[1]} (bundled ${m[2]})`], [/^Descargando yt-dlp (.+)…$/, m => `Downloading yt-dlp ${m[1]}…`],
     [/^yt-dlp (.+) descargado; reinicia para usarlo\.$/, m => `yt-dlp ${m[1]} downloaded; restart to use it.`],
     [/^yt-dlp (.+) ya está descargado(\.|; reinicia para usarlo\.)$/, m => `yt-dlp ${m[1]} is already downloaded${m[2] === '.' ? '.' : '; restart to use it.'}`],

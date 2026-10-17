@@ -39,7 +39,7 @@
     descarga: { estado: 'inactivo', progreso: 0 }, js: ['node'],
     impersonacion: { disponible: true, motivo: null, activo: false },
     aria2: { ruta: null, version: '1.37.0', descarga: { estado: 'inactivo', progreso: 0 } },
-    ytdlp: { en_uso: '2026.08.19', actualizada: false, nightly: false, incluida: '2026.8.19', descargada: null, roto: false, reiniciar: false,
+    ytdlp: { en_uso: '2026.08.19', actualizada: false, nightly: false, incluida: '2026.8.19', descargada: null, roto: false, motivo_roto: null, version_rota: null, reiniciar: false,
              tarea: { estado: 'inactivo', progreso: 0, mensaje: '' } },
   };
 
@@ -167,7 +167,7 @@
   });
 
   window.__MOCK_API__ = {
-    async iniciar() { return { ok: true, app: 'JabsDLP', version: '1.3.0', ytdlp: '2026.08.19', ajustes, herramientas }; },
+    async iniciar() { return { ok: true, app: 'JabsDLP', version: '1.4.0', ytdlp: '2026.08.19', ajustes, herramientas }; },
     async herramientas() { return herramientas; },
     async detectar_gpu() { return herramientas; },
     async descargar_ffmpeg() { return herramientas.descarga; },

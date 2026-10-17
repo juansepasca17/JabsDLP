@@ -108,17 +108,20 @@ def activar():
     return version
 
 
-def desactivar(marcar_roto=True):
-    """Vuelve a la versión incluida (si la descargada no se puede importar)."""
+def desactivar(motivo=None):
+    """Vuelve a la versión incluida (si la descargada no se puede importar) y deja constancia del fallo."""
     global _activa, _buscador
+    version = _activa
     if _buscador in sys.meta_path:
         sys.meta_path.remove(_buscador)
     estado = leer_estado()
     sys.path[:] = [p for p in sys.path if p not in (_rutas(estado) or [])]
     for nombre in [m for m in sys.modules if m.split('.')[0] in PAQUETES]:
         del sys.modules[nombre]
-    if marcar_roto and estado:
+    if estado:
         estado['roto'] = True
+        estado['version_rota'] = version or estado.get('version')
+        estado['motivo'] = str(motivo or 'no se pudo importar')[:500]
         guardar_estado(estado)
     _activa, _buscador = None, None
 
@@ -143,6 +146,8 @@ def ultima_version(canal):
         return datos['info']['version']
     candidatas = [v for v, archivos in datos.get('releases', {}).items()
                   if any(a.get('packagetype') == 'bdist_wheel' and not a.get('yanked') for a in archivos)]
+    if not candidatas:
+        raise RuntimeError('PyPI no devolvió ninguna versión descargable.')
     return max(candidatas, key=tupla)
 
 
@@ -177,6 +182,10 @@ def _limpiar(conservar):
 def restaurar():
     """Borra la versión descargada; al reiniciar se usa la incluida."""
     _limpiar(conservar=())
+    try:
+        os.unlink(os.path.join(carpeta(), 'error-carga.txt'))
+    except OSError:
+        pass
     estado = leer_estado()
     guardar_estado({'comprobado': estado.get('comprobado')})
 
@@ -201,6 +210,15 @@ def actualizar(canal='estable'):
                 mensaje = f'Ya tienes la última versión {canal} ({version_incluida()}, incluida en la app).'
                 if _activa:
                     mensaje += ' Reinicia para volver a ella.'
+                _tarea.update(estado='al_dia', progreso=1.0, mensaje=mensaje)
+                return _tarea
+            version_rota = estado.get('version_rota') or estado.get('version')
+            if estado.get('roto') and version_rota and tupla(objetivo) <= tupla(version_rota):
+                # Una versión que falló al cargar no se vuelve a descargar ni a activar
+                # hasta que PyPI tenga una más nueva
+                guardar_estado(estado)
+                mensaje = (f'La versión {version_rota} falló al cargar; se sigue usando la incluida '
+                           f'hasta que haya una más nueva.')
                 _tarea.update(estado='al_dia', progreso=1.0, mensaje=mensaje)
                 return _tarea
             if tupla(objetivo) == tupla(estado.get('version')) and _rutas(estado) and not estado.get('roto'):
@@ -260,6 +278,8 @@ def estado_publico(en_uso):
         'incluida': version_incluida(),
         'descargada': descargada,
         'roto': bool(estado.get('roto')),
+        'motivo_roto': (estado.get('motivo') or None) if estado.get('roto') else None,
+        'version_rota': (estado.get('version_rota') or estado.get('version')) if estado.get('roto') else None,
         'reiniciar': (activable and tupla(descargada) != tupla(en_uso)) or (not activable and _activa is not None),
         'tarea': dict(_tarea),
     }
