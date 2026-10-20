@@ -19,7 +19,8 @@ from .formatos import NOMBRE_CRITERIO, calcular, normalizar
 from .gestor import Gestor
 from .impersonacion import impersonation_disponible
 from .trabajo import TERMINADOS, Trabajo, ruta_archivo_descargados
-from .utilidades import abrir_en_explorador, error_amigable, es_torrent, extraer_urls, nombre_torrent, es_medio, leer_portapapeles, leer_urls_txt, runtimes_js
+from .utilidades import (abrir_en_explorador, error_amigable, es_manifiesto, es_medio, es_torrent, extraer_urls,
+                         leer_portapapeles, leer_urls_txt, nombre_manifiesto, nombre_torrent, referer_desde, runtimes_js)
 
 
 def _ok(**datos):
@@ -189,7 +190,7 @@ class Api:
         return {'ok': True}
 
     # ---------- analizar ----------
-    def analizar(self, url, modo='auto', prefs=None):
+    def analizar(self, url, modo='auto', prefs=None, origen=None):
         url = (url or '').strip()
         if es_torrent(url):
             return _ok(datos={'tipo': 'torrent', 'id': None, 'url': url, 'titulo': nombre_torrent(url),
@@ -199,6 +200,12 @@ class Api:
             return _ok(datos={'tipo': 'lote', 'id': None, 'urls': urls, 'cantidad': len(urls)})
         if not urls:
             return {'ok': False, 'error': 'Pega una URL válida (debe empezar por http).'}
+        if es_manifiesto(urls[0]):
+            # Enlace directo .m3u8/.mpd: comprobación previa con Referer (nunca bloquea la descarga)
+            try:
+                return _ok(datos=self._analizador.analizar_manifiesto(urls[0], origen))
+            except Exception as e:  # noqa: BLE001
+                return _fallo(e)
         try:
             datos = self._analizador.analizar(urls[0], modo)
             vistos = self._ya_descargados()
@@ -224,7 +231,7 @@ class Api:
     def descargar(self, solicitud):
         try:
             prefs = normalizar(solicitud.get('prefs') or self._ajustes.get('prefs'))
-            if solicitud.get('tipo') != 'torrent':
+            if solicitud.get('tipo') not in ('torrent', 'manifiesto'):
                 self._ajustes.actualizar({'prefs': prefs})
             auto = f"Auto · {NOMBRE_CRITERIO[prefs['criterio']]}"
             tipo = solicitud.get('tipo')
@@ -268,6 +275,18 @@ class Api:
                 if not aria2.ruta(self._ajustes):
                     return {'ok': False, 'error': 'Los torrents necesitan aria2: instálalo en Ajustes → Red y velocidad.'}
                 trabajos.append(Trabajo(url, {'tipo': 'torrent'}, nombre_torrent(url), titulo_formato='Torrent · sin seed'))
+            elif tipo == 'manifiesto':
+                url = (solicitud.get('url') or '').strip()
+                ext = es_manifiesto(url)
+                if not ext:
+                    return {'ok': False, 'error': 'No es un enlace .m3u8 ni .mpd.'}
+                referer = (solicitud.get('referer') or '').strip() or referer_desde(url)
+                if referer and not referer.lower().startswith(('http://', 'https://')):
+                    referer = 'https://' + referer
+                nombre = nombre_manifiesto((solicitud.get('nombre') or '').strip() or url)
+                trabajos.append(Trabajo(url, {'tipo': 'manifiesto', 'referer': referer, 'nombre': nombre}, nombre,
+                                        titulo_formato=f'Enlace directo .{ext}',
+                                        duracion=solicitud.get('duracion')))
             elif tipo == 'lote':
                 urls = solicitud.get('urls') or []
                 grupo = uuid.uuid4().hex[:12]
@@ -357,6 +376,19 @@ class Api:
             abrir_en_explorador(t.archivo, seleccionar=True)
             return {'ok': True, 'aviso': 'Por seguridad no se abre directamente: no es un archivo multimedia. Se muestra en su carpeta.'}
         return bool(t and abrir_en_explorador(t.archivo))
+
+    def detalle(self, id_):
+        """Error completo y log de una descarga (con los tokens ya ocultos) para verlos o copiarlos."""
+        t = self._gestor.obtener(id_)
+        if t is None:
+            return {'ok': False, 'error': 'Esa descarga ya no está en la lista.'}
+        return {'ok': True, 'error': t.error_detalle or t.error, 'registro': list(t.registro),
+                'completo': bool(self._ajustes.get('log_completo'))}
+
+    def copiar(self, texto):
+        """Copia al portapapeles (los tokens se ocultan también aquí, por si acaso)."""
+        from .utilidades import copiar_portapapeles, ocultar_tokens
+        return copiar_portapapeles(ocultar_tokens(str(texto or ''))[:200000])
 
     def abrir_carpeta(self, id_=None):
         t = self._gestor.obtener(id_) if id_ else None

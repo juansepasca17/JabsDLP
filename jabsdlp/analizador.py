@@ -3,13 +3,15 @@ import re
 import threading
 import uuid
 from collections import OrderedDict
+from urllib.parse import urlsplit
 
 import yt_dlp
 
 from .cookies import borrar_temporal, opciones_cookies
 from .formatos import clase
 from .impersonacion import aplicar_impersonacion
-from .utilidades import EXT_PELIGROSAS, es_url_playlist, extension_peligrosa, runtimes_js
+from .utilidades import (EXT_PELIGROSAS, clasificar_error, es_manifiesto, es_url_playlist, extension_peligrosa,
+                         nombre_manifiesto, ocultar_tokens, referer_desde, runtimes_js, tiene_tokens)
 
 MAX_CACHE = 40
 
@@ -190,3 +192,89 @@ class Analizador:
         }
         self._guardar(datos)
         return datos
+
+    # ---------- enlaces directos de manifiesto (.m3u8 / .mpd) ----------
+    def analizar_manifiesto(self, url, referer=None):
+        """Comprobación previa sin descargar el video: ¿responde el manifiesto con este Referer?
+
+        Usa las mismas opciones que la descarga (Referer, cookies, impersonation solo si está activada) y además
+        lee el texto del manifiesto para contar fragmentos, sumar la duración y detectar cifrado.
+        """
+        ext = es_manifiesto(url)
+        deducido = referer_desde(url)
+        referer = (referer or '').strip() or deducido
+        datos = {
+            'tipo': 'manifiesto', 'id': uuid.uuid4().hex[:12], 'url': url, 'formato': ext,
+            'host': urlsplit(url).hostname, 'referer': referer, 'referer_deducido': deducido,
+            'nombre': nombre_manifiesto(url), 'tokens': tiene_tokens(url), 'riesgos': [],
+            'prueba': {'ok': False, 'motivo': None, 'codigo': None, 'fragmentos': None, 'duracion': None,
+                       'variantes': None, 'cifrado': None, 'resolucion': None},
+        }
+        if url.lower().startswith('http://'):
+            datos['riesgos'].append('http')
+        prueba = datos['prueba']
+        opciones = self._opciones()
+        opciones.update(noplaylist=True, socket_timeout=15, extractor_retries=0,
+                        http_headers={'Referer': referer} if referer else {})
+        extra, temporal = opciones_cookies(self._ajustes)
+        opciones.update(extra)
+        try:
+            with yt_dlp.YoutubeDL(opciones) as ydl:
+                info = ydl.sanitize_info(ydl.extract_info(url, download=False))
+                formatos = info.get('formats') or []
+                videos = [f for f in formatos if f.get('height')]
+                if videos:
+                    mejor = max(videos, key=lambda f: (f.get('height') or 0, f.get('tbr') or 0))
+                    prueba['resolucion'] = f"{mejor['height']}p"
+                prueba['duracion'] = info.get('duration')
+                prueba['variantes'] = len(formatos) or None
+                prueba['ok'] = True
+                # Texto del manifiesto (o de la variante de más calidad si es un maestro HLS)
+                try:
+                    texto = self._leer(ydl, url, referer)
+                    if ext == 'm3u8' and '#EXT-X-STREAM-INF' in texto and formatos:
+                        variante = (videos and max(videos, key=lambda f: (f.get('height') or 0, f.get('tbr') or 0))
+                                    or formatos[-1]).get('url')
+                        if variante and variante != url:
+                            texto = self._leer(ydl, variante, referer)
+                    prueba.update(_resumen_manifiesto(texto, ext))
+                    if not prueba['duracion'] and prueba.get('suma'):
+                        prueba['duracion'] = prueba['suma']
+                    prueba.pop('suma', None)
+                except Exception:  # noqa: BLE001 - el análisis ya respondió; el recuento es un extra
+                    pass
+        except Exception as e:  # noqa: BLE001 - se muestra en la interfaz; se puede descargar igualmente
+            codigo, texto, _ = clasificar_error(e)
+            prueba['codigo'] = codigo
+            prueba['motivo'] = {
+                'http403': 'El servidor rechazó la petición (403): revisa la página de origen, vuelve a copiar el '
+                           'enlace o activa la suplantación de navegador en Ajustes.',
+                'http410': 'El enlace caducó (410): el token ya no es válido; vuelve a copiar el enlace.',
+                'red': texto,
+            }.get(codigo, texto)
+            prueba['detalle'] = ocultar_tokens(str(e))[:2000]
+        finally:
+            borrar_temporal(temporal)
+        self._guardar(datos)
+        return datos
+
+    @staticmethod
+    def _leer(ydl, url, referer, limite=5 << 20):
+        from yt_dlp.networking import Request
+        with ydl.urlopen(Request(url, headers={'Referer': referer} if referer else {})) as resp:
+            return resp.read(limite).decode('utf-8', 'replace')
+
+
+def _resumen_manifiesto(texto, ext):
+    """Fragmentos, duración sumada y cifrado (AES-128 de HLS o DRM) a partir del texto del manifiesto."""
+    if ext == 'm3u8':
+        duraciones = [float(m) for m in re.findall(r'#EXTINF:\s*([\d.]+)', texto)]
+        metodos = re.findall(r'#EXT-X-(?:SESSION-)?KEY:[^\n]*METHOD=([\w-]+)', texto)
+        cifrado = None
+        if any(m.upper() != 'NONE' for m in metodos):
+            drm = re.search(r'KEYFORMAT="(?!identity)[^"]+"', texto) or any(m.upper() == 'SAMPLE-AES' for m in metodos)
+            cifrado = 'drm' if drm else 'aes'
+        return {'fragmentos': len(duraciones) or None, 'suma': sum(duraciones) or None, 'cifrado': cifrado}
+    fragmentos = len(re.findall(r'<SegmentURL\b', texto)) or \
+        sum(int(r or 0) + 1 for r in re.findall(r'<S\b[^>]*?(?:\br="(\d+)")?[^>]*/?>', texto)) or None
+    return {'fragmentos': fragmentos, 'suma': None, 'cifrado': 'drm' if '<ContentProtection' in texto else None}

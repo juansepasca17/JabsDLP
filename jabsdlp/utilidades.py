@@ -99,6 +99,7 @@ ERRORES = [
     ('Could not copy', 'cookies_copiar', 'No se pudieron leer las cookies del navegador (ciérralo o usa un archivo cookies.txt).', False),
     ('Failed to decrypt', 'cookies_descifrar', 'No se pudieron descifrar las cookies del navegador. Usa Firefox o un archivo cookies.txt.', False),
     ('HTTP Error 403', 'http403', 'El servidor rechazó la descarga (403). Prueba con cookies o actualiza la app.', True),
+    ('HTTP Error 404', 'http404', 'No se encontró (404): el enlace no existe o ya caducó.', False),
     ('HTTP Error 429', 'http429', 'Demasiadas peticiones (429). Espera un poco o usa cookies.', True),
     ('HTTP Error 5', 'http5xx', 'El servidor tuvo un error temporal (5xx).', True),
     ('timed out', 'red', 'La conexión tardó demasiado en responder.', True),
@@ -158,6 +159,37 @@ def leer_portapapeles():
         user32.CloseClipboard()
 
 
+def copiar_portapapeles(texto):
+    if os.name != 'nt':
+        return False
+    user32, kernel32 = ctypes.windll.user32, ctypes.windll.kernel32
+    kernel32.GlobalAlloc.restype = ctypes.c_void_p
+    kernel32.GlobalAlloc.argtypes = [ctypes.c_uint, ctypes.c_size_t]
+    kernel32.GlobalLock.restype = ctypes.c_void_p
+    kernel32.GlobalLock.argtypes = [ctypes.c_void_p]
+    kernel32.GlobalUnlock.argtypes = [ctypes.c_void_p]
+    kernel32.GlobalFree.argtypes = [ctypes.c_void_p]
+    user32.SetClipboardData.restype = ctypes.c_void_p
+    user32.SetClipboardData.argtypes = [ctypes.c_uint, ctypes.c_void_p]
+    datos = (str(texto) + '\0').encode('utf-16-le')
+    if not user32.OpenClipboard(None):
+        return False
+    try:
+        user32.EmptyClipboard()
+        handle = kernel32.GlobalAlloc(0x0002, len(datos))   # GMEM_MOVEABLE
+        if not handle:
+            return False
+        puntero = kernel32.GlobalLock(handle)
+        ctypes.memmove(puntero, datos, len(datos))
+        kernel32.GlobalUnlock(handle)
+        if not user32.SetClipboardData(13, handle):   # CF_UNICODETEXT; si va bien, Windows es el dueño
+            kernel32.GlobalFree(handle)
+            return False
+        return True
+    finally:
+        user32.CloseClipboard()
+
+
 def abrir_en_explorador(ruta, seleccionar=False):
     if not ruta or not os.path.exists(ruta):
         return False
@@ -177,3 +209,71 @@ def abrir_en_explorador(ruta, seleccionar=False):
 
 class Cancelado(Exception):
     """El usuario canceló la descarga."""
+
+
+# ---------- enlaces directos de manifiesto (.m3u8 / .mpd) ----------
+# Sufijos de dos niveles más habituales: el dominio "registrable" de cdn.algo.com.co es algo.com.co
+SUFIJOS_DOBLES = {
+    'com.co', 'org.co', 'edu.co', 'gov.co', 'net.co', 'com.mx', 'org.mx', 'edu.mx', 'gob.mx', 'com.ar', 'org.ar',
+    'gob.ar', 'com.br', 'org.br', 'gov.br', 'com.pe', 'org.pe', 'gob.pe', 'com.ec', 'com.uy', 'com.ve', 'com.bo',
+    'com.py', 'com.gt', 'com.do', 'cl.co', 'co.uk', 'org.uk', 'ac.uk', 'gov.uk', 'com.au', 'net.au', 'org.au',
+    'co.jp', 'co.kr', 'co.in', 'co.nz', 'co.za', 'com.es', 'com.tr', 'com.cn', 'com.hk', 'com.tw', 'com.sg',
+}
+# Parámetros de la query que suelen ser tokens o firmas (se ocultan en el log y al copiar)
+PARAMETROS_TOKEN = ('cp', 'pid', 'sid', 'uid', 'aid', 'token', 'tok', 'key', 'signature', 'sig', 'policy', 'hdnts',
+                    'hdnea', 'hmac', 'auth', 'expires', 'key-pair-id', 'x-amz-signature', 'x-amz-credential',
+                    'x-amz-security-token', 'access_token', 'jwt', 'st', 'e', 'hash')
+
+
+def es_manifiesto(url):
+    """'m3u8' o 'mpd' si la ruta (sin la query) es un manifiesto HLS/DASH; si no, None."""
+    ruta = (url or '').strip().split('#', 1)[0].split('?', 1)[0].lower()
+    if not ruta.startswith(('http://', 'https://')):
+        return None
+    for ext in ('m3u8', 'mpd'):
+        if ruta.endswith('.' + ext):
+            return ext
+    return None
+
+
+def referer_desde(url):
+    """Página de origen deducida del dominio del manifiesto: mediastream.platzi.com -> https://platzi.com/."""
+    from urllib.parse import urlsplit
+    host = (urlsplit((url or '').strip()).hostname or '').lower().rstrip('.')
+    if not host:
+        return None
+    if re.fullmatch(r'[\d.]+|\[?[0-9a-f:]+\]?', host):
+        return f'https://{host}/'   # IP: no hay subdominio que quitar
+    partes = host.split('.')
+    n = 3 if len(partes) >= 3 and '.'.join(partes[-2:]) in SUFIJOS_DOBLES else 2
+    return f"https://{'.'.join(partes[-n:])}/"
+
+
+def nombre_manifiesto(url):
+    """Nombre por defecto del archivo: el del manifiesto sin extensión (index-v1-a1), o 'video'."""
+    from urllib.parse import unquote
+    base = os.path.basename(unquote((url or '').split('#', 1)[0].split('?', 1)[0]))
+    base = re.sub(r'\.(m3u8|mpd)$', '', base, flags=re.I)
+    base = re.sub(r'[<>:"/\|?*\x00-\x1f]', '_', base).strip(' .')
+    return base[:120] or 'video'
+
+
+def _es_token(nombre):
+    nombre = nombre.lower()
+    return nombre in PARAMETROS_TOKEN or nombre.startswith('x-amz-')
+
+
+def tiene_tokens(url):
+    from urllib.parse import parse_qsl, urlsplit
+    return any(_es_token(k) for k, _ in parse_qsl(urlsplit(url or '').query, keep_blank_values=True))
+
+
+PATRON_PARAMETRO = re.compile(r'([?&;])([A-Za-z0-9_.\-]+)=([^&\s"\'<>#]*)')
+
+
+def ocultar_tokens(texto):
+    """Sustituye los valores de parámetros tipo token (cP, pid, sid, token, signature…) por ***."""
+    if not texto:
+        return texto
+    return PATRON_PARAMETRO.sub(lambda m: f'{m.group(1)}{m.group(2)}=***' if _es_token(m.group(2)) and m.group(3) else m.group(0),
+                                str(texto))

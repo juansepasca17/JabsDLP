@@ -264,6 +264,7 @@ class Gestor:
             return
         with self._cv:
             # Lo que cancelaste no se retoma; lo pausado al cerrar la app (pausar=True) sí
+            # Los enlaces directos (.m3u8/.mpd) no se guardan: su token caduca y no debe quedar en disco
             pendientes = [t.a_dict() for t in self._trabajos.values()
-                          if t.estado in PENDIENTES and (not t.cancelado or t.pausar)]
+                          if t.estado in PENDIENTES and (not t.cancelado or t.pausar) and not t.es_manifiesto]
         self._escribir(self._ruta_cola, pendientes)

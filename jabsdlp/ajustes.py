@@ -80,6 +80,7 @@ AJUSTES_POR_DEFECTO = {
     'impersonar': False,                # suplantar la huella de Chrome con curl_cffi (sitios que dan 403/410)
     'args_extra': '',                   # argumentos extra de yt-dlp (Ajustes → Avanzado)
     'args_extra_activo': False,
+    'log_completo': False,              # yt-dlp -v y error completo en la Cola (tokens ocultos)
     'avisos_ocultos': [],               # avisos de seguridad marcados como "no volver a mostrar"
     'subida_torrent_kb': 20,            # KB/s de subida máxima mientras se descarga un torrent
     'prefs': PREFS_POR_DEFECTO,
@@ -88,7 +89,7 @@ AJUSTES_POR_DEFECTO = {
 
 BOOLEANOS = ('subcarpeta_playlist', 'paralelo', 'decodificar_gpu', 'recomendacion', 'ytdlp_auto', 'retomar_cola',
              'notificaciones', 'bandeja_al_minimizar', 'numerar_playlist', 'no_repetir', 'corte_exacto',
-             'impersonar', 'args_extra_activo')
+             'impersonar', 'args_extra_activo', 'log_completo')
 ENTEROS = {'max_paralelo': (0, 999), 'fragmentos': (1, 32), 'max_conversiones': (1, 16), 'calidad': (10, 45),
            'reintentos': (0, 10), 'subida_torrent_kb': (1, 100000)}
 AVISOS = ('torrent', 'http', 'generico', 'ejecutable', 'aria2')

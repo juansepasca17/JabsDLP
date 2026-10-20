@@ -19,7 +19,7 @@ from .cookies import borrar_temporal, opciones_cookies
 from .formatos import NOMBRE_VIDEO, familia_audio, necesita_recodificar, normalizar, selector_por_preferencias, tamano
 from .impersonacion import aplicar_impersonacion
 from .sponsor import categorias_validas
-from .utilidades import Cancelado, clasificar_error, runtimes_js
+from .utilidades import Cancelado, clasificar_error, ocultar_tokens, runtimes_js
 
 FASES_PP = {
     'Merger': 'Uniendo video y audio',
@@ -99,6 +99,7 @@ class Trabajo:
         self.motor = None
         self.error = None
         self.error_codigo = None
+        self.error_detalle = None
         self.temporal = False
         self.aviso = None
         self.archivo = None
@@ -125,14 +126,21 @@ class Trabajo:
             except OSError:
                 pass
 
+    @property
+    def es_manifiesto(self):
+        return (self.prefs or {}).get('tipo') == 'manifiesto'
+
     def a_dict(self):
         return {
-            'id': self.id, 'url': self.url, 'titulo': self.titulo, 'miniatura': self.miniatura, 'canal': self.canal,
+            # En los enlaces directos (.m3u8/.mpd) los tokens no salen de la memoria: ni en la interfaz ni en disco
+            'id': self.id, 'url': ocultar_tokens(self.url) if self.es_manifiesto else self.url,
+            'titulo': self.titulo, 'miniatura': self.miniatura, 'canal': self.canal,
             'duracion': self.duracion, 'titulo_formato': self.titulo_formato, 'tipo': self.prefs.get('tipo'),
             'estado': self.estado, 'fase': self.fase, 'progreso': round(self.progreso, 4),
             'descargado': self.descargado, 'total': self.total, 'velocidad': self.velocidad, 'eta': self.eta,
             'progreso_conversion': round(self.progreso_conversion, 4), 'velocidad_conversion': self.velocidad_conversion,
             'encoder': self.encoder, 'motor': self.motor, 'error': self.error, 'error_codigo': self.error_codigo,
+            'hay_detalle': bool(self.error_detalle or self.registro), 'error_detalle': self.error_detalle,
             'aviso': self.aviso, 'archivo': self.archivo, 'creado': self.creado, 'inicio': self.inicio, 'terminado': self.terminado,
             'intentos': self.intentos, 'reintento_en': self.reintento_en,
             'prefs': self.prefs, 'formato': self.formato, 'contenedor': self.contenedor, 'tamano': self.tamano,
@@ -155,6 +163,7 @@ class Trabajo:
         t.progreso = 1.0 if t.estado == 'completado' else d.get('progreso') or 0.0
         t.archivo, t.error, t.aviso = d.get('archivo'), d.get('error'), d.get('aviso')
         t.error_codigo, t.motor = d.get('error_codigo'), d.get('motor')
+        t.error_detalle = d.get('error_detalle')
         t.encoder, t.terminado, t.total = d.get('encoder'), d.get('terminado'), d.get('total')
         t.inicio = d.get('inicio')
         return t
@@ -168,19 +177,28 @@ class Trabajo:
 
 
 class Registro:
-    """Logger para yt-dlp: guarda las últimas líneas en el trabajo (nunca contenido de cookies)."""
+    """Logger para yt-dlp: guarda las últimas líneas en el trabajo (nunca contenido de cookies ni tokens).
 
-    def __init__(self, trabajo):
+    Con completo=True (Ajustes → Mostrar log completo) se guardan también las líneas [debug] de yt-dlp -v.
+    """
+
+    def __init__(self, trabajo, completo=False):
         self._t = trabajo
+        self._completo = completo
+        self._max = 600 if completo else 60
 
     def _agregar(self, nivel, msg):
         if 'has already been recorded in the archive' in msg:
             self._t.omitido = True
-        self._t.registro.append(f'[{nivel}] {msg}')
-        del self._t.registro[:-60]
+        linea = ocultar_tokens(msg) if msg.startswith('[') and self._completo else f'[{nivel}] {ocultar_tokens(msg)}'
+        self._t.registro.append(linea)
+        del self._t.registro[:-self._max]
 
     def debug(self, msg):
-        if not msg.startswith('[debug] '):
+        if msg.startswith('[debug] '):
+            if self._completo:
+                self._agregar('debug', msg)
+        else:
             self._agregar('info', msg)
 
     def info(self, msg):
@@ -465,9 +483,41 @@ def ejecutar_torrent(trabajo, ajustes, limite_bytes=0):
     trabajo.progreso = 1.0
 
 
+def nombre_libre(carpeta, nombre):
+    """'nombre', o 'nombre-2', 'nombre-3'… si ya hay un .mp4/.mkv/.webm con ese nombre en la carpeta."""
+    nombre = sanitize_filename(nombre or 'video', restricted=False) or 'video'
+    candidato, n = nombre, 1
+    while any(os.path.exists(os.path.join(carpeta, f'{candidato}.{ext}')) for ext in ('mp4', 'mkv', 'webm', 'ts', 'm4a')):
+        n += 1
+        candidato = f'{nombre}-{n}'
+    return candidato
+
+
+def _linea_comando(opciones, trabajo):
+    """Equivalente en consola de lo que armó la app (la app usa yt-dlp como librería, sin línea de comandos)."""
+    args = []
+    if opciones.get('format'):
+        args += ['-f', opciones['format']]
+    if opciones.get('format_sort'):
+        args += ['-S', ','.join(opciones['format_sort'])]
+    referer = (opciones.get('http_headers') or {}).get('Referer')
+    if referer:
+        args += ['--referer', referer]
+    if opciones.get('impersonate'):
+        args += ['--impersonate', str(opciones['impersonate'])]
+    if opciones.get('merge_output_format'):
+        args += ['--merge-output-format', opciones['merge_output_format']]
+    if opciones.get('cookiefile'):
+        args += ['--cookies', '<archivo temporal>']
+    args += ['-o', os.path.basename(opciones.get('outtmpl') or ''), ocultar_tokens(trabajo.url)]
+    return f'[debug] Command-line config (equivalente): {args!r}'
+
+
 def ejecutar(trabajo, ajustes, herramientas, cubeta=None, limite_aria2=0):
     prefs = normalizar(trabajo.prefs)
     audio = prefs.get('tipo') == 'audio'
+    manifiesto = trabajo.es_manifiesto      # enlace directo .m3u8/.mpd: configuración predeterminada de yt-dlp
+    completo = bool(ajustes.get('log_completo'))
     carpeta = ajustes.carpeta()
     if trabajo.subcarpeta and ajustes.get('subcarpeta_playlist'):
         carpeta = os.path.join(carpeta, sanitize_filename(trabajo.subcarpeta, restricted=False))
@@ -480,11 +530,16 @@ def ejecutar(trabajo, ajustes, herramientas, cubeta=None, limite_aria2=0):
         if trabajo.prefs.get('tipo') == 'torrent':
             return ejecutar_torrent(trabajo, ajustes, limite_aria2)
         os.makedirs(carpeta, exist_ok=True)
-        plantilla = plantilla_salida(ajustes.get('plantilla'), trabajo, ajustes.get('numerar_playlist'))
+        if manifiesto:
+            audio = False
+            plantilla = nombre_libre(carpeta, trabajo.prefs.get('nombre')) + '.%(ext)s'
+        else:
+            plantilla = plantilla_salida(ajustes.get('plantilla'), trabajo, ajustes.get('numerar_playlist'))
         opciones = {
             'outtmpl': os.path.join(carpeta, plantilla),
             'quiet': True,
-            'no_warnings': True,
+            'no_warnings': not completo,
+            'verbose': completo,
             'noprogress': True,
             'noplaylist': True,
             'windowsfilenames': True,
@@ -492,7 +547,7 @@ def ejecutar(trabajo, ajustes, herramientas, cubeta=None, limite_aria2=0):
             'concurrent_fragment_downloads': max(1, int(ajustes.get('fragmentos') or 4)),
             'retries': 10,
             'fragment_retries': 10,
-            'logger': Registro(trabajo),
+            'logger': Registro(trabajo, completo),
             'progress_hooks': [progreso],
             'postprocessor_hooks': [postproceso],
         }
@@ -508,13 +563,17 @@ def ejecutar(trabajo, ajustes, herramientas, cubeta=None, limite_aria2=0):
         ffmpeg = herramientas.ffmpeg()
         if ffmpeg:
             opciones['ffmpeg_location'] = os.path.dirname(ffmpeg)
-        if trabajo.formato:
+        if manifiesto:
+            # Como `yt-dlp --referer REF -o NOMBRE.%(ext)s URL`: formato y contenedor por defecto de yt-dlp
+            if trabajo.prefs.get('referer'):
+                opciones['http_headers'] = {'Referer': trabajo.prefs['referer']}
+        elif trabajo.formato:
             opciones['format'] = trabajo.formato
         else:
             opciones['format'], opciones['format_sort'] = selector_por_preferencias(prefs)
-        if not audio:
+        if not audio and not manifiesto:
             opciones['merge_output_format'] = _contenedor_merge(trabajo)
-        if ajustes.get('no_repetir'):
+        if ajustes.get('no_repetir') and not manifiesto:
             opciones['download_archive'] = ruta_archivo_descargados()
 
         motor = trabajo.motor_forzado or ajustes.get('motor')
@@ -529,10 +588,10 @@ def ejecutar(trabajo, ajustes, herramientas, cubeta=None, limite_aria2=0):
 
         corte_exacto = bool(ajustes.get('corte_exacto'))
 
-        con_metadatos = prefs.get('metadatos', True)
+        con_metadatos = prefs.get('metadatos', True) and not manifiesto
         con_miniatura = con_metadatos and prefs.get('miniatura', True) and \
             (audio or _contenedor_merge(trabajo).split('/')[0] != 'webm')
-        con_subtitulos = not audio and prefs.get('subtitulos')
+        con_subtitulos = not audio and prefs.get('subtitulos') and not manifiesto
         if con_miniatura:
             opciones['writethumbnail'] = True
         if con_subtitulos:
@@ -550,6 +609,8 @@ def ejecutar(trabajo, ajustes, herramientas, cubeta=None, limite_aria2=0):
         aviso_impersonacion = aplicar_impersonacion(opciones, ajustes)
         if aviso_impersonacion:
             trabajo.aviso = f'{trabajo.aviso} · {aviso_impersonacion}' if trabajo.aviso else aviso_impersonacion
+        if completo:
+            trabajo.registro.append(_linea_comando(opciones, trabajo))
 
         with yt_dlp.YoutubeDL(opciones) as ydl:
             if categorias:
@@ -568,7 +629,8 @@ def ejecutar(trabajo, ajustes, herramientas, cubeta=None, limite_aria2=0):
                     ydl.add_post_processor(FFmpegEmbedSubtitlePP(ydl, already_have_subtitle=False))
                 if trabajo.recorte:
                     ydl.add_post_processor(RecortarPP(ydl, trabajo, herramientas, corte_exacto))
-                ydl.add_post_processor(RecodificarPP(ydl, trabajo, herramientas))
+                if not manifiesto:
+                    ydl.add_post_processor(RecodificarPP(ydl, trabajo, herramientas))
             if con_metadatos:
                 ydl.add_post_processor(FFmpegMetadataPP(ydl, add_metadata=True, add_chapters=not trabajo.recorte,
                                                         add_infojson=False))
@@ -605,6 +667,14 @@ def ejecutar(trabajo, ajustes, herramientas, cubeta=None, limite_aria2=0):
             trabajo.estado = 'error'
             trabajo.fase = 'Error'
             trabajo.error_codigo, trabajo.error, trabajo.temporal = clasificar_error(e)
+            # Texto completo (p. ej. "caused by SSLError('[SSL: UNEXPECTED_EOF_WHILE_READING]…')") para buscarlo
+            trabajo.error_detalle = ocultar_tokens(re.sub(r'\x1b\[[0-9;]*m', '', str(e))).strip()[:4000] or None
+            if manifiesto and trabajo.error_codigo in ('http403', 'http410'):
+                trabajo.temporal = False
+                trabajo.error = ('El servidor rechazó el enlace (403): revisa la página de origen, vuelve a copiar el '
+                                 'enlace o activa la suplantación de navegador en Ajustes.'
+                                 if trabajo.error_codigo == 'http403' else
+                                 'El enlace caducó (410): vuelve a copiar el enlace.')
     finally:
         borrar_temporal(cookies_tmp)
         trabajo.velocidad = None
