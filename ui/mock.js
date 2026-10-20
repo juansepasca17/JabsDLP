@@ -24,9 +24,12 @@
     fragmentos: 4, max_conversiones: 2, gpu: 'auto', decodificar_gpu: true, calidad: 26, ffmpeg_ruta: '', idiomas_subtitulos: 'es.*,en.*',
     prefs: { idioma_audio: 'original', idioma_subs: 'es', subs_auto: false, sponsor_cats: 'sponsor,selfpromo', tipo: 'video', codec: 'auto', resolucion: 'auto', contenedor: 'auto', audio: 'auto', audio_calidad: 'alta', criterio: 'equilibrado', formato_audio: 'auto', metadatos: true, miniatura: true, subtitulos: false },
     recomendacion: true, ytdlp_canal: 'estable', ytdlp_auto: true, reintentos: 3, retomar_cola: true, limite_velocidad: 5,
-    notificaciones: true, notificar_modo: 'grupo', bandeja_al_minimizar: true, tema: 'oscuro', idioma: 'auto',
+    notificaciones: true, notificar_modo: 'grupo', bandeja_al_minimizar: false, tema: 'oscuro', idioma: 'auto',
     numerar_playlist: false, no_repetir: false, motor: 'ytdlp', aria2_ruta: '', corte_exacto: false, impersonar: false,
-    args_extra: '', args_extra_activo: false,
+    args_extra: '--embed-chapters --no-mtime', args_extra_activo: false, log_completo: true,
+    plantillas_args: [{ id: 'capitulos', nombre: 'Capítulos y fecha de descarga', args: '--embed-chapters --no-mtime' },
+                      { id: 'platzi', nombre: 'Platzi (Referer)', args: '--referer https://platzi.com/' }],
+    plantilla_args_id: 'capitulos',
   };
   // Capturas: index.html?mock=1&idioma=en&tema=claro
   const param = n => (location.search.match(new RegExp(`[?&]${n}=(\\w+)`)) || [])[1];
@@ -121,7 +124,7 @@
     { id: 'a3', titulo: 'Curso de C++ desde cero · Punteros y referencias', miniatura: miniatura(205, 255, 'C++ 02'), canal: 'Aprende Código', tipo: 'video', titulo_formato: 'Auto', estado: 'descargando', fase: 'Descargando video (1/2)', progreso: 0.45, descargado: 104857600, total: 233016320, velocidad: 12582912, eta: 11, creado: ahora - 200 },
     { id: 'a4', titulo: 'Layla Unplugged · Lección de guitarra', miniatura: miniatura(35, 10, 'Guitarra'), canal: 'Lecciones Eric', tipo: 'audio', titulo_formato: 'Opus · 130 kbps', estado: 'descargando', fase: 'Descargando', progreso: 0.78, descargado: 3355443, total: 4299161, velocidad: 2097152, eta: 1, creado: ahora - 150 },
     { id: 'a5', titulo: 'Curso de C++ desde cero · Clases y objetos', miniatura: miniatura(210, 260, 'C++ 03'), canal: 'Aprende Código', tipo: 'video', titulo_formato: 'Auto', estado: 'en_cola', fase: '', progreso: 0, creado: ahora - 100 },
-    { id: 'a6', titulo: 'Video privado de ejemplo', miniatura: null, canal: null, tipo: 'video', titulo_formato: 'Auto', estado: 'error', fase: 'Error', progreso: 0, error: 'YouTube pide iniciar sesión para confirmar que no eres un bot. Configura cookies en Ajustes.', creado: ahora - 60 },
+    { id: 'a6', titulo: 'Video privado de ejemplo', miniatura: null, canal: null, tipo: 'video', titulo_formato: 'Auto', estado: 'error', fase: 'Error', progreso: 0, error: 'YouTube pide iniciar sesión para confirmar que no eres un bot. Configura cookies en Ajustes.', hay_detalle: true, error_detalle: "ERROR: [youtube] dQw4w9WgXcQ: Unable to download API page: [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1028) (caused by SSLError('[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1028)'))", creado: ahora - 60 },
   ];
 
   function avanzar() {
@@ -183,8 +186,16 @@
     },
     async restaurar_ytdlp() { herramientas.ytdlp.descargada = null; herramientas.ytdlp.reiniciar = false; return herramientas; },
     async reiniciar() { return { ok: false, error: 'Hay descargas en curso: espera a que terminen o cancélalas antes de reiniciar.' }; },
-    async analizar(texto, modo, prefs) {
+    async analizar(texto, modo, prefs, origen) {
       await dormir(900);
+      if (/^https?:\/\/[^?#]+\.(m3u8|mpd)([?#]|$)/i.test(texto)) {
+        const falla = /caducado/.test(texto);
+        return { ok: true, datos: { tipo: 'manifiesto', id: 'm1', url: texto, formato: /mpd/i.test(texto) ? 'mpd' : 'm3u8',
+          host: 'mediastream.platzi.com', referer: origen || 'https://platzi.com/', referer_deducido: 'https://platzi.com/',
+          nombre: 'index-v1-a1', tokens: /[?&](cP|pid|sid|token)=/i.test(texto), riesgos: [],
+          prueba: falla ? { ok: false, codigo: 'http410', motivo: 'El enlace caducó (410): el token ya no es válido; vuelve a copiar el enlace.' }
+            : { ok: true, fragmentos: 412, duracion: 2471, resolucion: '1080p', variantes: 4, cifrado: 'aes' } } };
+      }
       if (/^magnet:/i.test(texto)) return { ok: true, datos: { tipo: 'torrent', url: texto, titulo: 'Big Buck Bunny (1080p)', riesgos: ['torrent'], aria2: true } };
       const urls = texto.match(/https?:\/\/\S+/g) || [];
       if (urls.length > 1) return { ok: true, datos: { tipo: 'lote', urls, cantidad: urls.length } };
@@ -203,6 +214,13 @@
       return { ok: true, opciones: [], postprocesadores: ['FFmpegMetadata'] };
     },
     async olvidar_descargados() { return true; },
+    async detalle(id) {
+      const t = cola.find(x => x.id === id);
+      return { ok: true, completo: ajustes.log_completo, error: t?.error_detalle || t?.error,
+        registro: ["[debug] Command-line config (equivalente): ['--referer', 'https://platzi.com/', '-o', 'index-v1-a1.%(ext)s', 'https://mediastream.platzi.com/video/h/x/index-v1-a1.m3u8?cP=***&pid=***']",
+                   '[debug] yt-dlp version stable@2026.08.19', '[generic] index-v1-a1: Downloading m3u8 information', '[hlsnative] Total fragments: 412'] };
+    },
+    async copiar() { return true; },
     async pausar_cola(p) { pausado = !!p; return resumen(); },
     async descargar_aria2() { herramientas.aria2.ruta = 'C:\\Users\\usuario\\AppData\\Local\\JabsDLP\\aria2\\aria2c.exe'; herramientas.aria2.de_la_app = true; return herramientas.aria2.descarga; },
     async elegir_aria2() { return null; },

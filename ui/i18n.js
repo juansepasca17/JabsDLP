@@ -230,6 +230,38 @@
     ': al terminar deja de compartir.': ': it stops sharing when finished.',
     'Desinstalar': 'Uninstall', 'aria2 desinstalado. El motor vuelve a ser yt-dlp.': 'aria2 uninstalled. The engine is yt-dlp again.',
     'Hay descargas usando aria2: espera a que terminen o cancélalas.': 'Some downloads are using aria2: wait for them to finish or cancel them.',
+    // 1.5.0: enlaces directos, log completo y plantillas
+    'Enlace directo': 'Direct link', 'Página de origen (Referer)': 'Source page (Referer)',
+    'Nombre del archivo (sin extensión)': 'File name (without extension)', 'Volver a comprobar': 'Check again',
+    'Se descarga con la configuración predeterminada de yt-dlp. Si ya existe un archivo con ese nombre, se añade -2, -3…':
+      'Downloaded with yt-dlp\'s default settings. If a file with that name already exists, -2, -3… is added.',
+    'La comprobación falló; puedes intentar descargar de todos modos.': 'The check failed; you can try to download anyway.',
+    'Descargar de todos modos': 'Download anyway', 'Comprobando el enlace…': 'Checking the link…',
+    'Protegido con DRM: es muy probable que no se pueda descargar.': 'DRM-protected: it most likely can\'t be downloaded.',
+    'Cifrado AES-128 (#EXT-X-KEY): yt-dlp lo descifra si la clave es accesible.': 'AES-128 encrypted (#EXT-X-KEY): yt-dlp decrypts it if the key is reachable.',
+    'Los tokens suelen caducar; si falla con 403/410, vuelve a copiar el enlace.': 'Tokens usually expire; if it fails with 403/410, copy the link again.',
+    'motivo desconocido': 'unknown reason',
+    'Mostrar log completo (debug)': 'Show full log (debug)',
+    'Ejecuta yt-dlp con': 'Runs yt-dlp with', 'y añade en la Cola «Ver detalle», con el error completo (p. ej.':
+      'and adds "Show details" to the Queue, with the full error (e.g.',
+    ') para buscarlo y un botón «Copiar log». Los tokens de las URLs se ocultan.': ') to search for it and a "Copy log" button. URL tokens are hidden.',
+    'Argumentos extra de yt-dlp, como en la consola, guardados como plantillas: se usa la que elijas. Ej.:':
+      'Extra yt-dlp arguments, like in the console, saved as templates: the one you choose is used. E.g.:',
+    'Nueva plantilla': 'New template', 'Nombre de la plantilla': 'Template name', 'Argumentos': 'Arguments',
+    'Guardar': 'Save', 'Editar': 'Edit', 'Borrar': 'Delete', 'Plantilla guardada.': 'Template saved.', '(vacía)': '(empty)',
+    'No hay plantillas. Crea una con «Nueva plantilla».': 'No templates. Create one with "New template".',
+    'Ver detalle': 'Show details', 'Ocultar detalle': 'Hide details', 'Detalle': 'Details', 'Actualizar': 'Refresh',
+    'Copiar log': 'Copy log', 'Log copiado (sin tokens).': 'Log copied (without tokens).', 'No se pudo copiar.': 'Couldn\'t copy.',
+    ' (activa «Mostrar log completo» para ver el log -v)': ' (turn on "Show full log" to see the -v log)',
+    'Sin líneas todavía.': 'No lines yet.', 'Esa descarga ya no está en la lista.': 'That download is no longer in the list.',
+    'No es un enlace .m3u8 ni .mpd.': 'It isn\'t an .m3u8 or .mpd link.',
+    'No se encontró (404): el enlace no existe o ya caducó.': 'Not found (404): the link doesn\'t exist or has expired.',
+    'El enlace caducó (410): vuelve a copiar el enlace.': 'The link expired (410): copy the link again.',
+    'El enlace caducó (410): el token ya no es válido; vuelve a copiar el enlace.': 'The link expired (410): the token is no longer valid; copy the link again.',
+    'El servidor rechazó el enlace (403): revisa la página de origen, vuelve a copiar el enlace o activa la suplantación de navegador en Ajustes.':
+      'The server rejected the link (403): check the source page, copy the link again or turn on browser impersonation in Settings.',
+    'El servidor rechazó la petición (403): revisa la página de origen, vuelve a copiar el enlace o activa la suplantación de navegador en Ajustes.':
+      'The server rejected the request (403): check the source page, copy the link again or turn on browser impersonation in Settings.',
   };
 
   const MESES = { ene: 'Jan', feb: 'Feb', mar: 'Mar', abr: 'Apr', may: 'May', jun: 'Jun', jul: 'Jul', ago: 'Aug', sep: 'Sep', oct: 'Oct', nov: 'Nov', dic: 'Dec' };
@@ -253,6 +285,14 @@
     [/^en (\d+) s$/, m => `in ${m[1]} s`],
     [/^aria2 de JabsDLP desinstalado\. Sigue habiendo otro aria2 en tu equipo: (.+)$/, m => `JabsDLP's aria2 uninstalled. There's still another aria2 on your computer: ${m[1]}`],
     [/^No se pudo borrar aria2: (.+)$/, m => `Couldn't delete aria2: ${m[1]}`],
+    [/^Enlace directo \.(m3u8|mpd)$/, m => `Direct .${m[1]} link`],
+    [/^Respondió(?: · (.+))?$/, m => `Responded${m[1] ? ' · ' + m[1].replace(/fragmentos/g, 'segments').replace(/variantes/g, 'variants') : ''}`],
+    [/^No respondió: (.+)$/, m => `Didn't respond: ${tr(m[1])}`],
+    [/^Se bloqueó (\S+): (.+)\.$/, m => `${m[1]} was blocked: ${m[2]}.`],
+    [/^(\S+) no está en la lista de opciones permitidas\.$/, m => `${m[1]} isn't in the list of allowed options.`],
+    [/^Comilla (\S*) sin cerrar en: (.+)$/, m => `Unclosed quote ${m[1]} at: ${m[2]}`],
+    [/^A (\S+) le falta su valor\.$/, m => `${m[1]} is missing its value.`],
+    [/^(\S+): opción (desconocida|ambigua)\.$/, m => `${m[1]}: ${m[2] === 'ambigua' ? 'ambiguous' : 'unknown'} option.`],
     [/^velocidad (.+)$/, m => `speed ${m[1]}`], [/^Convertido con (.+)$/, m => `Converted with ${m[1]}`],
     [/^Tras (\d+) reintentos?$/, m => `After ${m[1]} ${m[1] === '1' ? 'retry' : 'retries'}`],
     [/^Reintento (\d+) de (\d+) en (\d+) s$/, m => `Retry ${m[1]} of ${m[2]} in ${m[3]} s`], [/^Reintento (\d+) de (\d+)$/, m => `Retry ${m[1]} of ${m[2]}`],

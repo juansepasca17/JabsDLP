@@ -337,15 +337,26 @@
               <div class="txt"><b>Suplantar navegador (impersonation)</b><small>Hace que las peticiones parezcan venir de Chrome. Ayuda con sitios que bloquean descargas con errores 403/410. Requiere el componente curl_cffi.<span id="aj-impersonar-motivo"></span></small></div>
               <label class="switch"><input type="checkbox" data-ajuste="impersonar" id="aj-impersonar"><span></span></label>
             </div>
+            <div class="ajuste">
+              <div class="txt"><b>Mostrar log completo (debug)</b><small>Ejecuta yt-dlp con <code>-v</code> y añade en la Cola «Ver detalle», con el error completo (p. ej. <code>caused by SSLError(…)</code>) para buscarlo y un botón «Copiar log». Los tokens de las URLs se ocultan.</small></div>
+              <label class="switch"><input type="checkbox" data-ajuste="log_completo"><span></span></label>
+            </div>
             <div class="ajuste ajuste-ytdlp">
-              <div class="txt"><b>Comando personalizado</b><small>Argumentos extra de yt-dlp, como en la consola. Ej.: <code>--embed-chapters --geo-bypass</code>. Por seguridad no se permiten opciones que ejecutan programas.</small></div>
+              <div class="txt"><b>Comando personalizado</b><small>Argumentos extra de yt-dlp, como en la consola, guardados como plantillas: se usa la que elijas. Ej.: <code>--embed-chapters --no-mtime</code>. Por seguridad no se permiten opciones que ejecutan programas.</small></div>
               <label class="switch"><input type="checkbox" data-ajuste="args_extra_activo"><span></span></label>
             </div>
-            <textarea class="entrada area" data-ajuste="args_extra" spellcheck="false" rows="3" placeholder="--embed-chapters --sleep-requests 1"></textarea>
-            <div class="fila-prueba">
-              <button class="btn chico" data-accion="probar-args"><i data-ico="check" class="sm"></i>Probar</button>
-              <small id="aj-args-resultado" class="dim"></small>
+            <div class="plantillas" id="aj-plantillas"></div>
+            <div class="editor-plantilla oculto" id="aj-editor">
+              <label class="campo" style="margin-top:0"><span>Nombre de la plantilla</span><input class="entrada" id="aj-plantilla-nombre" maxlength="60" placeholder="Mi plantilla"></label>
+              <label class="campo"><span>Argumentos</span><textarea class="entrada area" id="aj-plantilla-args" spellcheck="false" rows="3" placeholder="--embed-chapters --sleep-requests 1"></textarea></label>
+              <div class="fila-prueba">
+                <button class="btn chico" data-accion="probar-args"><i data-ico="check" class="sm"></i>Probar</button>
+                <small id="aj-args-resultado" class="dim"></small>
+                <button class="btn chico" data-accion="cancelar-plantilla">Cancelar</button>
+                <button class="btn chico primario" data-accion="guardar-plantilla">Guardar</button>
+              </div>
             </div>
+            <div class="fila-prueba"><button class="btn chico" data-accion="nueva-plantilla"><i data-ico="plus" class="sm"></i>Nueva plantilla</button></div>
           </div>
         </div>
       </section>

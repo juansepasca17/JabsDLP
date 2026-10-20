@@ -30,6 +30,10 @@ const ICONOS = {
   sliders: '<line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>',
   globe: '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
   loader: '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
+  plus: '<path d="M12 5v14"/><path d="M5 12h14"/>',
+  pencil: '<path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
+  lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
   link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
   image: '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
   tag: '<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/>',
@@ -267,6 +271,22 @@ function renderMeta() {
       <div class="meta-titulo no-traducir" style="margin-top:0">${esc(a.titulo)}</div>
       <div class="meta-canal">Torrent / magnet · P2P</div>
       <div class="meta-origen">${ico('alert', 'sm')}Fuente desconocida: revisa lo que descargas antes de abrirlo.</div></div>`;
+    return;
+  }
+  if (a.tipo === 'manifiesto') {
+    const p = a.prueba || {};
+    const datos = [p.fragmentos ? `${p.fragmentos} fragmentos` : null, p.duracion ? fmt.dur(p.duracion) : null,
+                   p.resolucion, p.variantes > 1 ? `${p.variantes} variantes` : null].filter(Boolean);
+    cont.innerHTML = `<div class="card pad">
+      <div class="meta-titulo" style="margin-top:0">Enlace directo .${esc(a.formato)}</div>
+      <div class="meta-canal no-traducir">${esc(a.host || '')}</div>
+      ${S.comprobando ? `<div class="meta-origen">${ico('loader', 'sm spin')}Comprobando el enlace…</div>`
+        : p.ok ? `<div class="prueba ok">${ico('check', 'sm')}<span>Respondió${datos.length ? ' · ' + esc(datos.join(' · ')) : ''}</span></div>`
+        : `<div class="prueba err">${ico('alert', 'sm')}<span>No respondió: ${esc(p.motivo || 'motivo desconocido')}</span></div>`}
+      ${p.cifrado === 'drm' ? `<div class="aviso">${ico('alert', 'sm')}<span>Protegido con DRM: es muy probable que no se pueda descargar.</span></div>`
+        : p.cifrado === 'aes' ? `<div class="nota">${ico('lock', 'sm')} Cifrado AES-128 (#EXT-X-KEY): yt-dlp lo descifra si la clave es accesible.</div>` : ''}
+      ${a.tokens ? `<div class="nota">${ico('clock', 'sm')} Los tokens suelen caducar; si falla con 403/410, vuelve a copiar el enlace.</div>` : ''}
+    </div>`;
     return;
   }
   if (a.tipo === 'lote') {
@@ -514,12 +534,27 @@ function renderOpciones() {
   const cont = $('#opciones');
   const scroll = [...cont.querySelectorAll('.lista-formatos, .lista-playlist, .fila-prefs')].map(e => [e.scrollTop, e.scrollLeft]);
   $$('#tipo button').forEach(b => b.classList.toggle('activo', b.dataset.tipo === (S.prefs.tipo || 'video')));
+  $('#tipo').classList.toggle('oculto', ['manifiesto', 'torrent'].includes(S.analisis?.tipo));
   if (S.analisis?.tipo === 'torrent') {
     const a = S.analisis;
     cont.innerHTML = `<div class="etiqueta-grupo" style="margin-top:14px">${ico('download', 'sm')}Torrent</div>
       <div class="nota">Se descarga con aria2, con la subida limitada a ${esc(String(S.ajustes.subida_torrent_kb || 20))} KB/s y <b>sin seed</b>: al terminar deja de compartir.</div>
       ${a.aria2 ? '' : `<div class="aviso">${ico('alert', 'sm')}<span>Los torrents necesitan aria2. Instálalo en <a data-vista="ajustes">Ajustes → Red y velocidad</a>.</span></div>`}
       ${pieHTML('Descargar torrent', !!a.aria2)}`;
+    return;
+  }
+  if (S.analisis?.tipo === 'manifiesto') {
+    const a = S.analisis, m = S.man || {};
+    const ok = a.prueba?.ok;
+    cont.innerHTML = `<div class="etiqueta-grupo" style="margin-top:14px">${ico('link', 'sm')}Enlace directo</div>
+      <label class="campo"><span>Página de origen (Referer)</span>
+        <input class="entrada" id="man-referer" spellcheck="false" value="${esc(m.referer ?? a.referer ?? '')}" placeholder="${esc(a.referer_deducido || 'https://sitio.com/')}"></label>
+      <label class="campo"><span>Nombre del archivo (sin extensión)</span>
+        <input class="entrada" id="man-nombre" spellcheck="false" value="${esc(m.nombre ?? a.nombre ?? '')}" placeholder="video"></label>
+      <div class="fila-prueba"><button class="btn chico" data-accion="comprobar-manifiesto" ${S.comprobando ? 'disabled' : ''}>${ico('refresh', 'sm')}Volver a comprobar</button>
+        <small class="dim">Se descarga con la configuración predeterminada de yt-dlp. Si ya existe un archivo con ese nombre, se añade -2, -3…</small></div>
+      ${ok || S.comprobando ? '' : `<div class="aviso">${ico('alert', 'sm')}<span>La comprobación falló; puedes intentar descargar de todos modos.</span></div>`}
+      ${pieHTML(ok || S.comprobando ? 'Descargar' : 'Descargar de todos modos', !S.comprobando)}`;
     return;
   }
   let html = filaPrefsHTML() + seleccionHTML() + audioPersonalizadoHTML();
@@ -741,11 +776,26 @@ async function analizar() {
       S.plSel = new Set(r.datos.entradas.filter(e => !e.ya_descargado).map(e => e.indice));
     } else if (r.datos.tipo === 'torrent') {
       S.plSel = new Set();
+    } else if (r.datos.tipo === 'manifiesto') {
+      S.man = { referer: r.datos.referer, nombre: r.datos.nombre };
     } else {
       S.plSel = new Set(r.datos.urls.map((_, i) => i));
     }
   }
   renderDescargar();
+}
+
+async function comprobarManifiesto() {
+  const a = S.analisis;
+  if (a?.tipo !== 'manifiesto') return;
+  S.man = { referer: $('#man-referer')?.value ?? S.man?.referer, nombre: $('#man-nombre')?.value ?? S.man?.nombre };
+  S.comprobando = true; renderDescargar();
+  try {
+    const r = await API.analizar(a.url, 'auto', S.prefs, S.man.referer || '');
+    if (r.ok) S.analisis = r.datos; else toast(esc(r.error), 'err');
+  } finally {
+    S.comprobando = false; renderDescargar();
+  }
 }
 
 async function recalcular() {
@@ -780,6 +830,9 @@ async function descargar() {
   const anuncios = esYoutube() && S.quitarAnuncios;
   if (a.tipo === 'torrent') {
     solicitud = { tipo: 'torrent', url: a.url };
+  } else if (a.tipo === 'manifiesto') {
+    solicitud = { tipo: 'manifiesto', url: a.url, referer: $('#man-referer')?.value || '', nombre: $('#man-nombre')?.value || '',
+                  duracion: a.prueba?.duracion || null };
   } else if (a.tipo === 'video') {
     solicitud = { tipo: 'video', id: a.id, spec: enAuto() ? null : S.seleccion, recorte: S.recorte,
                   audio_id: S.prefs.audio === 'custom' ? S.audioId : null, prefs: S.prefs, quitar_anuncios: anuncios };
@@ -891,12 +944,43 @@ function actualizarTrabajo(el, t) {
   }
   if (t.motor === 'aria2' && ['descargando', 'completado'].includes(t.estado)) stats.push(esc('con aria2'));
   if (t.aviso) stats.push(`<span class="warn">${esc(t.aviso)}</span>`);
+  if (S.ajustes.log_completo && t.hay_detalle) {
+    const abierto = !!el.querySelector('.detalle');
+    stats.push(`<a class="enlace" data-tarea="detalle">${ico('terminal', 'sm')}${abierto ? 'Ocultar detalle' : 'Ver detalle'}</a>`);
+  }
   el.querySelector('.stats').innerHTML = stats.filter(Boolean).map(s => `<span>${s}</span>`).join('');
 
   if (el.dataset.estado !== t.estado) {
     el.dataset.estado = t.estado;
     el.querySelector('.acciones').innerHTML = accionesTrabajo(t);
   }
+}
+
+// Error completo y log de yt-dlp (Ajustes → Mostrar log completo); los tokens ya vienen ocultos
+async function detalleTrabajo(tarjeta, accion) {
+  const id = tarjeta.dataset.id;
+  let panel = tarjeta.querySelector('.detalle');
+  if (accion === 'copiar-log') {
+    const texto = [panel?.querySelector('.error-completo')?.textContent, panel?.querySelector('.log')?.textContent].filter(Boolean).join('\n\n');
+    const ok = await API.copiar(texto);
+    return toast(ok ? 'Log copiado (sin tokens).' : 'No se pudo copiar.', ok ? 'ok' : 'err');
+  }
+  if (panel && accion === 'detalle') { panel.remove(); return refrescarCola(); }
+  const r = await API.detalle(id);
+  if (!r.ok) return toast(esc(r.error), 'err');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.className = 'detalle no-traducir';
+    tarjeta.querySelector('.cuerpo').appendChild(panel);
+  }
+  panel.innerHTML = `<div class="barra"><b>Detalle${r.completo ? '' : ' (activa «Mostrar log completo» para ver el log -v)'}</b>
+      <button class="btn chico" data-tarea="refrescar-log">${ico('refresh', 'sm')}Actualizar</button>
+      <button class="btn chico" data-tarea="copiar-log">${ico('copy', 'sm')}Copiar log</button></div>
+    ${r.error ? `<pre class="error-completo">${esc(r.error)}</pre>` : ''}
+    <pre class="log">${esc((r.registro || []).join('\n') ||'Sin líneas todavía.')}</pre>`;
+  const log = panel.querySelector('.log');
+  log.scrollTop = log.scrollHeight;
+  refrescarCola();
 }
 
 function renderCola() {
@@ -954,8 +1038,64 @@ function bucleCola() {
 }
 
 /* ================= ajustes ================= */
+/* ---------- plantillas de comando personalizado (como en Seal) ---------- */
+function pintarPlantillas() {
+  const lista = S.ajustes.plantillas_args || [];
+  const activa = S.ajustes.plantilla_args_id;
+  const b = (accion, icono, titulo, id) => `<button class="btn chico icono" data-accion="${accion}" data-id="${esc(id)}" title="${titulo}">${ico(icono, 'sm')}</button>`;
+  $('#aj-plantillas').innerHTML = lista.length ? lista.map(p => `
+    <div class="plantilla ${p.id === activa ? 'activa' : ''}" data-accion="elegir-plantilla" data-id="${esc(p.id)}">
+      <span class="radio"></span>
+      <span class="txt"><b class="no-traducir">${esc(p.nombre)}</b><code class="no-traducir">${esc(p.args || '(vacía)')}</code></span>
+      ${b('editar-plantilla', 'pencil', 'Editar', p.id)}${b('borrar-plantilla', 'trash', 'Borrar', p.id)}
+    </div>`).join('') : '<small class="dim">No hay plantillas. Crea una con «Nueva plantilla».</small>';
+}
+
+function mostrarPruebaArgs(r, texto) {
+  const salida = $('#aj-args-resultado');
+  salida.className = r.ok ? 'ok-texto' : 'err-texto';
+  salida.textContent = !r.ok ? r.error : !texto.trim() ? 'Vacío: no se añade nada.'
+    : `Correcto: ${[...r.opciones, ...r.postprocesadores].join(', ') || 'sin cambios respecto a lo normal'}`;
+}
+
+function editarPlantilla(id) {
+  const p = (S.ajustes.plantillas_args || []).find(x => x.id === id);
+  S.editPlantilla = p ? p.id : null;
+  $('#aj-plantilla-nombre').value = p ? p.nombre : '';
+  $('#aj-plantilla-args').value = p ? p.args : '';
+  $('#aj-args-resultado').textContent = '';
+  $('#aj-editor').classList.remove('oculto');
+  $('#aj-plantilla-nombre').focus();
+}
+
+async function guardarPlantilla() {
+  const nombre = $('#aj-plantilla-nombre').value.trim() || 'Plantilla';
+  const args = $('#aj-plantilla-args').value.trim();
+  const r = await API.probar_args(args);
+  mostrarPruebaArgs(r, args);
+  if (!r.ok) return;   // no se guarda una plantilla que el filtro de seguridad rechaza
+  const lista = [...(S.ajustes.plantillas_args || [])];
+  const id = S.editPlantilla || `p${Date.now().toString(36)}`;
+  const i = lista.findIndex(x => x.id === id);
+  if (i >= 0) lista[i] = { id, nombre, args }; else lista.push({ id, nombre, args });
+  const cambios = { plantillas_args: lista };
+  if (id === S.ajustes.plantilla_args_id || !S.ajustes.plantilla_args_id) Object.assign(cambios, { plantilla_args_id: id, args_extra: args });
+  await guardarAjuste(cambios);
+  $('#aj-editor').classList.add('oculto');
+  S.editPlantilla = null;
+  toast('Plantilla guardada.', 'ok');
+}
+
+async function borrarPlantilla(id) {
+  const lista = (S.ajustes.plantillas_args || []).filter(x => x.id !== id);
+  const cambios = { plantillas_args: lista };
+  if (id === S.ajustes.plantilla_args_id) Object.assign(cambios, { plantilla_args_id: '', args_extra: '' });
+  await guardarAjuste(cambios);
+}
+
 function pintarAjustes() {
   const a = S.ajustes;
+  pintarPlantillas();
   $$('[data-ajuste]').forEach(el => {
     const k = el.dataset.ajuste;
     if (el.type === 'checkbox') el.checked = !!a[k];
@@ -1186,6 +1326,9 @@ document.addEventListener('click', async e => {
     pintarEstado();
     return refrescarHerramientas();
   }
+  if (d.tarea === 'detalle' || d.tarea === 'copiar-log' || d.tarea === 'refrescar-log') {
+    return detalleTrabajo(el.closest('.trabajo'), d.tarea);
+  }
   if (d.tarea) {
     const id = el.closest('.trabajo').dataset.id;
     const mapa = { cancelar: 'cancelar', reintentar: 'reintentar', quitar: 'quitar', abrir: 'abrir_archivo', carpeta: 'abrir_carpeta' };
@@ -1263,14 +1406,20 @@ document.addEventListener('click', async e => {
     case 'pausar-cola': S.resumen = await API.pausar_cola(!S.resumen.pausado); return refrescarCola();
     case 'restablecer-avisos': await guardarAjuste({ avisos_ocultos: [] }); return toast('Los avisos de seguridad se volverán a mostrar.', 'ok');
     case 'olvidar-descargados': await API.olvidar_descargados(); return toast('Registro de descargas borrado: ya no se saltará ningún video.', 'ok');
+    case 'comprobar-manifiesto': return comprobarManifiesto();
     case 'probar-args': {
-      const texto = $('[data-ajuste="args_extra"]').value;
-      await guardarAjuste({ args_extra: texto });
-      const r = await API.probar_args(texto);
-      const salida = $('#aj-args-resultado');
-      salida.className = r.ok ? 'ok-texto' : 'err-texto';
-      salida.textContent = !r.ok ? r.error : !texto.trim() ? 'Vacío: no se añade nada.'
-        : `Correcto: ${[...r.opciones, ...r.postprocesadores].join(', ') || 'sin cambios respecto a lo normal'}`;
+      const r = await API.probar_args($('#aj-plantilla-args').value);
+      mostrarPruebaArgs(r, $('#aj-plantilla-args').value);
+      return;
+    }
+    case 'nueva-plantilla': return editarPlantilla(null);
+    case 'editar-plantilla': return editarPlantilla(d.id);
+    case 'cancelar-plantilla': $('#aj-editor').classList.add('oculto'); S.editPlantilla = null; return;
+    case 'guardar-plantilla': return guardarPlantilla();
+    case 'borrar-plantilla': return borrarPlantilla(d.id);
+    case 'elegir-plantilla': {
+      const p = (S.ajustes.plantillas_args || []).find(x => x.id === d.id);
+      if (p) await guardarAjuste({ plantilla_args_id: p.id, args_extra: p.args });
       return;
     }
   }
@@ -1344,6 +1493,10 @@ document.addEventListener('change', e => {
 });
 
 document.addEventListener('input', e => {
+  if (e.target.id === 'man-referer' || e.target.id === 'man-nombre') {
+    S.man = { ...(S.man || {}), [e.target.id === 'man-referer' ? 'referer' : 'nombre']: e.target.value };
+    return;
+  }
   if (e.target.matches('[data-ajuste="calidad"]')) {
     $('#aj-calidad-txt').textContent = e.target.value;
     $('#aj-crf-txt').textContent = +e.target.value + 2;
@@ -1352,6 +1505,7 @@ document.addEventListener('input', e => {
 
 $('#url').addEventListener('input', () => { S.modoManual = false; alCambiarUrl(); });
 $('#url').addEventListener('keydown', e => { if (e.key === 'Enter') analizar(); });
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'man-referer') comprobarManifiesto(); });
 
 /* ================= arranque ================= */
 // Miniaturas rotas: se quitan (sin manejadores inline, que la CSP bloquea)

@@ -80,6 +80,9 @@ AJUSTES_POR_DEFECTO = {
     'impersonar': False,                # suplantar la huella de Chrome con curl_cffi (sitios que dan 403/410)
     'args_extra': '',                   # argumentos extra de yt-dlp (Ajustes → Avanzado)
     'args_extra_activo': False,
+    # Plantillas de comando (como en Seal): la elegida se copia en args_extra
+    'plantillas_args': [{'id': 'capitulos', 'nombre': 'Capítulos y fecha de descarga', 'args': '--embed-chapters --no-mtime'}],
+    'plantilla_args_id': '',
     'log_completo': False,              # yt-dlp -v y error completo en la Cola (tokens ocultos)
     'avisos_ocultos': [],               # avisos de seguridad marcados como "no volver a mostrar"
     'subida_torrent_kb': 20,            # KB/s de subida máxima mientras se descarga un torrent
@@ -119,6 +122,24 @@ OPCIONES_PREFS = {
 NO_VALIDO = object()
 
 
+PATRON_ID = re.compile(r'^[A-Za-z0-9_-]{1,24}$')
+MAX_PLANTILLAS = 40
+
+
+def validar_plantillas(valor):
+    """Lista de {id, nombre, args}: ids únicos y textos acotados (los args se validan al usarse)."""
+    if not isinstance(valor, list):
+        return NO_VALIDO
+    limpias, ids = [], set()
+    for p in valor[:MAX_PLANTILLAS]:
+        if not isinstance(p, dict) or not isinstance(p.get('id'), str) or not PATRON_ID.match(p['id']) or p['id'] in ids:
+            continue
+        nombre = str(p.get('nombre') or '').strip()[:60] or 'Plantilla'
+        limpias.append({'id': p['id'], 'nombre': nombre, 'args': str(p.get('args') or '').strip()[:2000]})
+        ids.add(p['id'])
+    return limpias
+
+
 def validar(clave, valor):
     """Devuelve el valor saneado o NO_VALIDO. Protege la ruta de ffmpeg (se ejecuta) y la plantilla."""
     if clave in BOOLEANOS:
@@ -129,6 +150,10 @@ def validar(clave, valor):
             return max(minimo, min(maximo, int(valor)))
         except (TypeError, ValueError):
             return NO_VALIDO
+    if clave == 'plantillas_args':
+        return validar_plantillas(valor)
+    if clave == 'plantilla_args_id':
+        return valor if isinstance(valor, str) and PATRON_ID.match(valor or 'x') else NO_VALIDO
     if clave == 'avisos_ocultos':
         return sorted({a for a in valor if a in AVISOS}) if isinstance(valor, list) else NO_VALIDO
     if clave in DECIMALES:
@@ -202,6 +227,11 @@ class Ajustes:
         if not isinstance(guardados, dict):
             return
         self._aplicar(guardados)
+        # Versiones anteriores a las plantillas: el comando que ya tenías pasa a ser una plantilla elegida
+        if 'plantillas_args' not in guardados and (guardados.get('args_extra') or '').strip():
+            self._datos['plantillas_args'] = [{'id': 'mio', 'nombre': 'Mi comando', 'args': self._datos['args_extra']},
+                                              *self._datos['plantillas_args']]
+            self._datos['plantilla_args_id'] = 'mio'
 
     @staticmethod
     def _prefs_validas(prefs):
