@@ -203,7 +203,7 @@ class Analizador:
         """
         ext = es_manifiesto(url)
         deducido = referer_desde(url)
-        referer = (referer or '').strip() or deducido
+        referer = ''.join(str(referer or '').split())[:500] or deducido   # cabecera HTTP: sin saltos de línea
         datos = {
             'tipo': 'manifiesto', 'id': uuid.uuid4().hex[:12], 'url': url, 'formato': ext,
             'host': urlsplit(url).hostname, 'referer': referer, 'referer_deducido': deducido,

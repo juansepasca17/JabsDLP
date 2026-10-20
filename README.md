@@ -26,6 +26,35 @@ y [ffmpeg](https://ffmpeg.org).
   - Puede buscar actualizaciones al abrir, como mucho una vez al día.
   - Solo guarda la última versión descargada. La que va dentro del `.exe` queda siempre como respaldo y la app vuelve a ella si la descargada falla.
 
+### Novedades de la 1.5.0
+
+- **Enlaces directos `.m3u8` / `.mpd`** (por ejemplo, los de Platzi cuando su extractor falla). Al pegar uno sale un
+  panel propio, como el de torrents:
+  - **Página de origen (Referer)**: se deduce del dominio (`mediastream.platzi.com` → `https://platzi.com/`) y la
+    puedes cambiar.
+  - **Nombre del archivo**: si ya existe, se añade `-2`, `-3`…
+  - **Comprobación previa sin descargar**: dice si el enlace responde, con fragmentos, duración y calidad, o el
+    motivo del fallo (403, 404, 410/token caducado, red). También avisa si está cifrado (AES-128 o DRM).
+  - Si la comprobación falla, puedes **descargar de todos modos**.
+  - Se descarga con la configuración predeterminada de yt-dlp, como
+    `yt-dlp --referer REF -o "NOMBRE.%(ext)s" URL`.
+  - Los **tokens** de la URL (`cP`, `pid`, `sid`, `token`, `signature`…) no se guardan en disco ni salen en el log.
+- **Mostrar log completo (debug)**, en *Ajustes → Avanzado*:
+  - ejecuta yt-dlp con `-v`;
+  - en la Cola, **Ver detalle** muestra el error completo (por ejemplo `caused by SSLError('[SSL: UNEXPECTED_EOF_WHILE_READING]…')`)
+    para buscarlo, y el log, con un botón **Copiar log**.
+- **Plantillas de comando personalizado**, como en Seal: guarda varias, elige una, edítalas o bórralas.
+- **Filtro del comando personalizado más estricto**:
+  - solo se aceptan opciones de una lista de permitidas;
+  - si se bloquea una, se dice cuál y por qué (`--exec`, `--use-postprocessor`, `--plugin-dirs`…);
+  - una comilla sin cerrar indica dónde está.
+- **Una sola instancia**: volver a abrir JabsDLP muestra la ventana que ya estaba abierta (antes se duplicaba al
+  minimizarla a la bandeja). **Minimizar a la bandeja** viene ahora desactivado por defecto.
+- **Actualizador de yt-dlp más seguro**:
+  - valida el nombre y el origen (files.pythonhosted.org) de cada archivo;
+  - vuelve a comprobar el SHA-256 antes de cargarlo;
+  - una versión descargada con la 1.4.0 o anterior se vuelve a descargar una vez.
+
 ### Novedades de la 1.4.0
 
 - **Una versión de yt-dlp que falla al cargar ya no se reintenta en bucle**: si la descargada no se puede importar,
@@ -66,7 +95,9 @@ y [ffmpeg](https://ffmpeg.org).
 - **Torrents**: se descargan con `--seed-time=0`, así que no se comparten al terminar. Mientras se descargan se sube un poco, limitado en Ajustes. Antes de empezar se avisa de los riesgos.
 - **Avisos de fuente de riesgo**: torrents, enlaces `http://` sin cifrar, sitios no reconocidos (extractor genérico) y ejecutables o comprimidos. Puedes seguir o cancelar, y marcar "No volver a mostrar".
 - JabsDLP **nunca ejecuta** un archivo descargado que no sea multimedia: lo muestra en su carpeta.
-- Las notificaciones escapan el título del video, de modo que un título malicioso no puede ejecutar código en PowerShell. El comando personalizado bloquea `--exec`, `--plugin-dirs`, `--downloader` y otras opciones que ejecutan programas.
+- Las notificaciones escapan el título del video, de modo que un título malicioso no puede ejecutar código en PowerShell. El comando personalizado solo acepta opciones de una lista de permitidas y bloquea, diciendo por qué, `--exec`, `--use-postprocessor`, `--plugin-dirs`, `--downloader` y otras que ejecutan programas o cargan código.
+- Los tokens de los enlaces directos (.m3u8/.mpd) se ocultan en el log, la interfaz y el historial.
+- El yt-dlp descargado solo se carga si su nombre, origen y SHA-256 son los esperados.
 - ffmpeg, aria2 y el resto de procesos hijos se cierran con la app aunque esta termine de golpe (*Job Object* de Windows).
 
 ## Requisitos

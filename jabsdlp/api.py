@@ -280,7 +280,8 @@ class Api:
                 ext = es_manifiesto(url)
                 if not ext:
                     return {'ok': False, 'error': 'No es un enlace .m3u8 ni .mpd.'}
-                referer = (solicitud.get('referer') or '').strip() or referer_desde(url)
+                # Va como cabecera HTTP: sin saltos de línea (inyección de cabeceras) y con longitud acotada
+                referer = ''.join(str(solicitud.get('referer') or '').split())[:500] or referer_desde(url)
                 if referer and not referer.lower().startswith(('http://', 'https://')):
                     referer = 'https://' + referer
                 nombre = nombre_manifiesto((solicitud.get('nombre') or '').strip() or url)
