@@ -1,6 +1,7 @@
 """Analiza una URL (video o playlist) sin descargar: metadatos, miniatura y formatos."""
 import re
 import threading
+import time
 import uuid
 from collections import OrderedDict
 from urllib.parse import urlsplit
@@ -220,7 +221,14 @@ class Analizador:
         opciones.update(extra)
         try:
             with yt_dlp.YoutubeDL(opciones) as ydl:
-                info = ydl.sanitize_info(ydl.extract_info(url, download=False))
+                try:
+                    info = ydl.extract_info(url, download=False)
+                except yt_dlp.utils.DownloadError as e:
+                    if clasificar_error(e)[0] != 'red':
+                        raise
+                    time.sleep(1.5)   # un fallo de red/DNS pasajero no debe marcar el enlace como caído
+                    info = ydl.extract_info(url, download=False)
+                info = ydl.sanitize_info(info)
                 formatos = info.get('formats') or []
                 videos = [f for f in formatos if f.get('height')]
                 if videos:
@@ -275,6 +283,13 @@ def _resumen_manifiesto(texto, ext):
             drm = re.search(r'KEYFORMAT="(?!identity)[^"]+"', texto) or any(m.upper() == 'SAMPLE-AES' for m in metodos)
             cifrado = 'drm' if drm else 'aes'
         return {'fragmentos': len(duraciones) or None, 'suma': sum(duraciones) or None, 'cifrado': cifrado}
+    repeticiones = [re.search(r'\br="(\d+)"', s) for s in re.findall(r'<S\b[^>]*>', texto)]
     fragmentos = len(re.findall(r'<SegmentURL\b', texto)) or \
-        sum(int(r or 0) + 1 for r in re.findall(r'<S\b[^>]*?(?:\br="(\d+)")?[^>]*/?>', texto)) or None
-    return {'fragmentos': fragmentos, 'suma': None, 'cifrado': 'drm' if '<ContentProtection' in texto else None}
+        sum(int(r.group(1)) + 1 if r else 1 for r in repeticiones) or None
+    # Duración ISO 8601 del MPD: mediaPresentationDuration="PT0H10M54.00S"
+    m = re.search(r'mediaPresentationDuration="P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:([\d.]+)S)?"', texto)
+    suma = None
+    if m:
+        d, h, mi, s = (float(x) if x else 0.0 for x in m.groups())
+        suma = d * 86400 + h * 3600 + mi * 60 + s or None
+    return {'fragmentos': fragmentos, 'suma': suma, 'cifrado': 'drm' if '<ContentProtection' in texto else None}
