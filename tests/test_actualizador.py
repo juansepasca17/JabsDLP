@@ -1,3 +1,4 @@
+import hashlib
 import os
 import sys
 from contextlib import contextmanager
@@ -25,11 +26,12 @@ def preparar(tmp_path, monkeypatch, incluida, descargada, crear=True):
     monkeypatch.setenv('LOCALAPPDATA', str(tmp_path))
     monkeypatch.setattr(actualizador, '_incluida', incluida)
     monkeypatch.setattr(actualizador, '_activa', None)
-    archivos = ['yt_dlp-x.whl', 'yt_dlp_ejs-x.whl']
+    archivos = [f'yt_dlp-{descargada}-py3-none-any.whl', 'yt_dlp_ejs-0.8.0-py3-none-any.whl']
     if crear:
         for a in archivos:
             open(os.path.join(actualizador.carpeta(), a), 'wb').close()
-    actualizador.guardar_estado({'version': descargada, 'archivos': archivos})
+    vacio = hashlib.sha256(b'').hexdigest()
+    actualizador.guardar_estado({'version': descargada, 'archivos': archivos, 'sha256': {a: vacio for a in archivos}})
 
 
 def test_no_activa_si_la_incluida_es_igual_o_mas_nueva(tmp_path, monkeypatch):
@@ -82,7 +84,7 @@ def test_activar_con_descargada_mas_nueva_instala_el_finder(tmp_path, monkeypatc
         # el finder gana a cualquier otro importador: va el primero en sys.meta_path
         assert sys.meta_path[0] is actualizador._buscador
         # y los .whl quedan en sys.path por delante (importlib.metadata y recursos)
-        assert sys.path[0] == os.path.join(actualizador.carpeta(), 'yt_dlp-x.whl')
+        assert sys.path[0] == os.path.join(actualizador.carpeta(), 'yt_dlp-2026.9.27.232945.dev0-py3-none-any.whl')
     assert actualizador._buscador is None and actualizador._activa is None
 
 
@@ -203,3 +205,41 @@ def test_restaurar_borra_tambien_error_carga(tmp_path, monkeypatch):
         f.write('traceback')
     actualizador.restaurar()
     assert not os.path.exists(ruta)
+
+
+def test_no_carga_ruedas_con_rutas_manipuladas(tmp_path, monkeypatch):
+    preparar(tmp_path, monkeypatch, '2026.8.19', '2026.9.27.232945.dev0')
+    for malo in (r'..\..\evil-py3-none-any.whl', r'C:\x\yt_dlp-1-py3-none-any.whl', '../yt_dlp-1-py3-none-any.whl',
+                 'yt_dlp-1-py3-none-any.whl.exe', 'otro-1-py3-none-any.whl'):
+        assert not actualizador.nombre_valido(malo)
+        estado = actualizador.leer_estado()
+        estado['archivos'] = [malo]
+        estado['sha256'] = {malo: hashlib.sha256(b'').hexdigest()}
+        actualizador.guardar_estado(estado)
+        assert actualizador.activar() is None
+
+
+def test_no_activa_si_el_sha_no_coincide(tmp_path, monkeypatch):
+    preparar(tmp_path, monkeypatch, '2026.8.19', '2026.9.27.232945.dev0')
+    estado = actualizador.leer_estado()
+    with open(os.path.join(actualizador.carpeta(), estado['archivos'][0]), 'wb') as f:
+        f.write(b'codigo alterado')
+    assert actualizador.activar() is None
+
+
+def test_estado_antiguo_sin_sumas_no_se_activa(tmp_path, monkeypatch):
+    preparar(tmp_path, monkeypatch, '2026.8.19', '2026.9.27.232945.dev0')
+    estado = actualizador.leer_estado()
+    del estado['sha256']
+    actualizador.guardar_estado(estado)
+    assert actualizador.activar() is None
+
+
+def test_descarga_rechaza_nombre_o_host_no_validos(tmp_path, monkeypatch):
+    import pytest
+    monkeypatch.setenv('LOCALAPPDATA', str(tmp_path))
+    malos = [{'filename': '../x-py3-none-any.whl', 'url': 'https://files.pythonhosted.org/x', 'digests': {'sha256': ''}},
+             {'filename': 'yt_dlp-1-py3-none-any.whl', 'url': 'https://evil.example/x.whl', 'digests': {'sha256': ''}}]
+    for archivo in malos:
+        with pytest.raises(RuntimeError):
+            actualizador._descargar(archivo, os.path.join(actualizador.carpeta(), 'x.whl'), 0, 1)

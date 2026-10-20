@@ -25,6 +25,10 @@ PYPI = 'https://pypi.org/pypi/{paquete}/{version}json'
 PAQUETES = ('yt_dlp', 'yt_dlp_ejs')
 CANALES = ('estable', 'nightly')
 INTERVALO_AUTO = 20 * 3600  # comprobar al abrir como mucho una vez cada 20 h
+# Solo se aceptan ruedas de yt-dlp / yt-dlp-ejs con nombre simple (sin rutas) y descargadas de PyPI
+PATRON_RUEDA = re.compile(r'^yt_dlp(_ejs)?-[0-9A-Za-z.+]+-py3-none-any\.whl$')
+PATRON_VERSION = re.compile(r'^\d+(\.\d+)*(\.dev\d+)?$')
+HOST_PYPI = 'https://files.pythonhosted.org/'
 
 _activa = None        # versión descargada que está en uso en este proceso (o None si es la incluida)
 _incluida = None      # versión empaquetada; se lee antes de activar (después los metadatos apuntan a la descargada)
@@ -75,9 +79,38 @@ def guardar_estado(estado):
     os.replace(ruta + '.tmp', ruta)
 
 
-def _rutas(estado):
-    rutas = [os.path.join(carpeta(), a) for a in estado.get('archivos') or []]
-    return rutas if rutas and all(os.path.isfile(r) for r in rutas) else None
+def nombre_valido(nombre):
+    return isinstance(nombre, str) and bool(PATRON_RUEDA.match(nombre))
+
+
+def _sha256(ruta):
+    sha = hashlib.sha256()
+    with open(ruta, 'rb') as f:
+        while bloque := f.read(1 << 20):
+            sha.update(bloque)
+    return sha.hexdigest()
+
+
+def _rutas(estado, verificar=False):
+    """Rutas de las ruedas descargadas, o None si falta alguna o el estado no es de fiar.
+
+    Los nombres deben ser simples (nada de '..' ni rutas absolutas): un estado.json manipulado no puede hacer
+    que se cargue código de otra carpeta. Con verificar=True se comprueba además el SHA-256 guardado.
+    """
+    nombres = estado.get('archivos') or []
+    sumas = estado.get('sha256') or {}
+    if not nombres or not all(nombre_valido(n) for n in nombres) or not all(n in sumas for n in nombres):
+        return None
+    rutas = [os.path.join(carpeta(), n) for n in nombres]
+    if not all(os.path.isfile(r) for r in rutas):
+        return None
+    if verificar:
+        try:
+            if any(_sha256(r) != sumas[n] for r, n in zip(rutas, nombres)):
+                return None
+        except OSError:
+            return None
+    return rutas
 
 
 class _Buscador(importlib.abc.MetaPathFinder):
@@ -98,8 +131,10 @@ def activar():
     version_incluida()
     estado = leer_estado()
     version = estado.get('version')
-    rutas = _rutas(estado)
-    if not version or not rutas or estado.get('roto') or tupla(version) <= tupla(version_incluida()):
+    if not version or estado.get('roto') or tupla(version) <= tupla(version_incluida()):
+        return None
+    rutas = _rutas(estado, verificar=True)   # SHA-256 de nuevo antes de cargar código
+    if not rutas:
         return None
     _buscador = _Buscador(rutas)
     sys.meta_path.insert(0, _buscador)
@@ -152,6 +187,8 @@ def ultima_version(canal):
 
 
 def _descargar(archivo, destino, progreso_base, peso):
+    if not nombre_valido(archivo.get('filename')) or not str(archivo.get('url') or '').startswith(HOST_PYPI):
+        raise RuntimeError('PyPI devolvió un archivo con nombre o dirección no válidos; se descartó.')
     sha = hashlib.sha256()
     temporal = destino + '.parcial'
     peticion = urllib.request.Request(archivo['url'], headers={'User-Agent': 'JabsDLP'})
@@ -197,6 +234,8 @@ def actualizar(canal='estable'):
         try:
             canal = canal if canal in CANALES else 'estable'
             objetivo = ultima_version(canal)
+            if not PATRON_VERSION.match(str(objetivo)):
+                raise RuntimeError(f'Versión no válida recibida de PyPI: {str(objetivo)[:40]}')
             estado = leer_estado()
             estado['comprobado'] = time.time()
             en_uso = _activa or version_incluida()
@@ -235,6 +274,8 @@ def actualizar(canal='estable'):
                 raise RuntimeError(f'yt-dlp {objetivo} no tiene paquete descargable.')
             fijado = next((m.group(1) for r in datos['info'].get('requires_dist') or []
                            if (m := re.match(r'yt-dlp-ejs\s*==\s*([\w.]+)', r))), None)
+            if fijado and not PATRON_VERSION.match(fijado):
+                raise RuntimeError(f'Versión de yt-dlp-ejs no válida: {fijado[:40]}')
             archivos = [(rueda, 0.0, 0.85)]
             if fijado:
                 datos_ejs = _json(PYPI.format(paquete='yt-dlp-ejs', version=f'{fijado}/'))
@@ -247,6 +288,7 @@ def actualizar(canal='estable'):
 
             nombres = [a['filename'] for a, _, _ in archivos]
             guardar_estado({'version': objetivo, 'canal': canal, 'ejs': fijado, 'archivos': nombres,
+                            'sha256': {a['filename']: a['digests']['sha256'] for a, _, _ in archivos},
                             'fecha': time.time(), 'comprobado': time.time()})
             _limpiar(conservar=nombres)
             _tarea.update(estado='listo', progreso=1.0, mensaje=f'yt-dlp {objetivo} descargado; reinicia para usarlo.')
