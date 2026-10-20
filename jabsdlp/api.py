@@ -180,7 +180,8 @@ class Api:
         if resumen['activos'] or resumen['en_cola']:
             return {'ok': False, 'error': 'Hay descargas en curso: espera a que terminen o cancélalas antes de reiniciar.'}
         comando = [sys.executable] if getattr(sys, 'frozen', False) else [sys.executable, os.path.abspath(sys.argv[0])]
-        entorno = dict(os.environ, PYINSTALLER_RESET_ENVIRONMENT='1')  # nueva instancia independiente del .exe
+        # nueva instancia independiente del .exe; espera a que esta se cierre (instancia única)
+        entorno = dict(os.environ, PYINSTALLER_RESET_ENVIRONMENT='1', JABSDLP_REINICIO='1')
         from .procesos import CREATE_BREAKAWAY_FROM_JOB
         subprocess.Popen(comando, env=entorno, close_fds=True, creationflags=CREATE_BREAKAWAY_FROM_JOB)
         if self._ventana is not None:

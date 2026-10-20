@@ -61,6 +61,11 @@ def main():
         resto = sys.argv[sys.argv.index('--diagnostico') + 1:]
         diagnostico(resto[0] if resto else 'jabsdlp_diagnostico.json', resto[1] if len(resto) > 1 else None)
         return
+    # Una sola instancia: si ya está abierta (p. ej. oculta en la bandeja), se muestra esa y esta se cierra
+    reinicio = os.environ.pop('JABSDLP_REINICIO', None) == '1'
+    if not procesos.instancia_unica(esperar=15.0 if reinicio else 0.0):
+        procesos.avisar_instancia_abierta()
+        return
     api = Api()
     ventana = webview.create_window(
         APP_NAME,
@@ -75,15 +80,20 @@ def main():
     # La X cierra la app: con "retomar" se guardan los pendientes para continuarlos al reabrir
     ventana.events.closing += lambda: api.cerrar()
 
-    # Minimizar → se oculta en la bandeja y las descargas siguen
+    # Minimizar → se oculta en la bandeja y las descargas siguen (si está activado en Ajustes)
     bandeja = None
+
+    def mostrar():
+        if bandeja is not None:
+            bandeja.ocultar()
+        ventana.show()
+        ventana.restore()
+
+    procesos.escuchar_mostrar(mostrar)   # abrir JabsDLP otra vez muestra esta ventana
+
     png = recurso('assets', 'icono.png')
     if os.path.exists(png):
         from jabsdlp.bandeja import Bandeja
-
-        def mostrar():
-            ventana.show()
-            ventana.restore()
 
         bandeja = Bandeja(
             png, mostrar=mostrar,

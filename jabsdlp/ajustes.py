@@ -69,7 +69,7 @@ AJUSTES_POR_DEFECTO = {
     'limite_velocidad': 5.0,            # MB/s en total entre todas las descargas (0 = sin límite)
     'notificaciones': True,
     'notificar_modo': 'grupo',          # cada (cada video) | grupo (una vez por playlist o lote)
-    'bandeja_al_minimizar': True,
+    'bandeja_al_minimizar': False,
     'tema': 'oscuro',                   # oscuro | claro | sistema
     'idioma': 'auto',                   # auto | es | en
     'numerar_playlist': False,

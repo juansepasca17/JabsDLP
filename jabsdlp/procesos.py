@@ -49,3 +49,64 @@ def proteger():
         return True
     kernel32.CloseHandle(wintypes.HANDLE(job))
     return False
+
+
+# ---------- una sola instancia ----------
+MUTEX = r'Local\JabsDLP-instancia'
+EVENTO = r'Local\JabsDLP-mostrar'
+_mutex = None
+
+
+def instancia_unica(esperar=0.0):
+    """True si esta es la única instancia. Con `esperar` (reinicio) se reintenta mientras la anterior se cierra."""
+    global _mutex
+    if os.name != 'nt':
+        return True
+    import time
+    kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+    kernel32.CreateMutexW.restype = wintypes.HANDLE
+    limite = time.monotonic() + esperar
+    while True:
+        mutex = kernel32.CreateMutexW(None, False, MUTEX)
+        if mutex and ctypes.get_last_error() != 183:   # ERROR_ALREADY_EXISTS
+            _mutex = mutex   # se mantiene abierto mientras viva el proceso
+            return True
+        if mutex:
+            kernel32.CloseHandle(wintypes.HANDLE(mutex))
+        if not mutex or time.monotonic() >= limite:
+            return not mutex   # si Windows no deja crear el mutex, no se bloquea el arranque
+        time.sleep(0.25)
+
+
+def avisar_instancia_abierta():
+    """Pide a la instancia que ya está abierta que muestre su ventana."""
+    if os.name != 'nt':
+        return False
+    kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+    kernel32.OpenEventW.restype = wintypes.HANDLE
+    evento = kernel32.OpenEventW(0x0002, False, EVENTO)   # EVENT_MODIFY_STATE
+    if not evento:
+        return False
+    kernel32.SetEvent(wintypes.HANDLE(evento))
+    kernel32.CloseHandle(wintypes.HANDLE(evento))
+    return True
+
+
+def escuchar_mostrar(funcion):
+    """En un hilo: cada vez que otra instancia se abre, llama a `funcion` (mostrar la ventana)."""
+    if os.name != 'nt':
+        return
+    import threading
+    kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+    kernel32.CreateEventW.restype = wintypes.HANDLE
+    evento = kernel32.CreateEventW(None, False, False, EVENTO)   # auto-reset
+    if not evento:
+        return
+
+    def bucle():
+        while kernel32.WaitForSingleObject(wintypes.HANDLE(evento), 0xFFFFFFFF) == 0:
+            try:
+                funcion()
+            except Exception:  # noqa: BLE001 - la ventana pudo cerrarse
+                pass
+    threading.Thread(target=bucle, daemon=True, name='otra-instancia').start()
