@@ -248,6 +248,7 @@ function irA(vista) {
   if (vista === 'cola') refrescarCola();
   if (vista === 'ajustes') { pintarAjustes(); refrescarHerramientas(); }
   if (vista === 'biblioteca') abrirBiblioteca();
+  if (typeof pintarPanelStack === 'function') pintarPanelStack();
 }
 
 /* ================= metadatos ================= */
@@ -503,8 +504,9 @@ function pieHTML(texto, habilitado) {
       <div class="destino" title="${esc(destino)}">${ico('folder', 'sm')}<span>${esc(destino)}</span></div>
       <div class="acciones">
         ${['video', 'playlist', 'lote'].includes(S.analisis?.tipo) ? `<button class="btn pildora" data-accion="guardar-en-coleccion" title="Guardar para más tarde o para compartir">${ico('bookmark')}Guardar</button>` : ''}
-        <button class="btn pildora" data-accion="cancelar-analisis">${ico('x')}Cancelar</button>
-        <button class="btn pildora primario" data-accion="descargar" ${habilitado ? '' : 'disabled'}>${ico('check')}${esc(texto)}</button>
+        ${S.ajustes.modo_stack && S.stack.sel ? `<button class="btn pildora" data-accion="stack-quitar-actual">${ico('x')}Quitar del stack</button>`
+          : `<button class="btn pildora" data-accion="cancelar-analisis">${ico('x')}Cancelar</button>`}
+        <button class="btn pildora primario" data-accion="descargar" ${habilitado ? '' : 'disabled'}>${ico('check')}${esc(S.ajustes.modo_stack && S.stack.sel && texto === 'Descargar' ? 'Descargar solo este' : texto)}</button>
       </div>
     </div>`;
 }
@@ -619,8 +621,10 @@ function inicioHTML() {
 }
 
 function renderDescargar() {
-  if (S.ajustes?.modo_stack && !S.cargando && !S.analisis && !S.error) return renderStack();
+  const conStack = typeof pintarPanelStack === 'function';   // organizar.js se carga después de app.js
+  if (conStack && S.ajustes?.modo_stack && !S.stack.items.length) return renderStack();
   $('#stack-vista')?.classList.add('oculto');
+  if (conStack) pintarPanelStack();
   $$('#modo button').forEach(b => b.classList.toggle('activo', b.dataset.modo === S.modo));
   $('#btn-analizar').innerHTML = S.cargando ? `${ico('loader', 'spin')}Analizando…` : `${ico('search')}Analizar`;
   $('#btn-analizar').disabled = S.cargando;
@@ -770,6 +774,8 @@ async function analizar() {
       agregarAlStack(urls);
       return;
     }
+    guardarEstadoActual();
+    S.stack.sel = null;   // un torrent o un .m3u8 se analiza aparte, fuera del stack
   }
   S.cargando = true; S.error = null; S.analisis = null; S.calc = null;
   S.seleccion = null; S.audioId = null; S.verManual = false;
@@ -861,6 +867,7 @@ async function descargar() {
     solicitud = { tipo: 'lote', urls: a.urls.filter((_, i) => S.plSel.has(i)), prefs: S.prefs, quitar_anuncios: anuncios };
   }
   const r = await API.descargar(solicitud);
+  if (r.ok && S.ajustes.modo_stack && S.stack.sel) marcarActualEnviado();
   if (r.ok) toast(`${r.agregados} ${r.agregados === 1 ? 'descarga añadida' : 'descargas añadidas'} a la cola. <a data-vista="cola">Ver cola</a>`, 'ok');
   else toast(esc(r.error), 'err');
   refrescarCola();
@@ -1245,7 +1252,9 @@ async function guardarAjuste(cambios) {
   S.ajustes = await API.guardar_ajustes(cambios);
   pintarAjustes();
   if ('modo_stack' in cambios) {
-    if (cambios.modo_stack) { S.analisis = null; S.error = null; }
+    S.analisis = null; S.error = null; S.cargando = false; S.calc = null;
+    if (cambios.modo_stack && S.stack.items.length) return seleccionarStack(S.stack.sel || S.stack.items[0].uid);
+    if (!cambios.modo_stack) S.stack.sel = null;
     renderDescargar();
   }
   if (S.ajustes.captura_error) toast(esc(S.ajustes.captura_error), 'err');
@@ -1560,6 +1569,7 @@ cuandoListo(async () => {
   cargarColecciones();
   pintarAjustes();
   renderDescargar();
+  if (S.ajustes.modo_stack && S.stack.items.length) seleccionarStack(S.stack.items[0].uid);
   refrescarHerramientas();
   bucleCola();
   $('#url').focus();

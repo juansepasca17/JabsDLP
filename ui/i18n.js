@@ -327,6 +327,11 @@
     'Pega enlaces o playlists (o usa el atajo de captura rápida) y se irán sumando aquí. Después los descargas todos juntos en una carpeta, con la configuración general o una por video.':
       'Paste links or playlists (or use the quick capture shortcut) and they will pile up here. Then download them all together into one folder, with the general settings or per video.',
     'No se pudo analizar.': 'Couldn\'t analyze it.',
+    'Descargar solo este': 'Download only this one', 'Incluir al descargar todo': 'Include in "Download all"',
+    'Manual': 'Manual', 'No hay videos marcados para descargar.': 'No videos are checked for download.',
+    'Este enlace no se puede apilar (¿es un torrent o un lote?).': 'This link can\'t be stacked (is it a torrent or a batch?).',
+    'Pega enlaces o playlists (o usa el atajo de captura rápida) y se irán sumando a la derecha. Elige uno para verlo y configurarlo como siempre; después descárgalos todos juntos en una carpeta.':
+      'Paste links or playlists (or use the quick capture shortcut) and they will pile up on the right. Pick one to see and set it up as usual; then download them all together into one folder.',
   };
 
   const MESES = { ene: 'Jan', feb: 'Feb', mar: 'Mar', abr: 'Apr', may: 'May', jun: 'Jun', jul: 'Jul', ago: 'Aug', sep: 'Sep', oct: 'Oct', nov: 'Nov', dic: 'Dec' };
@@ -372,6 +377,9 @@
     [/^(\d+) (archivo enviado|archivos enviados) a la Papelera\.$/, m => `${m[1]} file${m[1] === '1' ? '' : 's'} moved to the Recycle Bin.`],
     [/^(\d+) no se pudieron mover \(¿están abiertos en otro programa\?\)\.$/, m => `${m[1]} couldn't be moved (are they open in another program?).`],
     [/^Enviado a (stack|JabsDLP)$/, m => `Sent to ${m[1]}`],
+    [/^Descargar todo \((\d+)\)$/, m => `Download all (${m[1]})`],
+    [/^Playlist · (\d+)\/(\d+) videos$/, m => `Playlist · ${m[1]}/${m[2]} videos`],
+    [/^Error: (.*)$/, m => `Error: ${tr(m[1])}`],
     [/^velocidad (.+)$/, m => `speed ${m[1]}`], [/^Convertido con (.+)$/, m => `Converted with ${m[1]}`],
     [/^Tras (\d+) reintentos?$/, m => `After ${m[1]} ${m[1] === '1' ? 'retry' : 'retries'}`],
     [/^Reintento (\d+) de (\d+) en (\d+) s$/, m => `Retry ${m[1]} of ${m[2]} in ${m[3]} s`], [/^Reintento (\d+) de (\d+)$/, m => `Retry ${m[1]} of ${m[2]}`],

@@ -47,6 +47,12 @@ TEXTOS = {
 }
 
 
+def _spec_valido(spec):
+    """Selector de formato de yt-dlp guardado para un video del stack (p. ej. '137+140', 'bv*[height<=720]+ba/b')."""
+    import re
+    return isinstance(spec, str) and 0 < len(spec) <= 200 and bool(re.fullmatch(r'[\w+/*\-\[\]=<>!?.:,()^$~ ]+', spec))
+
+
 def _segundos(valor):
     """'1:20' / '01:02:03' / '80' -> segundos; None si no es válido."""
     try:
@@ -307,9 +313,11 @@ class Api:
                 for n, item in enumerate(items, start=1):
                     propias = item.get('prefs') if isinstance(item.get('prefs'), dict) else {}
                     p = dict(normalizar({**prefs, **propias}), _stack=True)  # _stack: siempre en su subcarpeta
+                    spec = item.get('spec') if _spec_valido(item.get('spec')) else None   # formato elegido a mano
                     trabajos.append(Trabajo(item['url'], p, item.get('titulo') or None, item.get('miniatura'),
-                                            item.get('canal'), item.get('duracion'),
-                                            titulo_formato='Auto · Stack', subcarpeta=nombre, grupo_id=grupo,
+                                            item.get('canal'), item.get('duracion'), formato=spec,
+                                            titulo_formato='Manual · Stack' if spec else 'Auto · Stack',
+                                            subcarpeta=nombre, grupo_id=grupo,
                                             indice=n, total_grupo=len(items)))
             elif tipo == 'lote':
                 urls = solicitud.get('urls') or []
@@ -488,18 +496,29 @@ class Api:
 
     def guardar_stack(self, stack):
         """Guarda el stack para no perderlo al cerrar (solo enlace, título, miniatura, duración y prefs)."""
+        from .ajustes import validar_prefs
         from .colecciones import limpiar_item
-        items = []
+        items, total = [], 0
         for i in (stack or {}).get('items') or []:
             limpio = limpiar_item(i, permitir_rutas=False) if isinstance(i, dict) else None
-            if limpio:
-                propias = i.get('prefs') if isinstance(i.get('prefs'), dict) else None
-                grupo = i.get('grupo') if isinstance(i.get('grupo'), dict) else None   # playlist de origen
-                items.append({**limpio, 'prefs': {k: v for k, v in (propias or {}).items()
-                                                  if k in ('tipo', 'resolucion')} or None,
-                              'grupo': {'id': str(grupo.get('id'))[:24], 'titulo': str(grupo.get('titulo') or '')[:200],
-                                        'miniatura': grupo.get('miniatura') if str(grupo.get('miniatura') or '').startswith('https://') else None}
-                              if grupo and grupo.get('id') else None})
+            if not limpio or total >= 2000:
+                continue
+            propias = validar_prefs(i.get('prefs')) if isinstance(i.get('prefs'), dict) else None
+            item = {**limpio, 'tipo': 'playlist' if i.get('tipo') == 'playlist' else 'video', 'prefs': propias or None,
+                    'spec': i['spec'] if _spec_valido(i.get('spec')) else None, 'incluir': i.get('incluir') is not False}
+            if item['tipo'] == 'playlist':
+                entradas = []
+                for e in (i.get('entradas') or [])[:1000]:
+                    en = limpiar_item(e, permitir_rutas=False) if isinstance(e, dict) else None
+                    if en:
+                        en['indice'] = int(e['indice']) if isinstance(e.get('indice'), int) else len(entradas) + 1
+                        entradas.append(en)
+                item['entradas'] = entradas
+                item['marcados'] = [int(n) for n in (i.get('marcados') or []) if isinstance(n, int)][:1000] \
+                    if isinstance(i.get('marcados'), list) else None
+                total += len(entradas)
+            items.append(item)
+            total += 1
         datos = {'nombre': str((stack or {}).get('nombre') or '')[:120], 'items': items[:500]}
         temporal = self._ruta_stack() + '.tmp'
         try:
