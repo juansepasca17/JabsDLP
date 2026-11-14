@@ -469,10 +469,24 @@ textarea.entrada.area { height: auto; min-height: 70px; padding: 10px 12px; font
 .stack-panel .stack-cabecera { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 4px; }
 .campo-linea { display: flex; align-items: center; gap: 8px; margin-left: auto; color: var(--muted); font-size: 12.5px; }
 .campo-linea .entrada { width: 280px; height: 34px; }
-.lista-stack { max-height: 420px; margin-top: 12px; }
-.item-stack { grid-template-columns: 22px 26px 72px 1fr auto auto 150px 32px; cursor: default; }
-.item-stack .casilla { cursor: pointer; }
-.item-stack select { height: 30px; font-size: 12px; }
+.lista-stack { max-height: 460px; margin-top: 12px; }
+.stack-columnas { margin-top: 18px; }
+.stack-columnas .cabecera-col .campo-linea .entrada { width: 240px; }
+.item-stack { grid-template-columns: 22px 26px 72px 1fr auto auto 30px; }
+.item-stack.activo, .grupo-stack.activo { background: var(--accent-bg); box-shadow: inset 3px 0 0 var(--accent); }
+.item-stack.en-grupo { padding-left: 30px; }
+.item-stack .btn.icono { width: 28px; height: 28px; }
+.grupo-stack { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border);
+  background: var(--card-2); cursor: pointer; font-size: 13px; font-weight: 500; position: sticky; top: 0; z-index: 1; }
+.grupo-stack .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grupo-stack .cuenta { color: var(--dim); font-size: 12px; font-weight: 400; }
+.grupo-stack .btn.icono { width: 26px; height: 26px; }
+.stack-config { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; padding: 14px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--card); }
+.stack-config .etiqueta-grupo { margin: 0; }
+.stack-config .segmentado { align-self: flex-start; }
+.fila-res { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12.5px; }
+.stack-acciones-item { margin-top: 12px; display: flex; gap: 8px; }
 .item-stack.error .t { color: var(--err); }
 .item-stack.enviado { opacity: .6; }
 .vacio-stack { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 46px 24px; text-align: center; color: var(--muted); }

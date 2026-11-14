@@ -494,8 +494,12 @@ class Api:
             limpio = limpiar_item(i, permitir_rutas=False) if isinstance(i, dict) else None
             if limpio:
                 propias = i.get('prefs') if isinstance(i.get('prefs'), dict) else None
+                grupo = i.get('grupo') if isinstance(i.get('grupo'), dict) else None   # playlist de origen
                 items.append({**limpio, 'prefs': {k: v for k, v in (propias or {}).items()
-                                                  if k in ('tipo', 'resolucion')} or None})
+                                                  if k in ('tipo', 'resolucion')} or None,
+                              'grupo': {'id': str(grupo.get('id'))[:24], 'titulo': str(grupo.get('titulo') or '')[:200],
+                                        'miniatura': grupo.get('miniatura') if str(grupo.get('miniatura') or '').startswith('https://') else None}
+                              if grupo and grupo.get('id') else None})
         datos = {'nombre': str((stack or {}).get('nombre') or '')[:120], 'items': items[:500]}
         temporal = self._ruta_stack() + '.tmp'
         try:

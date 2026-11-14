@@ -72,19 +72,19 @@ function pedirTexto(titulo, valor = '', si = 'Guardar') {
 }
 
 /* ================= MODO STACK ================= */
-S.stack = { nombre: '', items: [] };
-const PREFS_ITEM = [
-  ['', 'Como el resto'], ['audio', 'Solo audio'], ['1080', 'Video ≤ 1080p'], ['720', 'Video ≤ 720p'], ['480', 'Video ≤ 480p'],
-];
+// Vista en dos columnas, como al analizar un video: a la izquierda el elemento seleccionado en grande con su
+// configuración; a la derecha la lista del stack (las playlists salen agrupadas y plegables).
+S.stack = { nombre: '', items: [], sel: null, plegados: new Set() };
 
 function nombreStackPorDefecto() {
   const d = new Date(), p = n => String(n).padStart(2, '0');
   return `Stack ${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}-${p(d.getMinutes())}`;
 }
 
+function esPlaylistUrl(url) { return /[?&]list=|\/playlist|\/sets\/|\/album\//i.test(url); }
+
 function apilable(url) {
-  return /^https?:\/\//i.test(url) && !/[?&]list=|\/playlist|\/sets\/|\/album\//i.test(url)
-    && !/\.(m3u8|mpd)(\?|#|$)/i.test(url.split('?')[0] + '?') ;
+  return /^https?:\/\//i.test(url) && !/\.(m3u8|mpd)$/i.test(url.split(/[?#]/)[0]);
 }
 
 let temporizadorStack = null;
@@ -92,30 +92,63 @@ function guardarStackLuego() {
   clearTimeout(temporizadorStack);
   temporizadorStack = setTimeout(() => API.guardar_stack({
     nombre: S.stack.nombre,
-    items: S.stack.items.filter(i => i.estado !== 'error').map(i => ({ ...i.datos, url: i.url, prefs: i.prefs })),
+    items: S.stack.items.filter(i => i.estado === 'listo' || i.estado === 'analizando')
+      .map(i => ({ ...i.datos, url: i.url, prefs: i.prefs, grupo: i.grupo })),
   }), 400);
 }
 
-function itemDeStack(url) {
-  return { uid: Math.random().toString(36).slice(2), url, estado: 'analizando', datos: { url }, prefs: null, sel: true };
+function itemDeStack(url, datos = null, grupo = null) {
+  return { uid: Math.random().toString(36).slice(2), url, estado: datos ? 'listo' : 'analizando',
+           datos: datos || { url }, prefs: null, sel: true, grupo };
 }
 
 async function agregarAlStack(urls) {
   urls = urls.filter(apilable);
   if (!urls.length) return false;
   if (!S.stack.nombre) S.stack.nombre = nombreStackPorDefecto();
-  const nuevos = [];
+  let nuevos = 0;
   for (const url of urls) {
+    if (esPlaylistUrl(url) || S.modo === 'playlist') { agregarPlaylistAlStack(url); nuevos++; continue; }
     if (S.stack.items.some(i => i.url === url)) continue;
     const item = itemDeStack(url);
     S.stack.items.push(item);
-    nuevos.push(item);
+    S.stack.sel = item.uid;
+    nuevos++;
+    analizarItemStack(item);
   }
-  if (!nuevos.length) { toast('Ese enlace ya está en el stack.'); return true; }
+  if (!nuevos) { toast('Ese enlace ya está en el stack.'); return true; }
   renderDescargar();
-  toast(nuevos.length === 1 ? 'Añadido al stack.' : `${nuevos.length} enlaces añadidos al stack.`, 'ok');
-  for (const item of nuevos) analizarItemStack(item);
+  toast(nuevos === 1 ? 'Añadido al stack.' : `${nuevos} enlaces añadidos al stack.`, 'ok');
   return true;
+}
+
+// Una playlist se extrae y sus videos entran agrupados (con su propia cabecera en la lista)
+async function agregarPlaylistAlStack(url) {
+  const id = 'g' + Math.random().toString(36).slice(2, 8);
+  const marcador = itemDeStack(url, null, { id, titulo: 'Playlist…' });
+  marcador.esMarcador = true;
+  S.stack.items.push(marcador);
+  S.stack.sel = 'g:' + id;
+  renderDescargar();
+  let r;
+  try { r = await API.analizar(url, 'playlist', S.prefs); } catch (e) { r = { ok: false, error: String(e) }; }
+  const pos = S.stack.items.indexOf(marcador);
+  if (pos < 0) return;
+  if (!r.ok || r.datos.tipo !== 'playlist') {
+    marcador.estado = 'error';
+    marcador.error = r.ok ? 'No es una playlist.' : r.error;
+    marcador.grupo.titulo = url;
+  } else {
+    const d = r.datos;
+    const grupo = { id, titulo: d.titulo, miniatura: d.miniatura?.startsWith('https://') ? d.miniatura : null };
+    const vistos = new Set(S.stack.items.map(i => i.url));
+    const entradas = d.entradas.filter(e => !vistos.has(e.url)).map(e => itemDeStack(e.url,
+      { url: e.url, titulo: e.titulo, miniatura: e.miniatura, duracion: e.duracion, canal: e.canal || d.canal }, grupo));
+    S.stack.items.splice(pos, 1, ...entradas);
+    if (S.ajustes.stack_auto && entradas.length) enviarItems(entradas);
+  }
+  guardarStackLuego();
+  if (S.vista === 'descargar') renderDescargar();
 }
 
 async function analizarItemStack(item) {
@@ -124,25 +157,137 @@ async function analizarItemStack(item) {
   if (!S.stack.items.includes(item)) return;
   if (r.ok && r.datos.tipo === 'video') {
     const d = r.datos;
-    item.datos = { url: item.url, titulo: d.titulo, miniatura: d.miniatura, duracion: d.duracion, canal: d.canal };
+    item.datos = { url: item.url, titulo: d.titulo, miniatura: d.miniatura, duracion: d.duracion, canal: d.canal,
+                   extractor: d.extractor, resolucion: d.resolucion };
     item.estado = 'listo';
+    if (S.ajustes.stack_auto) await enviarItems([item]);
   } else {
     item.estado = 'error';
-    item.error = r.ok ? 'No es un video suelto (¿playlist?): analízalo sin el modo stack.' : r.error;
-  }
-  if (item.estado === 'listo' && S.ajustes.stack_auto) {
-    const res = await API.descargar({ tipo: 'stack', nombre: S.stack.nombre, prefs: S.prefs,
-                                      items: [{ ...item.datos, prefs: prefsDeItem(item) }] });
-    if (res.ok) { item.estado = 'enviado'; refrescarCola(); } else toast(esc(res.error), 'err');
+    item.error = r.ok ? 'No es un video suelto.' : r.error;
   }
   guardarStackLuego();
   if (S.vista === 'descargar') renderDescargar();
 }
 
-function prefsDeItem(item) {
-  if (!item.prefs) return null;
-  if (item.prefs === 'audio') return { tipo: 'audio' };
-  return { tipo: 'video', resolucion: item.prefs };
+async function enviarItems(items) {
+  const r = await API.descargar({ tipo: 'stack', nombre: S.stack.nombre || nombreStackPorDefecto(), prefs: S.prefs,
+                                  items: items.map(i => ({ ...i.datos, prefs: i.prefs })) });
+  if (!r.ok) { toast(esc(r.error), 'err'); return false; }
+  items.forEach(i => { i.estado = 'enviado'; });
+  refrescarCola();
+  return true;
+}
+
+// ---------- grupos y selección ----------
+function gruposDelStack() {
+  // [{grupo|null, items}] respetando el orden de llegada
+  const bloques = [];
+  for (const it of S.stack.items) {
+    const ultimo = bloques[bloques.length - 1];
+    if (it.grupo && ultimo?.grupo?.id === it.grupo.id) ultimo.items.push(it);
+    else bloques.push({ grupo: it.grupo || null, items: [it] });
+  }
+  return bloques;
+}
+
+function seleccionado() {
+  const sel = S.stack.sel;
+  if (sel?.startsWith('g:')) {
+    const items = S.stack.items.filter(i => i.grupo?.id === sel.slice(2));
+    if (items.length) return { grupo: items[0].grupo, items };
+  }
+  const item = S.stack.items.find(i => i.uid === sel) || S.stack.items[0];
+  if (item?.esMarcador) return { grupo: item.grupo, items: [item] };
+  return item ? { item } : null;
+}
+
+const OPCION_PREFS = [['resto', 'Como el resto'], ['video', 'Video'], ['audio', 'Solo audio']];
+const RESOLUCIONES = [['', 'Máxima'], ['1080', '1080p'], ['720', '720p'], ['480', '480p']];
+
+function prefsHTML(prefs, destino) {
+  const modo = !prefs ? 'resto' : prefs.tipo === 'audio' ? 'audio' : 'video';
+  return `<div class="stack-config">
+      <div class="etiqueta-grupo">${ico('sliders', 'sm')}${destino === 'grupo' ? 'Configuración de toda la playlist' : 'Configuración de este video'}</div>
+      <div class="segmentado">${OPCION_PREFS.map(([v, t]) =>
+        `<button class="${modo === v ? 'activo' : ''}" data-stack-modo="${v}">${t}</button>`).join('')}</div>
+      ${modo === 'video' ? `<div class="fila-res"><span class="dim">Resolución máxima</span><div class="segmentado">${RESOLUCIONES.map(([v, t]) =>
+        `<button class="${(prefs.resolucion || '') === v ? 'activo' : ''}" data-stack-res="${v}">${t}</button>`).join('')}</div></div>` : ''}
+      <small class="dim">${modo === 'resto' ? 'Usa las preferencias generales del stack (las de arriba).'
+        : modo === 'audio' ? 'Se descarga solo el audio, en el formato de tus preferencias de audio.'
+        : 'Video con el resto de tus preferencias y, como mucho, la resolución elegida.'}</small>
+    </div>`;
+}
+
+function detalleStackHTML() {
+  const s = seleccionado();
+  if (!s) return '';
+  if (s.grupo) {
+    const g = s.grupo, items = s.items;
+    const cargando = items.some(i => i.esMarcador && i.estado === 'analizando');
+    const error = items.find(i => i.esMarcador && i.estado === 'error');
+    const total = items.filter(i => !i.esMarcador).reduce((a, i) => a + (i.datos.duracion || 0), 0);
+    const img = g.miniatura || items.find(i => i.datos.miniatura)?.datos.miniatura;
+    return `<div class="miniatura">${img ? `<img src="${esc(img)}" alt="" referrerpolicy="no-referrer">` : ''}
+        <div class="tipo-lista">${ico(cargando ? 'loader' : 'playlist', cargando ? 'lg spin' : 'lg')}<span>${cargando ? 'Extrayendo…' : `${items.length} videos`}</span></div></div>
+      <div class="meta-titulo no-traducir">${esc(cargando ? 'Extrayendo la playlist…' : g.titulo)}</div>
+      ${error ? `<div class="aviso">${ico('alert', 'sm')}<span>${esc(error.error)}</span></div>` : ''}
+      ${cargando || error ? '' : `<div class="meta-fila"><span>${ico('playlist', 'sm')}${items.length} videos</span>
+        ${total ? `<span>${ico('clock', 'sm')}${fmt.dur(total)} en total</span>` : ''}</div>
+      ${prefsHTML(items.every(i => JSON.stringify(i.prefs) === JSON.stringify(items[0].prefs)) ? items[0].prefs : null, 'grupo')}`}
+      <div class="stack-acciones-item"><button class="btn chico peligro" data-stack-quitar-grupo="${esc(g.id)}">${ico('trash', 'sm')}Quitar la playlist del stack</button></div>`;
+  }
+  const i = s.item, d = i.datos;
+  const host = (() => { try { return new URL(i.url).hostname.replace(/^www\./, ''); } catch { return ''; } })();
+  return `<div class="miniatura">${d.miniatura ? `<img src="${esc(d.miniatura)}" alt="" referrerpolicy="no-referrer">` : ''}
+      ${i.estado === 'analizando' ? `<div class="tipo-lista">${ico('loader', 'lg spin')}<span>Analizando…</span></div>` : ''}
+      ${d.duracion ? `<span class="duracion">${fmt.dur(d.duracion)}</span>` : ''}</div>
+    <div class="meta-titulo no-traducir" title="${esc(d.titulo || i.url)}">${esc(d.titulo || i.url)}</div>
+    <div class="meta-canal no-traducir">${esc(d.canal || '')}</div>
+    <div class="meta-fila">
+      ${d.duracion ? `<span>${ico('clock', 'sm')}${fmt.dur(d.duracion)}</span>` : ''}
+      ${d.resolucion ? `<span>${ico('monitor', 'sm')}${esc(d.resolucion)}</span>` : ''}
+      <span class="no-traducir">${ico('globe', 'sm')}${esc(d.extractor || host)}</span>
+      ${i.grupo ? `<span class="no-traducir">${ico('playlist', 'sm')}${esc(i.grupo.titulo)}</span>` : ''}
+    </div>
+    ${i.estado === 'error' ? `<div class="aviso">${ico('alert', 'sm')}<span>${esc(i.error || 'No se pudo analizar.')}</span></div>` : ''}
+    ${i.estado === 'enviado' ? `<div class="nota">${ico('check', 'sm')} Ya está en la cola de descargas.</div>` : ''}
+    ${i.estado === 'listo' ? prefsHTML(i.prefs, 'item') : ''}
+    <div class="stack-acciones-item"><button class="btn chico peligro" data-stack-quitar="${i.uid}">${ico('trash', 'sm')}Quitar del stack</button></div>`;
+}
+
+function filaStackHTML(i, n, enGrupo) {
+  const estado = {
+    analizando: `<span class="insignia">${ico('loader', 'sm spin')}</span>`,
+    enviado: '<span class="insignia ok">En la cola</span>',
+    error: `<span class="insignia err" title="${esc(i.error || '')}">Error</span>`,
+  }[i.estado] || (i.prefs ? `<span class="insignia acento">${i.prefs.tipo === 'audio' ? 'Audio' : i.prefs.resolucion ? i.prefs.resolucion + 'p' : 'Video'}</span>` : '');
+  return `<div class="item-pl item-stack ${i.estado} ${enGrupo ? 'en-grupo' : ''} ${S.stack.sel === i.uid ? 'activo' : ''}" data-stack-ver="${i.uid}">
+      <span class="casilla ${i.sel ? 'on' : ''}" data-stack-sel="${i.uid}"></span>
+      <span class="n">${n}</span>
+      ${i.datos.miniatura ? `<img src="${esc(i.datos.miniatura)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : '<span class="sin-img"></span>'}
+      <span class="t no-traducir" title="${esc(i.datos.titulo || i.url)}">${esc(i.datos.titulo || i.url)}</span>
+      <span class="estado-item">${estado}</span>
+      <span class="n">${i.datos.duracion ? fmt.dur(i.datos.duracion) : ''}</span>
+      <button class="btn chico icono fantasma" data-stack-quitar="${i.uid}" title="Quitar del stack">${ico('x', 'sm')}</button>
+    </div>`;
+}
+
+function listaStackHTML() {
+  let n = 0;
+  return gruposDelStack().map(b => {
+    if (!b.grupo) return b.items.map(i => filaStackHTML(i, ++n, false)).join('');
+    const g = b.grupo, plegado = S.stack.plegados.has(g.id);
+    const reales = b.items.filter(i => !i.esMarcador);
+    const todos = reales.length && reales.every(i => i.sel);
+    const cargando = b.items.some(i => i.esMarcador && i.estado === 'analizando');
+    return `<div class="grupo-stack ${S.stack.sel === 'g:' + g.id ? 'activo' : ''}" data-stack-grupo="${esc(g.id)}">
+        <span class="casilla ${todos ? 'on' : ''}" data-stack-sel-grupo="${esc(g.id)}"></span>
+        <button class="btn chico icono fantasma" data-stack-plegar="${esc(g.id)}" title="${plegado ? 'Desplegar' : 'Plegar'}">${ico(plegado ? 'chevron-der' : 'chevron', 'sm')}</button>
+        ${ico(cargando ? 'loader' : 'playlist', cargando ? 'sm spin' : 'sm')}
+        <span class="t no-traducir">${esc(cargando ? 'Extrayendo la playlist…' : g.titulo)}</span>
+        <span class="cuenta">${reales.length ? `${reales.filter(i => i.sel).length}/${reales.length}` : ''}</span>
+      </div>${plegado ? '' : reales.map(i => filaStackHTML(i, ++n, true)).join('')}`;
+  }).join('');
 }
 
 function renderStack() {
@@ -156,108 +301,137 @@ function renderStack() {
   $('#columnas').classList.add('oculto');
   cont.classList.remove('oculto');
   const items = S.stack.items;
-  const listos = items.filter(i => i.estado === 'listo' && i.sel);
   if (!items.length) {
     cont.innerHTML = `<div class="card pad vacio-stack">
       <div class="circulo">${ico('layers', 'lg')}</div>
       <b>El stack está vacío</b>
-      <small>Pega enlaces (o usa el atajo de captura rápida) y se irán sumando aquí. Después los descargas todos juntos en una carpeta, con la configuración general o una por video.</small>
+      <small>Pega enlaces o playlists (o usa el atajo de captura rápida) y se irán sumando aquí. Después los descargas todos juntos en una carpeta, con la configuración general o una por video.</small>
     </div>`;
     return;
   }
-  const estado = i => ({
-    analizando: `<span class="insignia">${ico('loader', 'sm spin')}Analizando</span>`,
-    listo: '', enviado: '<span class="insignia ok">En la cola</span>',
-    error: `<span class="insignia err" title="${esc(i.error || '')}">Error</span>`,
-  }[i.estado] || '');
-  cont.innerHTML = `<div class="card pad stack-panel">
-      <div class="stack-cabecera">
-        <div class="etiqueta-grupo" style="margin:0">${ico('layers', 'sm')}Stack <span class="cuenta">(${items.length})</span></div>
-        <label class="campo-linea">Carpeta
-          <input class="entrada" id="stack-nombre" spellcheck="false" maxlength="120" value="${esc(S.stack.nombre)}"></label>
+  if (!seleccionado() || (S.stack.sel && !S.stack.sel.startsWith('g:') && !items.some(i => i.uid === S.stack.sel))) S.stack.sel = items[0].uid;
+  const listos = items.filter(i => i.estado === 'listo' && i.sel && !i.esMarcador);
+  const scroll = cont.querySelector('.lista-stack')?.scrollTop;
+  cont.innerHTML = `
+    <div class="columnas stack-columnas">
+      <div class="columna-izq">
+        <div class="cabecera-col">${ico('info')}<span>Seleccionado</span></div>
+        <div id="stack-detalle">${detalleStackHTML()}</div>
       </div>
-      ${filaPrefsHTML()}
-      <div class="lista-playlist lista-stack">${items.map((i, n) => `
-        <div class="item-pl item-stack ${i.estado}" data-stack="${i.uid}">
-          <span class="casilla ${i.sel ? 'on' : ''}" data-stack-sel="${i.uid}"></span>
-          <span class="n">${n + 1}</span>
-          ${i.datos.miniatura ? `<img src="${esc(i.datos.miniatura)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : '<span class="sin-img"></span>'}
-          <span class="t no-traducir" title="${esc(i.datos.titulo || i.url)}">${esc(i.datos.titulo || i.url)}</span>
-          ${estado(i)}
-          <span class="n">${i.datos.duracion ? fmt.dur(i.datos.duracion) : ''}</span>
-          <select class="entrada chica" data-stack-prefs="${i.uid}" title="Configuración de este video">
-            ${PREFS_ITEM.map(([v, t]) => `<option value="${v}" ${String(i.prefs || '') === v ? 'selected' : ''}>${t}</option>`).join('')}
-          </select>
-          <button class="btn chico icono" data-stack-quitar="${i.uid}" title="Quitar del stack">${ico('x', 'sm')}</button>
-        </div>`).join('')}
-      </div>
-      <div class="pie-opciones">
-        <div class="acciones" style="margin-left:0;margin-right:auto">
-          <button class="btn pildora" data-accion="stack-vaciar">${ico('trash', 'sm')}Vaciar</button>
-          <button class="btn pildora" data-accion="stack-coleccion">${ico('bookmark', 'sm')}Guardar como colección</button>
+      <div class="columna-der">
+        <div class="cabecera-col">${ico('layers')}Stack <span class="cuenta">(${items.filter(i => !i.esMarcador).length})</span>
+          <label class="campo-linea">Carpeta
+            <input class="entrada" id="stack-nombre" spellcheck="false" maxlength="120" value="${esc(S.stack.nombre)}"></label>
         </div>
-        <div class="acciones">
-          <button class="btn pildora primario" data-accion="stack-descargar" ${listos.length ? '' : 'disabled'}>${ico('check')}Descargar ${listos.length} ${listos.length === 1 ? 'video' : 'videos'}</button>
+        <div class="card panel-opciones">
+          ${filaPrefsHTML()}
+          <div class="lista-playlist lista-stack">${listaStackHTML()}</div>
+          <div class="pie-opciones">
+            <div class="acciones" style="margin-left:0;margin-right:auto">
+              <button class="btn pildora" data-accion="stack-vaciar">${ico('trash', 'sm')}Vaciar</button>
+              <button class="btn pildora" data-accion="stack-coleccion">${ico('bookmark', 'sm')}Guardar como colección</button>
+            </div>
+            <div class="acciones">
+              <button class="btn pildora primario" data-accion="stack-descargar" ${listos.length ? '' : 'disabled'}>${ico('check')}Descargar ${listos.length} ${listos.length === 1 ? 'video' : 'videos'}</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>`;
+  if (scroll) cont.querySelector('.lista-stack').scrollTop = scroll;
+}
+
+function cambiarPrefsSeleccion(modo, resolucion) {
+  const s = seleccionado();
+  if (!s) return;
+  const objetivo = s.grupo ? s.items.filter(i => !i.esMarcador) : [s.item];
+  const actual = objetivo[0]?.prefs;
+  let prefs = null;
+  if (modo === 'audio') prefs = { tipo: 'audio' };
+  else if (modo === 'video') prefs = { tipo: 'video', resolucion: resolucion ?? (actual?.tipo === 'video' ? actual.resolucion || '' : '') };
+  if (prefs?.tipo === 'video' && !prefs.resolucion) delete prefs.resolucion;
+  objetivo.forEach(i => { i.prefs = prefs ? { ...prefs } : null; });
+  guardarStackLuego();
+  renderStack();
 }
 
 async function descargarStack() {
-  const elegidos = S.stack.items.filter(i => i.estado === 'listo' && i.sel);
+  const elegidos = S.stack.items.filter(i => i.estado === 'listo' && i.sel && !i.esMarcador);
   if (!elegidos.length) return;
-  const r = await API.descargar({ tipo: 'stack', nombre: S.stack.nombre || nombreStackPorDefecto(), prefs: S.prefs,
-                                  items: elegidos.map(i => ({ ...i.datos, prefs: prefsDeItem(i) })) });
-  if (!r.ok) return toast(esc(r.error), 'err');
-  elegidos.forEach(i => { i.estado = 'enviado'; });
-  toast(`${r.agregados} ${r.agregados === 1 ? 'descarga añadida' : 'descargas añadidas'} a la cola. <a data-vista="cola">Ver cola</a>`, 'ok');
-  S.stack = { nombre: '', items: S.stack.items.filter(i => i.estado !== 'enviado') };
+  if (!(await enviarItems(elegidos))) return;
+  toast(`${elegidos.length} ${elegidos.length === 1 ? 'descarga añadida' : 'descargas añadidas'} a la cola. <a data-vista="cola">Ver cola</a>`, 'ok');
+  S.stack = { nombre: '', items: S.stack.items.filter(i => i.estado !== 'enviado'), sel: null, plegados: S.stack.plegados };
   guardarStackLuego();
   renderDescargar();
-  refrescarCola();
 }
 
 async function cargarStackGuardado() {
   const s = await API.cargar_stack();
   if (!s?.items?.length) return;
   S.stack = {
-    nombre: s.nombre || '',
-    items: s.items.map(d => ({ ...itemDeStack(d.url), estado: 'listo', datos: d, prefs: d.prefs?.tipo === 'audio' ? 'audio'
-      : d.prefs?.resolucion || null })),
+    nombre: s.nombre || '', sel: null, plegados: new Set(),
+    items: s.items.map(d => {
+      const { prefs, grupo, ...datos } = d;
+      const item = itemDeStack(d.url, datos, grupo || null);
+      item.prefs = prefs || null;
+      return item;
+    }),
   };
 }
 
 document.addEventListener('click', async e => {
-  const sel = e.target.closest('[data-stack-sel]');
+  if (!e.target.closest('#stack-vista')) return;
+  const t = e.target;
+  const sel = t.closest('[data-stack-sel]');
   if (sel) {
     const item = S.stack.items.find(i => i.uid === sel.dataset.stackSel);
     if (item) { item.sel = !item.sel; renderStack(); }
     return;
   }
-  const quitar = e.target.closest('[data-stack-quitar]');
+  const selGrupo = t.closest('[data-stack-sel-grupo]');
+  if (selGrupo) {
+    const items = S.stack.items.filter(i => i.grupo?.id === selGrupo.dataset.stackSelGrupo && !i.esMarcador);
+    const marcar = !items.every(i => i.sel);
+    items.forEach(i => { i.sel = marcar; });
+    return renderStack();
+  }
+  const plegar = t.closest('[data-stack-plegar]');
+  if (plegar) {
+    const id = plegar.dataset.stackPlegar;
+    S.stack.plegados.has(id) ? S.stack.plegados.delete(id) : S.stack.plegados.add(id);
+    return renderStack();
+  }
+  const quitar = t.closest('[data-stack-quitar]');
   if (quitar) {
     S.stack.items = S.stack.items.filter(i => i.uid !== quitar.dataset.stackQuitar);
-    guardarStackLuego(); renderStack();
-    return;
+    guardarStackLuego(); return renderDescargar();
   }
-  const accion = e.target.closest('[data-accion]')?.dataset.accion;
+  const quitarGrupo = t.closest('[data-stack-quitar-grupo]');
+  if (quitarGrupo) {
+    S.stack.items = S.stack.items.filter(i => i.grupo?.id !== quitarGrupo.dataset.stackQuitarGrupo);
+    S.stack.sel = null;
+    guardarStackLuego(); return renderDescargar();
+  }
+  const modo = t.closest('[data-stack-modo]');
+  if (modo) return cambiarPrefsSeleccion(modo.dataset.stackModo);
+  const res = t.closest('[data-stack-res]');
+  if (res) return cambiarPrefsSeleccion('video', res.dataset.stackRes);
+  const ver = t.closest('[data-stack-ver]');
+  if (ver) { S.stack.sel = ver.dataset.stackVer; return renderStack(); }
+  const grupo = t.closest('[data-stack-grupo]');
+  if (grupo) { S.stack.sel = 'g:' + grupo.dataset.stackGrupo; return renderStack(); }
+  const accion = t.closest('[data-accion]')?.dataset.accion;
   if (accion === 'stack-descargar') return descargarStack();
   if (accion === 'stack-vaciar') {
-    if (!S.stack.items.length || await confirmar('Vaciar el stack', `¿Quitar los ${S.stack.items.length} enlaces del stack?`, 'Vaciar')) {
-      S.stack = { nombre: '', items: [] }; guardarStackLuego(); renderDescargar();
+    const n = S.stack.items.filter(i => !i.esMarcador).length;
+    if (!n || await confirmar('Vaciar el stack', `¿Quitar los ${n} enlaces del stack?`, 'Vaciar')) {
+      S.stack = { nombre: '', items: [], sel: null, plegados: new Set() }; guardarStackLuego(); renderDescargar();
     }
     return;
   }
   if (accion === 'stack-coleccion') {
-    const items = S.stack.items.filter(i => i.estado !== 'error').map(i => ({ ...i.datos, url: i.url }));
+    const items = S.stack.items.filter(i => i.estado !== 'error' && !i.esMarcador).map(i => ({ ...i.datos, url: i.url }));
     if (items.length) abrirColecciones({ agregar: items, nombre: S.stack.nombre });
-  }
-});
-document.addEventListener('change', e => {
-  const p = e.target.closest('[data-stack-prefs]');
-  if (p) {
-    const item = S.stack.items.find(i => i.uid === p.dataset.stackPrefs);
-    if (item) { item.prefs = p.value || null; guardarStackLuego(); }
   }
 });
 document.addEventListener('input', e => {

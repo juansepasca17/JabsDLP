@@ -763,7 +763,7 @@ async function analizar() {
   const texto = $('#url').value.trim();
   if (!texto) { toast('Pega una URL primero.', 'err'); $('#url').focus(); return; }
   cerrarMenu();
-  if (S.ajustes.modo_stack && S.modo !== 'playlist') {
+  if (S.ajustes.modo_stack) {
     const urls = texto.split(/\s+/).filter(t => /^https?:\/\//i.test(t));
     if (urls.length && urls.every(apilable)) {
       $('#url').value = '';

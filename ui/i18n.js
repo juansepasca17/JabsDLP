@@ -316,6 +316,17 @@
     'No es una colección de JabsDLP.': 'It isn\'t a JabsDLP collection.', 'El archivo no tiene enlaces válidos.': 'The file has no valid links.',
     'La colección no tiene enlaces para descargar (solo archivos ya descargados).': 'The collection has no links to download (only already-downloaded files).',
     'No se encontró el archivo (¿lo moviste o borraste?).': 'File not found (did you move or delete it?).',
+    'Seleccionado': 'Selected', 'Configuración de toda la playlist': 'Settings for the whole playlist',
+    'Configuración de este video': 'Settings for this video', 'Máxima': 'Highest', 'Resolución máxima': 'Max resolution',
+    'Usa las preferencias generales del stack (las de arriba).': 'Uses the stack\'s general preferences (the ones above).',
+    'Se descarga solo el audio, en el formato de tus preferencias de audio.': 'Only the audio is downloaded, in your audio format preference.',
+    'Video con el resto de tus preferencias y, como mucho, la resolución elegida.': 'Video with the rest of your preferences and at most the chosen resolution.',
+    'Extrayendo…': 'Extracting…', 'Extrayendo la playlist…': 'Extracting the playlist…',
+    'Quitar la playlist del stack': 'Remove the playlist from the stack', 'Ya está en la cola de descargas.': 'It is already in the download queue.',
+    'Desplegar': 'Expand', 'Plegar': 'Collapse', 'No es una playlist.': 'It isn\'t a playlist.', 'No es un video suelto.': 'It isn\'t a single video.',
+    'Pega enlaces o playlists (o usa el atajo de captura rápida) y se irán sumando aquí. Después los descargas todos juntos en una carpeta, con la configuración general o una por video.':
+      'Paste links or playlists (or use the quick capture shortcut) and they will pile up here. Then download them all together into one folder, with the general settings or per video.',
+    'No se pudo analizar.': 'Couldn\'t analyze it.',
   };
 
   const MESES = { ene: 'Jan', feb: 'Feb', mar: 'Mar', abr: 'Apr', may: 'May', jun: 'Jun', jul: 'Jul', ago: 'Aug', sep: 'Sep', oct: 'Oct', nov: 'Nov', dic: 'Dec' };
