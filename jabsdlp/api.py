@@ -81,6 +81,7 @@ class Api:
         self._atajo = None
         self._vigia = None
         self._sugerida = None           # URL mostrada en la burbuja
+        self._proxy = None              # proxy local de la pestaña Ver (se crea al usarla)
         self._temporizador_burbuja = None
         threading.Thread(target=self._herr.detectar_gpu, daemon=True).start()
         if self._ajustes.get('ytdlp_auto') and actualizador.toca_comprobar():
@@ -384,6 +385,8 @@ class Api:
 
     def cerrar(self):
         self._detener_captura()
+        if self._proxy is not None:
+            self._proxy.cerrar()
         self._gestor.cerrar()
 
     def cancelar(self, id_):
@@ -528,6 +531,80 @@ class Api:
         except OSError:
             return False
         return True
+
+    # ---------- pestaña Ver ----------
+    def _proxy_ver(self):
+        if self._proxy is None:
+            from .proxy import Proxy
+            self._proxy = Proxy(self._herr.ffmpeg)
+        return self._proxy
+
+    def _opciones_ver(self):
+        from .impersonacion import aplicar_impersonacion
+        opciones = {'quiet': True, 'no_warnings': True, 'socket_timeout': 20}
+        runtimes = runtimes_js()
+        if runtimes:
+            opciones['js_runtimes'] = runtimes
+        aplicar_impersonacion(opciones, self._ajustes)
+        return opciones
+
+    def ver(self, origen, referer=None):
+        """Prepara un enlace o un archivo local para reproducirlo en la pestaña Ver."""
+        from . import ver as ver_mod
+        from .cookies import borrar_temporal, opciones_cookies
+        origen = (origen or '').strip()
+        if not origen:
+            return {'ok': False, 'error': 'Pega un enlace o elige un archivo.'}
+        if es_torrent(origen):
+            return {'ok': False, 'error': 'Los torrents en Ver llegan en la próxima versión. De momento, descárgalo desde Descargar.'}
+        proxy = self._proxy_ver()
+        proxy.olvidar()   # el video anterior deja de servirse (y se paran sus ffmpeg)
+        try:
+            if not origen.lower().startswith(('http://', 'https://')):
+                if not os.path.isabs(origen) or not es_medio(origen):
+                    return {'ok': False, 'error': 'Solo se pueden ver archivos de video o audio.'}
+                datos = ver_mod.resolver_local(origen, proxy, self._herr.ffprobe())
+            else:
+                opciones = self._opciones_ver()
+                extra, temporal = opciones_cookies(self._ajustes)
+                opciones.update(extra)
+                try:
+                    datos = ver_mod.resolver_enlace(origen, proxy, opciones, (referer or '').strip() or None)
+                finally:
+                    borrar_temporal(temporal)
+        except ver_mod.NoReproducible as e:
+            return {'ok': False, 'error': str(e)}
+        except Exception as e:  # noqa: BLE001
+            return _fallo(e)
+        ver_mod.anotar_visto(datos)
+        return _ok(datos=datos)
+
+    def ver_abrir_archivo(self):
+        ruta = self._dialogo('OPEN', directory=self._ajustes.carpeta(),
+                             file_types=('Video y audio (*.mp4;*.mkv;*.webm;*.mov;*.avi;*.m4v;*.ts;*.mp3;*.m4a;*.opus;*.ogg;*.flac;*.wav)',
+                                         'Todos los archivos (*.*)'))
+        return self.ver(ruta) if ruta else None
+
+    def detener_ver(self):
+        if self._proxy is not None:
+            self._proxy.olvidar()
+        return True
+
+    def vistos(self):
+        from . import ver as ver_mod
+        lista = ver_mod.leer_vistos()
+        for v in lista:
+            if v.get('local'):
+                v['existe'] = os.path.isfile(v.get('origen') or '')
+        return lista
+
+    def guardar_progreso(self, coleccion_id, item, segundos, visto=False):
+        """Recuerda por dónde ibas en un video de una colección (o lo marca como visto)."""
+        try:
+            self._colecciones.progreso(coleccion_id, item, segundos, bool(visto))
+            return True
+        except ColeccionInvalida:
+            return False
 
     # ---------- colecciones ----------
     def colecciones(self):

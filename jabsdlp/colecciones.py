@@ -187,6 +187,22 @@ class Colecciones:
                 items.insert(hasta, items.pop(desde))
                 self._guardar()
 
+    def progreso(self, id_, item, segundos, visto=False):
+        """Guarda la posición (segundos) de un elemento; al terminar lo marca como visto y vuelve a 0."""
+        limpio = limpiar_item(item)
+        if not limpio:
+            return
+        with self._lock:
+            for i in self._buscar(id_)['items']:
+                if clave_item(i) == clave_item(limpio):
+                    if visto:
+                        i['visto'] = True
+                        i.pop('posicion', None)
+                    elif segundos and float(segundos) > 5:
+                        i['posicion'] = round(float(segundos), 1)
+                    self._guardar()
+                    return
+
     def es_favorito(self, item):
         limpio = limpiar_item(item)
         with self._lock:
