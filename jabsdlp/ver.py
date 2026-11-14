@@ -31,13 +31,14 @@ def _compatible(codec, lista):
 
 
 # ---------- archivos locales ----------
-def sondear(ruta, ffprobe):
+def sondear(ruta, ffprobe, espera=None):
     """(códec de video o None, códec de audio o None, duración, pistas de subtítulos [(índice, idioma, título)])."""
     if not ffprobe:
         return None, None, None, []
     try:
         r = subprocess.run([ffprobe, '-v', 'error', '-show_entries', 'stream=codec_type,codec_name:stream_tags=language,title'
-                            ':format=duration', '-of', 'json', ruta], capture_output=True, timeout=20, creationflags=SIN_VENTANA)
+                            ':format=duration', '-of', 'json', ruta], capture_output=True,
+                           timeout=espera or 20, creationflags=SIN_VENTANA)
         datos = json.loads(r.stdout or b'{}')
     except (OSError, subprocess.SubprocessError, ValueError):
         return None, None, None, []
@@ -82,6 +83,34 @@ def resolver_local(ruta, proxy, ffprobe):
         base['subtitulos'].append({'idioma': idioma or '', 'nombre': titulo_pista or idioma or f'Pista {n + 1}',
                                    'src': proxy.subtitulos(ruta=ruta, pista=n)})
     return base
+
+
+# ---------- torrents ----------
+def resolver_torrent(origen, torrents, proxy, ffprobe):
+    """Abre el torrent (solo el video más grande, en orden) y lo prepara para el reproductor."""
+    from .ver_torrent import TorrentNoReproducible
+    try:
+        clave = torrents.abrir(origen)
+    except TorrentNoReproducible as e:
+        raise NoReproducible(str(e)) from None
+    t = torrents.datos(clave)
+    url = proxy.torrent(torrents, clave)
+    ext = os.path.splitext(t['nombre'])[1].lower()
+    if ext in ('.mp4', '.m4v', '.webm', '.mp3', '.m4a', '.ogg', '.opus', '.flac', '.wav'):
+        video, audio, duracion = ext not in ('.mp3', '.m4a', '.ogg', '.opus', '.flac', '.wav') and 'avc1', None, None
+    else:   # mkv, avi…: hay que saber el códec para copiarlo o convertirlo (lee la cabecera a través del proxy)
+        video, audio, duracion, _ = sondear(url, ffprobe, espera=25)
+        video = video or 'h264'   # si no responde a tiempo, se intenta copiar
+    datos = {'titulo': os.path.splitext(t['nombre'])[0], 'canal': t['titulo'] if t['titulo'] != t['nombre'] else None,
+             'duracion': duracion, 'miniatura': None, 'origen': origen, 'solo_audio': not video, 'torrent': clave,
+             'subtitulos': [{'idioma': '', 'nombre': os.path.basename(s), 'src': proxy.subtitulos(ruta=s)} for s in t['subs']]}
+    if (ext in EXT_DIRECTAS and (not video or _compatible(video, VIDEO_COMPATIBLE))
+            and (not audio or _compatible(audio, AUDIO_COMPATIBLE))):
+        datos.update(modo='directo', src=url)
+    else:
+        transcodificar = bool(video) and not _compatible(video, VIDEO_COMPATIBLE)
+        datos.update(modo='remux', src=proxy.remux([(url, None)], transcodificar=transcodificar, solo_audio=not video))
+    return datos
 
 
 # ---------- enlaces ----------
@@ -193,11 +222,11 @@ def anotar_visto(entrada):
     origen = str(entrada.get('origen') or '')
     if not origen:
         return
-    es_local = not origen.startswith(('http://', 'https://'))
+    es_local = not origen.lower().startswith(('http://', 'https://', 'magnet:'))
     limpio = {'origen': origen if es_local else ocultar_tokens(origen), 'titulo': str(entrada.get('titulo') or '')[:300],
               'miniatura': entrada.get('miniatura') if str(entrada.get('miniatura') or '').startswith('https://') else None,
               'duracion': entrada.get('duracion'), 'cuando': time.time(), 'local': es_local}
-    if '***' in limpio['origen']:
+    if limpio['origen'].lower().startswith('magnet:') or '***' in limpio['origen']:
         return   # enlaces con token caducan: no tiene sentido guardarlos
     vistos = [v for v in leer_vistos() if v.get('origen') != limpio['origen']]
     vistos.insert(0, limpio)

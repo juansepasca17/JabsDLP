@@ -162,6 +162,10 @@ const AVISOS = {
     'Mientras se descarga, tu IP es visible para los demás participantes y se suben fragmentos (limitado en Ajustes).',
     'Al terminar, JabsDLP deja de compartir al instante (sin seed).',
     'Descarga solo contenido que tengas derecho a descargar.']],
+  torrent_ver: ['Vas a ver un torrent (P2P)', [
+    'El video se descarga mientras lo ves: tu IP es visible para los demás participantes y se suben fragmentos (limitado en Ajustes).',
+    'Al cerrar el reproductor, JabsDLP deja de compartir al instante y borra lo descargado.',
+    'Mira solo contenido que tengas derecho a ver.']],
   http: ['Conexión sin cifrar (http://)', [
     'Alguien en tu red podría ver lo que descargas o modificar el archivo por el camino.',
     'Si existe, usa la versión https:// del enlace.']],
@@ -563,6 +567,7 @@ function renderOpciones() {
     cont.innerHTML = `<div class="etiqueta-grupo" style="margin-top:14px">${ico('download', 'sm')}Torrent</div>
       <div class="nota">Se descarga con aria2, con la subida limitada a ${esc(String(S.ajustes.subida_torrent_kb || 20))} KB/s y <b>sin seed</b>: al terminar deja de compartir.</div>
       ${a.aria2 ? '' : `<div class="aviso">${ico('alert', 'sm')}<span>Los torrents necesitan aria2. Instálalo en <a data-vista="ajustes">Ajustes → Red y velocidad</a>.</span></div>`}
+      <button class="btn chico" style="margin-top:12px" data-accion="torrent-ver">${ico('tv', 'sm')}Ver sin descargar</button>
       ${pieHTML('Descargar torrent', !!a.aria2)}`;
     return;
   }

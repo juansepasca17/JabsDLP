@@ -36,10 +36,12 @@ function saltarA(t) {
 async function verOrigen(origen, opciones = {}) {
   origen = (origen || '').trim();
   if (!origen) return toast('Pega un enlace o elige un archivo.', 'err');
+  const esTorrent = /^magnet:\?/i.test(origen) || /\.torrent(\?|$)/i.test(origen);
+  if (esTorrent && !(await confirmarAviso(['torrent_ver']))) return false;
   if (S.vista !== 'ver') irA('ver');
   video().pause();
   V.cargando = true;
-  pintarEstadoVer('Preparando…', true);
+  pintarEstadoVer(esTorrent ? 'Conectando con el torrent…' : 'Preparando…', true);
   $('#reproductor').classList.remove('oculto');
   $('#ver-inicio').innerHTML = '';
   let r;
@@ -102,6 +104,27 @@ function cargarFuente(datos, desde) {
   pintarInfoVer();
   pintarListaVer();
   actualizarBotonesVer();
+  vigilarTorrent();
+}
+
+// Estado del torrent (pares, velocidad, progreso) mientras se ve
+let temporizadorTorrent = null;
+function vigilarTorrent() {
+  clearInterval(temporizadorTorrent);
+  if (!V.datos?.torrent) return;
+  const pintar = async () => {
+    const e = await API.estado_torrent();
+    const el = $('#ver-torrent');
+    if (!e || !V.datos?.torrent) { clearInterval(temporizadorTorrent); el?.remove(); return; }
+    const texto = `Torrent · ${e.pares} pares · ${fmt.vel(e.bajada) || '0 B/s'} · ${Math.round(e.progreso * 100)} % descargado · sin compartir al cerrar`;
+    if (el) el.textContent = texto;
+    else $('.ver-titulo .meta-fila')?.insertAdjacentHTML('beforeend', `<span id="ver-torrent" class="no-traducir-num">${esc(texto)}</span>`);
+    if (!video().readyState || $('#rp-estado').classList.contains('visible') && !$('#rp-estado').classList.contains('error')) {
+      pintarEstadoVer(e.pares ? `Descargando el principio del video… (${e.pares} pares, ${fmt.vel(e.bajada) || '0 B/s'})` : 'Buscando pares…', true);
+    }
+  };
+  pintar();
+  temporizadorTorrent = setInterval(pintar, 1500);
 }
 
 /* ---------- estado, información y controles ---------- */
@@ -425,6 +448,7 @@ document.addEventListener('click', async e => {
     case 'ver-aleatorio': V.aleatorio = !V.aleatorio; return pintarListaVer();
     case 'ver-repetir': V.repetir = { no: 'lista', lista: 'uno', uno: 'no' }[V.repetir]; return pintarListaVer();
     case 'ver-desde-cero': return saltarA(0);
+    case 'torrent-ver': if (S.analisis?.url) { V.lista = []; V.coleccion = null; return verOrigen(S.analisis.url); } return;
     case 'col-ver': return verColeccion(C.abierta);
   }
 });
@@ -450,7 +474,10 @@ document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id
 // Al salir de la pestaña se pausa (y se guarda el progreso)
 const irAOriginal = irA;
 irA = function (vista) {   // eslint-disable-line no-global-assign
-  if (S.vista === 'ver' && vista !== 'ver' && V.datos) { guardarProgresoVer(); video().pause(); }
+  if (S.vista === 'ver' && vista !== 'ver' && V.datos) {
+    guardarProgresoVer(); video().pause();
+    if (V.datos.torrent) { limpiarReproductor(); V.datos = null; API.detener_ver(); clearInterval(temporizadorTorrent); }  // deja de compartir
+  }
   irAOriginal(vista);
   if (vista === 'ver') { pintarInicioVer(); pintarListaVer(); }
 };

@@ -26,6 +26,18 @@ y [ffmpeg](https://ffmpeg.org).
   - Puede buscar actualizaciones al abrir, como mucho una vez al día.
   - Solo guarda la última versión descargada. La que va dentro del `.exe` queda siempre como respaldo y la app vuelve a ella si la descargada falla.
 
+### Novedades de la 1.7.1
+
+- **Torrents en la pestaña Ver**: pega un magnet o un enlace `.torrent` (o pulsa **Ver sin descargar** en el panel
+  de torrents de Descargar) y se reproduce mientras se descarga.
+  - Solo se baja el video (el archivo más grande) y lo que estás viendo va primero, así que puedes saltar en la
+    línea de tiempo.
+  - Se ve en vivo cuántos pares hay, la velocidad y cuánto lleva descargado.
+  - **Sin compartir al cerrar**: al cerrar el reproductor o salir de la pestaña, el torrent se quita y lo descargado
+    se borra. Mientras se ve, la subida queda limitada (*Ajustes → Red → subida máxima en torrents*).
+  - Antes de empezar se avisa de los riesgos del P2P.
+  - Usa [libtorrent](https://www.libtorrent.org) 2.1.1 (BSD).
+
 ### Novedades de la 1.7.0
 
 - **Pestaña Ver**: reproduce enlaces sin descargarlos, dentro de la app. Funciona con YouTube, enlaces `.m3u8` y cientos

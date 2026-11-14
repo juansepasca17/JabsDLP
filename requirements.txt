@@ -3,3 +3,4 @@ yt-dlp[default]>=2026.8.19
 curl_cffi>=0.10,<0.17
 pystray>=0.19
 pillow>=11
+libtorrent==2.1.1

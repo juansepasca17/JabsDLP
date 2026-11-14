@@ -11,6 +11,10 @@ datas = [('ui', 'ui'), ('assets/icono.ico', 'assets'), ('assets/icono.png', 'ass
 curl_datas, curl_binaries, curl_hidden = collect_all('curl_cffi')
 datas += curl_datas
 
+# libtorrent: torrents en la pestaña Ver (incluye sus DLL)
+lt_datas, lt_binaries, lt_hidden = collect_all('libtorrent')
+datas += lt_datas
+
 # Biblioteca estándar que una versión futura de yt-dlp (descargada por el actualizador) podría usar.
 estandar = []
 for paquete in ('email', 'html', 'http', 'xml', 'urllib', 'json', 'asyncio', 'concurrent', 'encodings',
@@ -25,9 +29,9 @@ estandar += ['hmac', 'secrets', 'uuid', 'zipfile', 'tarfile', 'lzma', 'bz2', 'gz
 a = Analysis(
     ['main.py'],
     pathex=[],
-    binaries=curl_binaries,
+    binaries=curl_binaries + lt_binaries,
     datas=datas,
-    hiddenimports=estandar + curl_hidden,
+    hiddenimports=estandar + curl_hidden + lt_hidden,
     hookspath=[],
     runtime_hooks=[],
     excludes=['tkinter', 'numpy', 'pytest', 'IPython', 'webview.platforms.qt', 'webview.platforms.gtk',

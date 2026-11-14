@@ -46,6 +46,11 @@ def diagnostico(salida, url=None):
     informe = {'app': APP_NAME, 'ytdlp': yt_dlp.version.__version__, 'ytdlp_modulo': yt_dlp.__file__,
                'impersonacion': {'disponible': disponible, 'motivo': motivo},
                'herramientas': api.detectar_gpu()}
+    try:
+        import libtorrent
+        informe['libtorrent'] = libtorrent.__version__
+    except Exception as e:  # noqa: BLE001
+        informe['libtorrent'] = f'no disponible: {e}'
     if url:
         r = api.analizar(url, 'auto', None)
         datos = r.get('datos') or {}

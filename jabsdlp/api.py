@@ -82,6 +82,8 @@ class Api:
         self._vigia = None
         self._sugerida = None           # URL mostrada en la burbuja
         self._proxy = None              # proxy local de la pestaña Ver (se crea al usarla)
+        self._torrents = None           # sesión de libtorrent para ver torrents (se crea al usarla)
+        self._torrent_actual = None
         self._temporizador_burbuja = None
         threading.Thread(target=self._herr.detectar_gpu, daemon=True).start()
         if self._ajustes.get('ytdlp_auto') and actualizador.toca_comprobar():
@@ -385,6 +387,9 @@ class Api:
 
     def cerrar(self):
         self._detener_captura()
+        self._cerrar_torrent()
+        if self._torrents is not None:
+            self._torrents.cerrar_todo()
         if self._proxy is not None:
             self._proxy.cerrar()
         self._gestor.cerrar()
@@ -555,12 +560,14 @@ class Api:
         origen = (origen or '').strip()
         if not origen:
             return {'ok': False, 'error': 'Pega un enlace o elige un archivo.'}
-        if es_torrent(origen):
-            return {'ok': False, 'error': 'Los torrents en Ver llegan en la próxima versión. De momento, descárgalo desde Descargar.'}
         proxy = self._proxy_ver()
         proxy.olvidar()   # el video anterior deja de servirse (y se paran sus ffmpeg)
+        self._cerrar_torrent()
         try:
-            if not origen.lower().startswith(('http://', 'https://')):
+            if es_torrent(origen):
+                datos = ver_mod.resolver_torrent(origen, self._sesion_torrents(), proxy, self._herr.ffprobe())
+                self._torrent_actual = datos['torrent']
+            elif not origen.lower().startswith(('http://', 'https://')):
                 if not os.path.isabs(origen) or not es_medio(origen):
                     return {'ok': False, 'error': 'Solo se pueden ver archivos de video o audio.'}
                 datos = ver_mod.resolver_local(origen, proxy, self._herr.ffprobe())
@@ -588,7 +595,28 @@ class Api:
     def detener_ver(self):
         if self._proxy is not None:
             self._proxy.olvidar()
+        self._cerrar_torrent()
         return True
+
+    def _sesion_torrents(self):
+        if self._torrents is None:
+            from .ver_torrent import Torrents, limpiar_cache
+            limpiar_cache()
+            self._torrents = Torrents(self._ajustes.get('subida_torrent_kb') or 20)
+        else:
+            self._torrents.limite_subida(self._ajustes.get('subida_torrent_kb') or 20)
+        return self._torrents
+
+    def _cerrar_torrent(self):
+        """Quita el torrent que se estaba viendo y borra su caché: no se sigue compartiendo."""
+        if self._torrent_actual and self._torrents is not None:
+            self._torrents.cerrar(self._torrent_actual)
+        self._torrent_actual = None
+
+    def estado_torrent(self):
+        if not self._torrent_actual or self._torrents is None:
+            return None
+        return self._torrents.estado(self._torrent_actual)
 
     def vistos(self):
         from . import ver as ver_mod

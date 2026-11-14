@@ -106,7 +106,7 @@ BOOLEANOS = ('subcarpeta_playlist', 'paralelo', 'decodificar_gpu', 'recomendacio
              'captura_portapapeles', 'pantalla_completa')
 ENTEROS = {'max_paralelo': (0, 999), 'fragmentos': (1, 32), 'max_conversiones': (1, 16), 'calidad': (10, 45),
            'reintentos': (0, 10), 'subida_torrent_kb': (1, 100000)}
-AVISOS = ('torrent', 'http', 'generico', 'ejecutable', 'aria2')
+AVISOS = ('torrent', 'torrent_ver', 'http', 'generico', 'ejecutable', 'aria2')
 DECIMALES = {'limite_velocidad': (0, 10000)}
 OPCIONES = {
     'cookies_modo': ('ninguna', 'archivo', 'navegador'),

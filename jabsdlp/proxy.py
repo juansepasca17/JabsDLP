@@ -10,6 +10,7 @@ aleatorio en la ruta, pide los recursos con las cabeceras correctas y los entreg
   /<token>/local/<id>          archivo de tu equipo (con Range)
   /<token>/remux/<id>?t=S      video+audio separados (o formatos no compatibles) unidos con ffmpeg desde el segundo S
   /<token>/subs/<id>/<n>.vtt   subtítulos en WebVTT
+  /<token>/torrent/<id>        archivo de un torrent mientras se descarga (con Range; espera las piezas)
 
 Las URLs remotas nunca llegan desde la petición: solo se sirven recursos registrados por la propia app.
 """
@@ -107,6 +108,10 @@ class Proxy:
         id_ = self._nuevo(Fuente('subs', url=url, cabeceras=cabeceras or {}, ruta=ruta, pista=pista))
         return f'{self.base}/subs/{id_}/0.vtt'
 
+    def torrent(self, torrents, clave):
+        """torrents: objeto con datos(clave) y bloques(clave, inicio, fin, cancelado) (ver_torrent.Torrents)."""
+        return f"{self.base}/torrent/{self._nuevo(Fuente('torrent', torrents=torrents, clave=clave))}"
+
     def olvidar(self):
         """Libera todo lo registrado (al cambiar de video) y mata los ffmpeg en curso."""
         with self._lock:
@@ -149,6 +154,8 @@ class Proxy:
                 return self._remux(h, fuente, max(0.0, float(t) if re.fullmatch(r'\d+(\.\d+)?', t) else 0.0), solo_cabeceras)
             if tipo == 'subs':
                 return self._subs(h, fuente)
+            if tipo == 'torrent':
+                return self._torrent(h, fuente, solo_cabeceras)
         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
             return None
         except Exception:  # noqa: BLE001 - un recurso que falla no debe tumbar el servidor
@@ -312,6 +319,34 @@ class Proxy:
             except OSError:
                 pass
             self.procesos.discard(p)
+
+    def _torrent(self, h, fuente, solo_cabeceras):
+        torrents, clave = fuente.datos['torrents'], fuente.datos['clave']
+        t = torrents.datos(clave)
+        if t is None:
+            return self._error(h, 404)
+        total = t['tamano']
+        inicio, fin = 0, total - 1
+        rango = re.fullmatch(r'bytes=(\d*)-(\d*)', h.headers.get('Range') or '')
+        if rango and (rango.group(1) or rango.group(2)):
+            if rango.group(1):
+                inicio = int(rango.group(1))
+                fin = min(int(rango.group(2)), total - 1) if rango.group(2) else total - 1
+            else:
+                inicio = max(0, total - int(rango.group(2)))
+            h.send_response(206)
+            h.send_header('Content-Range', f'bytes {inicio}-{fin}/{total}')
+        else:
+            h.send_response(200)
+        h.send_header('Content-Type', TIPOS.get(os.path.splitext(t['nombre'])[1].lower(), 'application/octet-stream'))
+        h.send_header('Content-Length', str(fin - inicio + 1))
+        h.send_header('Accept-Ranges', 'bytes')
+        h.send_header('Access-Control-Allow-Origin', '*')
+        h.end_headers()
+        if solo_cabeceras:
+            return
+        for trozo in torrents.bloques(clave, inicio, fin):
+            h.wfile.write(trozo)
 
     def _subs(self, h, fuente):
         d = fuente.datos

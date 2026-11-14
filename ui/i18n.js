@@ -358,6 +358,16 @@
     'Los torrents en Ver llegan en la próxima versión. De momento, descárgalo desde Descargar.': 'Torrents in Watch come in the next version. For now, download it from Download.',
     'No se encontró un formato que se pueda reproducir aquí. Prueba a descargarlo.': 'No playable format was found. Try downloading it.',
     'Es una playlist: ábrela con «Ver» desde una colección o el stack, o elige un video.': 'It\'s a playlist: open it with "Watch" from a collection or the stack, or pick a video.',
+    // 1.7.1: torrents en Ver
+    'Ver sin descargar': 'Watch without downloading', 'Vas a ver un torrent (P2P)': 'You are about to watch a torrent (P2P)',
+    'El video se descarga mientras lo ves: tu IP es visible para los demás participantes y se suben fragmentos (limitado en Ajustes).':
+      'The video downloads while you watch: your IP is visible to other peers and pieces are uploaded (limited in Settings).',
+    'Al cerrar el reproductor, JabsDLP deja de compartir al instante y borra lo descargado.':
+      'When you close the player, JabsDLP stops sharing right away and deletes what was downloaded.',
+    'Mira solo contenido que tengas derecho a ver.': 'Only watch content you have the right to watch.',
+    'Conectando con el torrent…': 'Connecting to the torrent…', 'Buscando pares…': 'Looking for peers…',
+    'No llegó la información del torrent (pocos pares o enlace caducado).': 'The torrent info didn\'t arrive (few peers or expired link).',
+    'Este torrent no tiene ningún video ni audio para reproducir.': 'This torrent has no video or audio to play.',
   };
 
   const MESES = { ene: 'Jan', feb: 'Feb', mar: 'Mar', abr: 'Apr', may: 'May', jun: 'Jun', jul: 'Jul', ago: 'Aug', sep: 'Sep', oct: 'Oct', nov: 'Nov', dic: 'Dec' };
@@ -409,6 +419,8 @@
     [/^Ibas por (.+)$/, m => `You were at ${m[1]}`],
     [/^(.+) · (\d+) de (\d+)$/, m => `${m[1]} · ${m[2]} of ${m[3]}`],
     [/^Continúa donde lo dejaste \((.+)\)\.$/, m => `Picking up where you left off (${m[1]}).`],
+    [/^Torrent · (\d+) pares · (.+) · (\d+) % descargado · sin compartir al cerrar$/, m => `Torrent · ${m[1]} peers · ${m[2]} · ${m[3]} % downloaded · no sharing after closing`],
+    [/^Descargando el principio del video… \((\d+) pares, (.+)\)$/, m => `Downloading the start of the video… (${m[1]} peers, ${m[2]})`],
     [/^velocidad (.+)$/, m => `speed ${m[1]}`], [/^Convertido con (.+)$/, m => `Converted with ${m[1]}`],
     [/^Tras (\d+) reintentos?$/, m => `After ${m[1]} ${m[1] === '1' ? 'retry' : 'retries'}`],
     [/^Reintento (\d+) de (\d+) en (\d+) s$/, m => `Retry ${m[1]} of ${m[2]} in ${m[3]} s`], [/^Reintento (\d+) de (\d+)$/, m => `Retry ${m[1]} of ${m[2]}`],
