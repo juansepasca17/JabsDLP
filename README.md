@@ -26,6 +26,34 @@ y [ffmpeg](https://ffmpeg.org).
   - Puede buscar actualizaciones al abrir, como mucho una vez al día.
   - Solo guarda la última versión descargada. La que va dentro del `.exe` queda siempre como respaldo y la app vuelve a ella si la descargada falla.
 
+### Novedades de la 1.6.0
+
+- **Modo stack**, activable con el chip **Stack** junto a Video/Playlist (apagado por defecto). Los enlaces que
+  pegas se van sumando a una lista en vez de reemplazar el análisis:
+  - cada video puede ir "como el resto", solo audio o con resolución máxima;
+  - todo se descarga junto en una carpeta con el nombre que elijas;
+  - el stack se guarda aunque cierres la app;
+  - opcional: que cada enlace empiece a descargarse al momento.
+- **Captura rápida** (*Ajustes → Captura rápida*, todo apagado por defecto):
+  - **Atajo global** (Ctrl+Alt+X, Ctrl+Shift+X o Ctrl+Alt+D): selecciona un enlace en cualquier programa, pulsa el
+    atajo y llega a JabsDLP (al stack, si está activo) sin copiar, pegar ni cambiar de ventana;
+  - **Vigilar el portapapeles**: al copiar un enlace de un sitio que yt-dlp reconoce aparece una burbuja abajo a la
+    derecha con **Al stack** / **Descargar**, sin quitarte el foco; o se añade sin preguntar, si lo prefieres. No
+    aparece mientras juegas o ves algo a pantalla completa.
+- **Colecciones**: grupos de enlaces y archivos para más tarde.
+  - Se abren desde un botón en la barra lateral o, si lo eliges en Ajustes, uno flotante rojo abajo a la derecha.
+  - Se reordenan arrastrando y se descargan enteras con un clic.
+  - Se comparten exportándolas como archivo **.jabs** (o .txt); quien lo importa recibe los mismos enlaces.
+  - **★ Favoritos** es una colección fija.
+- **Biblioteca**: lo descargado, sin abrir el Explorador.
+  - Miniaturas, búsqueda por nombre, filtros por tipo y fecha, y orden.
+  - **★ favoritos**, selección múltiple y **Agrupar en playlist**.
+  - Enviar a la **Papelera de reciclaje**.
+  - Puedes añadir más carpetas.
+- **Barra de título clara** en el tema claro, y opción **Abrir en pantalla completa** (apagada; **F11** en cualquier
+  momento).
+- La ventana se abre con un tamaño que cabe sobre la barra de tareas (pantallas al 125 %, portátiles).
+
 ### Novedades de la 1.5.0
 
 - **Enlaces directos `.m3u8` / `.mpd`** (por ejemplo, los de Platzi cuando su extractor falla). Al pegar uno sale un
