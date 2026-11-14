@@ -26,6 +26,22 @@ y [ffmpeg](https://ffmpeg.org).
   - Puede buscar actualizaciones al abrir, como mucho una vez al día.
   - Solo guarda la última versión descargada. La que va dentro del `.exe` queda siempre como respaldo y la app vuelve a ella si la descargada falla.
 
+### Novedades de la 1.7.0
+
+- **Pestaña Ver**: reproduce enlaces sin descargarlos, dentro de la app. Funciona con YouTube, enlaces `.m3u8` y cientos
+  de sitios más, y con archivos de tu equipo.
+  - Reproductor propio: línea de tiempo con lo ya cargado, volumen, velocidad (0,5×–2×), subtítulos, calidad
+    (automática o fija) y pantalla completa.
+  - Atajos: espacio/K, ←/→ (5 s), J/L (10 s), ↑/↓ (volumen), M, C (subtítulos), F, N/P (siguiente/anterior).
+  - **Listas de reproducción con tus colecciones**: botón **Ver** en una colección. Incluye siguiente/anterior,
+    reproducción automática, aleatorio y repetir.
+  - **Continuar donde lo dejaste**: guarda el segundo exacto de cada video de una colección y marca los vistos con ✓.
+  - **Vistos recientemente** y botón **Ver aquí** en la Cola y en la Biblioteca.
+  - Archivos locales con códecs que el navegador no reproduce (por ejemplo, HEVC en `.mkv`) se convierten al vuelo.
+- **Cómo funciona**: un pequeño servidor local (solo en `127.0.0.1` y con un token aleatorio) pide el video con las
+  cabeceras correctas y se lo pasa al reproductor. Los streams HLS se reproducen con [hls.js](https://github.com/video-dev/hls.js)
+  (Apache-2.0), incluido en la app con su SHA-256 verificado.
+
 ### Novedades de la 1.6.0
 
 - **Modo stack**, activable con el chip **Stack** junto a Video/Playlist (apagado por defecto). Los enlaces que

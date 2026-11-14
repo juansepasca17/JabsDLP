@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src http://127.0.0.1:*; media-src 'self' http://127.0.0.1:* blob:; worker-src blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
   <title>JabsDLP</title>
   <link rel="stylesheet" href="estilos.css">
 </head>
@@ -16,6 +16,7 @@
       <div><b>JabsDLP</b><small id="version">v1.4.0</small></div>
     </div>
     <button class="nav activo" data-vista="descargar"><i data-ico="download"></i>Descargar</button>
+    <button class="nav" data-vista="ver"><i data-ico="tv"></i>Ver</button>
     <button class="nav" data-vista="biblioteca"><i data-ico="library"></i>Biblioteca</button>
     <button class="nav" data-vista="cola"><i data-ico="list"></i>Cola<span class="contador" id="contador-cola">0</span></button>
     <button class="nav" data-vista="ajustes"><i data-ico="settings"></i>Ajustes</button>
@@ -98,6 +99,51 @@
       </section>
 
       <!-- ================= AJUSTES ================= -->
+      <!-- ================= VER ================= -->
+      <section class="vista" id="vista-ver">
+        <div class="card buscar">
+          <div class="fila-buscar">
+            <input id="ver-url" class="entrada" type="text" spellcheck="false" autocomplete="off"
+                   placeholder="Pega un enlace para verlo aquí (YouTube, .m3u8 y cientos de sitios más)">
+            <button class="btn icono" data-accion="ver-pegar" title="Pegar desde el portapapeles"><i data-ico="clipboard"></i></button>
+            <button class="btn" data-accion="ver-archivo" title="Ver un archivo de tu equipo"><i data-ico="file"></i>Abrir archivo</button>
+            <button class="btn primario" data-accion="ver-ir" id="btn-ver"><i data-ico="play"></i>Ver</button>
+          </div>
+        </div>
+        <div class="ver-cuerpo" id="ver-cuerpo">
+          <div class="ver-principal">
+            <div class="reproductor oculto" id="reproductor" tabindex="0">
+              <video id="video" playsinline preload="auto"></video>
+              <div class="rp-estado" id="rp-estado"></div>
+              <div class="rp-centro" id="rp-centro"></div>
+              <div class="rp-controles" id="rp-controles">
+                <div class="rp-linea" id="rp-linea"><div class="rp-cargado" id="rp-cargado"></div><div class="rp-avance" id="rp-avance"></div>
+                  <div class="rp-bola" id="rp-bola"></div><div class="rp-globo" id="rp-globo">0:00</div></div>
+                <div class="rp-fila">
+                  <button class="rp-btn" data-rp="anterior" title="Anterior (P)"><i data-ico="anterior"></i></button>
+                  <button class="rp-btn grande" data-rp="play" id="rp-play" title="Reproducir / pausa (espacio)"><i data-ico="play"></i></button>
+                  <button class="rp-btn" data-rp="siguiente" title="Siguiente (N)"><i data-ico="siguiente"></i></button>
+                  <button class="rp-btn" data-rp="atras" title="10 s atrás (J)"><i data-ico="atras10"></i></button>
+                  <button class="rp-btn" data-rp="adelante" title="10 s adelante (L)"><i data-ico="adelante10"></i></button>
+                  <div class="rp-volumen"><button class="rp-btn" data-rp="silencio" id="rp-silencio" title="Silenciar (M)"><i data-ico="volumen"></i></button>
+                    <input type="range" id="rp-vol" min="0" max="1" step="0.02" value="1" title="Volumen (↑/↓)"></div>
+                  <span class="rp-tiempo" id="rp-tiempo">0:00 / 0:00</span>
+                  <span class="rp-espacio"></span>
+                  <button class="rp-btn texto" data-rp="velocidad" id="rp-velocidad" title="Velocidad">1×</button>
+                  <button class="rp-btn" data-rp="subs" id="rp-subs" title="Subtítulos (C)"><i data-ico="subtitulos"></i></button>
+                  <button class="rp-btn" data-rp="calidad" id="rp-calidad" title="Calidad"><i data-ico="settings"></i></button>
+                  <button class="rp-btn" data-rp="completa" title="Pantalla completa (F)"><i data-ico="maximizar"></i></button>
+                </div>
+              </div>
+              <div class="rp-menu oculto" id="rp-menu"></div>
+            </div>
+            <div id="ver-info"></div>
+            <div id="ver-inicio"></div>
+          </div>
+          <aside class="ver-lista oculto" id="ver-lista"></aside>
+        </div>
+      </section>
+
       <!-- ================= BIBLIOTECA ================= -->
       <section class="vista" id="vista-biblioteca">
         <div class="card pad bib-cabecera">
@@ -449,5 +495,7 @@
 <script src="mock.js"></script>
 <script src="app.js"></script>
 <script src="organizar.js"></script>
+<script src="vendor/hls.min.js"></script>
+<script src="ver.js"></script>
 </body>
 </html>

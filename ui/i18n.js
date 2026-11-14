@@ -333,6 +333,31 @@
     'Pega enlaces o playlists (o usa el atajo de captura rápida) y se irán sumando a la derecha. Elige uno para verlo y configurarlo como siempre; después descárgalos todos juntos en una carpeta.':
       'Paste links or playlists (or use the quick capture shortcut) and they will pile up on the right. Pick one to see and set it up as usual; then download them all together into one folder.',
     'Mostrar el stack': 'Show the stack', 'Plegar el stack': 'Collapse the stack',
+    // 1.7.0: pestaña Ver
+    'Ver': 'Watch', 'Ver aquí': 'Watch here', 'Abrir archivo': 'Open file', 'Abrir con otro programa': 'Open with another program',
+    'Pega un enlace para verlo aquí (YouTube, .m3u8 y cientos de sitios más)': 'Paste a link to watch it here (YouTube, .m3u8 and hundreds of other sites)',
+    'Ver un archivo de tu equipo': 'Watch a file from your computer', 'Mira videos sin descargarlos': 'Watch videos without downloading them',
+    'Pega un enlace de YouTube u otro sitio, o abre un archivo de tu equipo. También puedes reproducir una colección entera como lista.':
+      'Paste a YouTube or other link, or open a file from your computer. You can also play a whole collection as a playlist.',
+    'Vistos recientemente': 'Recently watched', 'Archivo de tu equipo': 'File on your computer', 'Preparando…': 'Preparing…',
+    'Cargando…': 'Loading…', 'Anterior (P)': 'Previous (P)', 'Siguiente (N)': 'Next (N)', 'Reproducir / pausa (espacio)': 'Play / pause (space)',
+    '10 s atrás (J)': '10 s back (J)', '10 s adelante (L)': '10 s forward (L)', 'Silenciar (M)': 'Mute (M)', 'Volumen (↑/↓)': 'Volume (↑/↓)',
+    'Velocidad': 'Speed', 'Subtítulos (C)': 'Subtitles (C)', 'Calidad': 'Quality', 'Pantalla completa (F)': 'Full screen (F)',
+    'Desactivados': 'Off', 'Automática': 'Auto', 'Guardar en una colección': 'Save to a collection', 'Descargarlo': 'Download it',
+    'Listas': 'Lists', 'Listas y colecciones': 'Lists and collections', 'Ocultar': 'Hide', 'Lista': 'List',
+    'Aleatorio': 'Shuffle', 'Orden aleatorio': 'Shuffle', 'Repetir': 'Repeat', 'Sin repetir': 'No repeat', 'Repetir lista': 'Repeat list',
+    'Repetir uno': 'Repeat one', 'Visto': 'Watched', 'Tus colecciones': 'Your collections', 'Aún no tienes colecciones.': 'You have no collections yet.',
+    'Reproducir como lista': 'Play as a list', 'Unido al vuelo': 'Joined on the fly',
+    'El video y el audio llegan por separado y se unen al vuelo: saltar en la línea de tiempo tarda un par de segundos.':
+      'Video and audio arrive separately and are joined on the fly: seeking takes a couple of seconds.',
+    'No se pudo cargar el video (error de red o enlace caducado).': 'Couldn\'t load the video (network error or expired link).',
+    'No se pudo reproducir este video aquí. Prueba a descargarlo.': 'This video can\'t be played here. Try downloading it.',
+    'Esa colección no tiene nada que se pueda ver.': 'That collection has nothing that can be played.',
+    'Empezar desde el principio': 'Start from the beginning', 'Pega un enlace o elige un archivo.': 'Paste a link or choose a file.',
+    'Solo se pueden ver archivos de video o audio.': 'Only video or audio files can be played.',
+    'Los torrents en Ver llegan en la próxima versión. De momento, descárgalo desde Descargar.': 'Torrents in Watch come in the next version. For now, download it from Download.',
+    'No se encontró un formato que se pueda reproducir aquí. Prueba a descargarlo.': 'No playable format was found. Try downloading it.',
+    'Es una playlist: ábrela con «Ver» desde una colección o el stack, o elige un video.': 'It\'s a playlist: open it with "Watch" from a collection or the stack, or pick a video.',
   };
 
   const MESES = { ene: 'Jan', feb: 'Feb', mar: 'Mar', abr: 'Apr', may: 'May', jun: 'Jun', jul: 'Jul', ago: 'Aug', sep: 'Sep', oct: 'Oct', nov: 'Nov', dic: 'Dec' };
@@ -381,6 +406,9 @@
     [/^Descargar todo \((\d+)\)$/, m => `Download all (${m[1]})`],
     [/^Playlist · (\d+)\/(\d+) videos$/, m => `Playlist · ${m[1]}/${m[2]} videos`],
     [/^Error: (.*)$/, m => `Error: ${tr(m[1])}`],
+    [/^Ibas por (.+)$/, m => `You were at ${m[1]}`],
+    [/^(.+) · (\d+) de (\d+)$/, m => `${m[1]} · ${m[2]} of ${m[3]}`],
+    [/^Continúa donde lo dejaste \((.+)\)\.$/, m => `Picking up where you left off (${m[1]}).`],
     [/^velocidad (.+)$/, m => `speed ${m[1]}`], [/^Convertido con (.+)$/, m => `Converted with ${m[1]}`],
     [/^Tras (\d+) reintentos?$/, m => `After ${m[1]} ${m[1] === '1' ? 'retry' : 'retries'}`],
     [/^Reintento (\d+) de (\d+) en (\d+) s$/, m => `Retry ${m[1]} of ${m[2]} in ${m[3]} s`], [/^Reintento (\d+) de (\d+)$/, m => `Retry ${m[1]} of ${m[2]}`],

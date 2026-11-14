@@ -271,6 +271,12 @@
     async biblioteca_abrir() { return { ok: true }; },
     async biblioteca_papelera(rutas) { return { ok: true, movidos: rutas.length, fallidos: 0 }; },
     async aplicar_tema_ventana() { return true; },
+    // ---- 1.7.0 ----
+    async ver() { return { ok: false, error: 'La reproducción solo funciona dentro de la app.' }; },
+    async ver_abrir_archivo() { return null; },
+    async detener_ver() { return true; },
+    async vistos() { return []; },
+    async guardar_progreso() { return true; },
     async alternar_pantalla_completa() { return true; },
     async pausar_cola(p) { pausado = !!p; return resumen(); },
     async descargar_aria2() { herramientas.aria2.ruta = 'C:\\Users\\usuario\\AppData\\Local\\JabsDLP\\aria2\\aria2c.exe'; herramientas.aria2.de_la_app = true; return herramientas.aria2.descarga; },

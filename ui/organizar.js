@@ -513,7 +513,8 @@ async function pintarColeccion(id) {
       <button class="btn chico icono" data-accion="cerrar-colecciones" title="Cerrar">${ico('x', 'sm')}</button>
     </div>
     <div class="pc-herramientas">
-      <button class="btn chico primario" data-accion="col-descargar" ${enlaces ? '' : 'disabled'}>${ico('download', 'sm')}Descargar todo</button>
+      <button class="btn chico primario" data-accion="col-ver" ${c.items.length ? '' : 'disabled'} title="Reproducir como lista">${ico('play', 'sm')}Ver</button>
+      <button class="btn chico" data-accion="col-descargar" ${enlaces ? '' : 'disabled'}>${ico('download', 'sm')}Descargar todo</button>
       <button class="btn chico" data-accion="col-exportar" ${enlaces ? '' : 'disabled'}>${ico('upload', 'sm')}Exportar</button>
       ${c.fija ? '' : `<button class="btn chico icono" data-accion="col-renombrar" title="Renombrar">${ico('pencil', 'sm')}</button>
       <button class="btn chico icono peligro" data-accion="col-borrar" title="Borrar colección">${ico('trash', 'sm')}</button>`}
@@ -719,7 +720,8 @@ function pintarBiblioteca() {
         <div class="bib-info"><b class="no-traducir">${esc(a.nombre)}</b>
           <small>${esc(fmt.bytes(a.tamano))} · ${esc(new Date(a.fecha * 1000).toLocaleDateString())}</small></div>
         <div class="bib-acciones">
-          <button class="btn chico icono" data-bib-abrir="${esc(a.ruta)}" title="Abrir">${ico('play', 'sm')}</button>
+          <button class="btn chico icono" data-bib-ver="${esc(a.ruta)}" title="Ver aquí">${ico('tv', 'sm')}</button>
+          <button class="btn chico icono" data-bib-abrir="${esc(a.ruta)}" title="Abrir con otro programa">${ico('play', 'sm')}</button>
           <button class="btn chico icono" data-bib-carpeta="${esc(a.ruta)}" title="Mostrar en la carpeta">${ico('folder', 'sm')}</button>
           <button class="btn chico icono peligro" data-bib-papelera="${esc(a.ruta)}" title="Enviar a la Papelera">${ico('trash', 'sm')}</button>
         </div>
@@ -807,6 +809,8 @@ document.addEventListener('click', async e => {
     if (!r.ok) toast(esc(r.error), 'err');
     return;
   }
+  const verBib = t.closest('[data-bib-ver]');
+  if (verBib) return verLocal(verBib.dataset.bibVer);
   const pap = t.closest('[data-bib-papelera]');
   if (pap) return papeleraBib([pap.dataset.bibPapelera]);
   const quitar = t.closest('[data-bib-quitar]');
