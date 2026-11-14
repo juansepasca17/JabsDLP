@@ -86,13 +86,24 @@ AJUSTES_POR_DEFECTO = {
     'log_completo': False,              # yt-dlp -v y error completo en la Cola (tokens ocultos)
     'avisos_ocultos': [],               # avisos de seguridad marcados como "no volver a mostrar"
     'subida_torrent_kb': 20,            # KB/s de subida máxima mientras se descarga un torrent
+    # 1.6.0
+    'modo_stack': False,                # los enlaces se suman a un stack en vez de reemplazar el análisis
+    'stack_auto': False,                # cada enlace del stack se descarga al momento
+    'captura_atajo': False,             # atajo global para enviar el enlace seleccionado a JabsDLP
+    'captura_tecla': 'ctrl+alt+x',
+    'captura_portapapeles': False,      # vigilar el portapapeles (enlaces de video copiados)
+    'captura_modo': 'sugerir',          # sugerir (burbuja con botones) | auto (sin preguntar)
+    'pantalla_completa': False,         # abrir la app en pantalla completa
+    'boton_colecciones': 'lateral',     # lateral (barra lateral) | flotante (píldora abajo a la derecha)
+    'carpetas_biblioteca': [],          # carpetas extra que se ven en la Biblioteca
     'prefs': PREFS_POR_DEFECTO,
 }
 
 
 BOOLEANOS = ('subcarpeta_playlist', 'paralelo', 'decodificar_gpu', 'recomendacion', 'ytdlp_auto', 'retomar_cola',
              'notificaciones', 'bandeja_al_minimizar', 'numerar_playlist', 'no_repetir', 'corte_exacto',
-             'impersonar', 'args_extra_activo', 'log_completo')
+             'impersonar', 'args_extra_activo', 'log_completo', 'modo_stack', 'stack_auto', 'captura_atajo',
+             'captura_portapapeles', 'pantalla_completa')
 ENTEROS = {'max_paralelo': (0, 999), 'fragmentos': (1, 32), 'max_conversiones': (1, 16), 'calidad': (10, 45),
            'reintentos': (0, 10), 'subida_torrent_kb': (1, 100000)}
 AVISOS = ('torrent', 'http', 'generico', 'ejecutable', 'aria2')
@@ -106,6 +117,9 @@ OPCIONES = {
     'tema': ('oscuro', 'claro', 'sistema'),
     'idioma': ('auto', 'es', 'en'),
     'motor': ('ytdlp', 'aria2', 'auto'),
+    'captura_tecla': ('ctrl+alt+x', 'ctrl+shift+x', 'ctrl+alt+d'),
+    'captura_modo': ('sugerir', 'auto'),
+    'boton_colecciones': ('lateral', 'flotante'),
 }
 CATEGORIAS_SPONSOR = ('sponsor', 'selfpromo', 'interaction', 'intro', 'outro', 'preview', 'music_offtopic', 'filler')
 PATRON_IDIOMA = re.compile(r'^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{1,8})*$')
@@ -154,6 +168,15 @@ def validar(clave, valor):
         return validar_plantillas(valor)
     if clave == 'plantilla_args_id':
         return valor if isinstance(valor, str) and PATRON_ID.match(valor or 'x') else NO_VALIDO
+    if clave == 'carpetas_biblioteca':
+        if not isinstance(valor, list):
+            return NO_VALIDO
+        vistas, limpias = set(), []
+        for c in valor[:30]:
+            if isinstance(c, str) and os.path.isdir(c) and os.path.normcase(os.path.abspath(c)) not in vistas:
+                vistas.add(os.path.normcase(os.path.abspath(c)))
+                limpias.append(os.path.abspath(c))
+        return limpias
     if clave == 'avisos_ocultos':
         return sorted({a for a in valor if a in AVISOS}) if isinstance(valor, list) else NO_VALIDO
     if clave in DECIMALES:

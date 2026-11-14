@@ -1,6 +1,8 @@
 """Puente entre la interfaz (JavaScript) y el motor. pywebview expone los métodos públicos."""
+import json
 import locale
 import os
+import time
 import shutil
 import subprocess
 import sys
@@ -8,10 +10,12 @@ import threading
 import uuid
 
 import yt_dlp
+from yt_dlp.utils import sanitize_filename
 
-from . import APP_NAME, VERSION, actualizador, aria2, notificar, sponsor
-from .ajustes import Ajustes, carpeta_local
+from . import APP_NAME, VERSION, actualizador, aria2, biblioteca, captura, notificar, sponsor, ventana
+from .ajustes import Ajustes, carpeta_datos, carpeta_local
 from .argumentos import ArgumentosInvalidos, interpretar
+from .colecciones import ColeccionInvalida, Colecciones
 from .cookies import limpiar_temporales_huerfanos
 from .analizador import Analizador
 from .ffmpeg_tools import Herramientas
@@ -66,6 +70,12 @@ class Api:
         self._icono_avisos = self._copiar_icono()
         self._gestor = Gestor(self._ajustes, self._herr, avisar=self._avisar)
         self._ventana = None
+        self._burbuja = None            # ventana pequeña para sugerir enlaces copiados (la crea main.py)
+        self._colecciones = Colecciones()
+        self._atajo = None
+        self._vigia = None
+        self._sugerida = None           # URL mostrada en la burbuja
+        self._temporizador_burbuja = None
         threading.Thread(target=self._herr.detectar_gpu, daemon=True).start()
         if self._ajustes.get('ytdlp_auto') and actualizador.toca_comprobar():
             actualizador.actualizar_en_segundo_plano(self._ajustes.get('ytdlp_canal'))
@@ -231,7 +241,7 @@ class Api:
     def descargar(self, solicitud):
         try:
             prefs = normalizar(solicitud.get('prefs') or self._ajustes.get('prefs'))
-            if solicitud.get('tipo') not in ('torrent', 'manifiesto'):
+            if solicitud.get('tipo') not in ('torrent', 'manifiesto', 'stack'):
                 self._ajustes.actualizar({'prefs': prefs})
             auto = f"Auto · {NOMBRE_CRITERIO[prefs['criterio']]}"
             tipo = solicitud.get('tipo')
@@ -288,6 +298,19 @@ class Api:
                 trabajos.append(Trabajo(url, {'tipo': 'manifiesto', 'referer': referer, 'nombre': nombre}, nombre,
                                         titulo_formato=f'Enlace directo .{ext}',
                                         duracion=solicitud.get('duracion')))
+            elif tipo == 'stack':
+                items = [i for i in (solicitud.get('items') or [])[:500]
+                         if isinstance(i, dict) and str(i.get('url') or '').lower().startswith(('http://', 'https://'))]
+                nombre = sanitize_filename(str(solicitud.get('nombre') or '').strip()[:120], restricted=False) \
+                    or time.strftime('Stack %Y-%m-%d %H-%M')
+                grupo = uuid.uuid4().hex[:12]
+                for n, item in enumerate(items, start=1):
+                    propias = item.get('prefs') if isinstance(item.get('prefs'), dict) else {}
+                    p = dict(normalizar({**prefs, **propias}), _stack=True)  # _stack: siempre en su subcarpeta
+                    trabajos.append(Trabajo(item['url'], p, item.get('titulo') or None, item.get('miniatura'),
+                                            item.get('canal'), item.get('duracion'),
+                                            titulo_formato='Auto · Stack', subcarpeta=nombre, grupo_id=grupo,
+                                            indice=n, total_grupo=len(items)))
             elif tipo == 'lote':
                 urls = solicitud.get('urls') or []
                 grupo = uuid.uuid4().hex[:12]
@@ -352,6 +375,7 @@ class Api:
         return self._gestor.resumen()
 
     def cerrar(self):
+        self._detener_captura()
         self._gestor.cerrar()
 
     def cancelar(self, id_):
@@ -406,6 +430,9 @@ class Api:
     def guardar_ajustes(self, cambios):
         todo = self._ajustes.actualizar(cambios or {})
         self._gestor.notificar()
+        if any(k.startswith('captura_') for k in (cambios or {})):
+            self.configurar_captura()
+            todo = dict(todo, captura_error=self._error_captura())
         if 'retomar_cola' in (cambios or {}):
             self._gestor._guardar_cola()
         if 'ffmpeg_ruta' in (cambios or {}):
@@ -446,6 +473,308 @@ class Api:
             return _ok(urls=leer_urls_txt(ruta))
         except Exception as e:  # noqa: BLE001
             return _fallo(e)
+
+    # ---------- stack ----------
+    def _ruta_stack(self):
+        return os.path.join(carpeta_datos(), 'stack.json')
+
+    def cargar_stack(self):
+        try:
+            with open(self._ruta_stack(), 'r', encoding='utf-8') as f:
+                datos = json.load(f)
+            return datos if isinstance(datos, dict) else {}
+        except (OSError, ValueError):
+            return {}
+
+    def guardar_stack(self, stack):
+        """Guarda el stack para no perderlo al cerrar (solo enlace, título, miniatura, duración y prefs)."""
+        from .colecciones import limpiar_item
+        items = []
+        for i in (stack or {}).get('items') or []:
+            limpio = limpiar_item(i, permitir_rutas=False) if isinstance(i, dict) else None
+            if limpio:
+                propias = i.get('prefs') if isinstance(i.get('prefs'), dict) else None
+                items.append({**limpio, 'prefs': {k: v for k, v in (propias or {}).items()
+                                                  if k in ('tipo', 'resolucion')} or None})
+        datos = {'nombre': str((stack or {}).get('nombre') or '')[:120], 'items': items[:500]}
+        temporal = self._ruta_stack() + '.tmp'
+        try:
+            with open(temporal, 'w', encoding='utf-8') as f:
+                json.dump(datos, f, ensure_ascii=False)
+            os.replace(temporal, self._ruta_stack())
+        except OSError:
+            return False
+        return True
+
+    # ---------- colecciones ----------
+    def colecciones(self):
+        return self._colecciones.lista()
+
+    def coleccion(self, id_):
+        c = self._colecciones.obtener(id_)
+        return _ok(coleccion=c) if c else {'ok': False, 'error': 'Esa colección ya no existe.'}
+
+    def _col(self, funcion, *args):
+        try:
+            return _ok(resultado=funcion(*args), colecciones=self._colecciones.lista())
+        except ColeccionInvalida as e:
+            return {'ok': False, 'error': str(e)}
+
+    def crear_coleccion(self, nombre, items=None):
+        return self._col(self._colecciones.crear, nombre, items)
+
+    def renombrar_coleccion(self, id_, nombre):
+        return self._col(self._colecciones.renombrar, id_, nombre)
+
+    def borrar_coleccion(self, id_):
+        return self._col(self._colecciones.borrar, id_)
+
+    def agregar_a_coleccion(self, id_, items):
+        return self._col(self._colecciones.agregar, id_, items)
+
+    def quitar_de_coleccion(self, id_, item):
+        return self._col(self._colecciones.quitar, id_, item)
+
+    def reordenar_coleccion(self, id_, desde, hasta):
+        return self._col(self._colecciones.reordenar, id_, int(desde), int(hasta))
+
+    def alternar_favorito(self, item):
+        return self._col(self._colecciones.alternar_favorito, item)
+
+    def exportar_coleccion(self, id_, tipo='jabs', progreso=False):
+        c = self._colecciones.obtener(id_)
+        if not c:
+            return {'ok': False, 'error': 'Esa colección ya no existe.'}
+        nombre = sanitize_filename(c['nombre'].replace('★', '').strip(), restricted=False) or 'coleccion'
+        extension = 'txt' if tipo == 'txt' else 'jabs'
+        filtro = ('Lista de enlaces (*.txt)',) if extension == 'txt' else ('Colección JabsDLP (*.jabs)',)
+        ruta = self._dialogo('SAVE', save_filename=f'{nombre}.{extension}', file_types=filtro)
+        if not ruta:
+            return None
+        if not ruta.lower().endswith('.' + extension):
+            ruta += '.' + extension
+        try:
+            return _ok(**self._colecciones.exportar(id_, ruta, extension, bool(progreso)), ruta=ruta)
+        except (OSError, ColeccionInvalida) as e:
+            return {'ok': False, 'error': f'No se pudo exportar: {e}'}
+
+    def importar_coleccion(self):
+        ruta = self._dialogo('OPEN', file_types=('Colecciones (*.jabs;*.txt)', 'Todos los archivos (*.*)'))
+        if not ruta:
+            return None
+        try:
+            id_, cantidad = self._colecciones.importar(ruta)
+            return _ok(id=id_, cantidad=cantidad, colecciones=self._colecciones.lista())
+        except (OSError, ColeccionInvalida) as e:
+            return {'ok': False, 'error': str(e) if isinstance(e, ColeccionInvalida) else f'No se pudo leer: {e}'}
+
+    def descargar_coleccion(self, id_, prefs=None):
+        c = self._colecciones.obtener(id_)
+        if not c:
+            return {'ok': False, 'error': 'Esa colección ya no existe.'}
+        enlaces = [i for i in c['items'] if 'url' in i]
+        if not enlaces:
+            return {'ok': False, 'error': 'La colección no tiene enlaces para descargar (solo archivos ya descargados).'}
+        return self.descargar({'tipo': 'stack', 'items': enlaces, 'nombre': c['nombre'].replace('★', '').strip(),
+                               'prefs': prefs})
+
+    # ---------- biblioteca ----------
+    def _raices(self):
+        raices = [self._ajustes.carpeta()] + list(self._ajustes.get('carpetas_biblioteca') or [])
+        vistas, limpias = set(), []
+        for r in raices:
+            clave = os.path.normcase(os.path.abspath(r))
+            if clave not in vistas and os.path.isdir(r):
+                vistas.add(clave)
+                limpias.append(os.path.abspath(r))
+        return limpias
+
+    def biblioteca_carpetas(self):
+        principal = os.path.normcase(os.path.abspath(self._ajustes.carpeta()))
+        return [{'ruta': r, 'nombre': os.path.basename(r.rstrip('\\/')) or r,
+                 'principal': os.path.normcase(r) == principal} for r in self._raices()]
+
+    def biblioteca_listar(self, raiz, sub=''):
+        raices = self._raices()
+        if not any(os.path.normcase(os.path.abspath(raiz or '')) == os.path.normcase(r) for r in raices):
+            return {'ok': False, 'error': 'Esa carpeta no está en la Biblioteca.'}
+        try:
+            datos = biblioteca.listar(raiz, sub, raices)
+        except biblioteca.RutaNoPermitida as e:
+            return {'ok': False, 'error': str(e)}
+        favoritos = self._colecciones.favoritos_rutas()
+        for a in datos['archivos']:
+            a['favorito'] = os.path.normcase(a['ruta']) in favoritos
+        return _ok(**datos)
+
+    def biblioteca_miniatura(self, ruta):
+        if not ruta or not biblioteca.dentro_de(ruta, self._raices()):
+            return None
+        return biblioteca.miniatura(ruta, self._herr.ffmpeg())
+
+    def biblioteca_agregar_carpeta(self):
+        ruta = self._dialogo('FOLDER', directory=self._ajustes.carpeta())
+        if not ruta:
+            return None
+        actuales = list(self._ajustes.get('carpetas_biblioteca') or [])
+        self._ajustes.actualizar({'carpetas_biblioteca': actuales + [ruta]})
+        return _ok(carpetas=self.biblioteca_carpetas(), ruta=os.path.abspath(ruta))
+
+    def biblioteca_quitar_carpeta(self, ruta):
+        actuales = [c for c in (self._ajustes.get('carpetas_biblioteca') or [])
+                    if os.path.normcase(os.path.abspath(c)) != os.path.normcase(os.path.abspath(ruta or ''))]
+        self._ajustes.actualizar({'carpetas_biblioteca': actuales})
+        return _ok(carpetas=self.biblioteca_carpetas())
+
+    def biblioteca_abrir(self, ruta, carpeta=False):
+        if not ruta or not biblioteca.dentro_de(ruta, self._raices()) or not os.path.exists(ruta):
+            return {'ok': False, 'error': 'No se encontró el archivo (¿lo moviste o borraste?).'}
+        if carpeta or not es_medio(ruta):
+            return _ok(hecho=abrir_en_explorador(ruta, seleccionar=True))
+        return _ok(hecho=abrir_en_explorador(ruta))
+
+    def biblioteca_papelera(self, rutas):
+        movidos, fallidos = 0, 0
+        for ruta in (rutas or [])[:500]:
+            if isinstance(ruta, str) and biblioteca.dentro_de(ruta, self._raices()) and biblioteca.papelera(ruta):
+                movidos += 1
+            else:
+                fallidos += 1
+        return _ok(movidos=movidos, fallidos=fallidos)
+
+    # ---------- ventana ----------
+    def _hwnd(self):
+        try:
+            return self._ventana.native.Handle.ToInt32() if self._ventana and self._ventana.native else None
+        except Exception:  # noqa: BLE001
+            return ventana.hwnd_por_titulo(APP_NAME)
+
+    def aplicar_tema_ventana(self, claro):
+        return ventana.tema_barra(self._hwnd(), bool(claro))
+
+    def alternar_pantalla_completa(self):
+        if self._ventana is not None:
+            self._ventana.toggle_fullscreen()
+        return True
+
+    # ---------- captura rápida (atajo y portapapeles) ----------
+    def _error_captura(self):
+        return self._atajo.error if self._atajo and self._atajo.error else None
+
+    def _detener_captura(self):
+        if self._atajo:
+            self._atajo.detener()
+        if self._vigia:
+            self._vigia.detener()
+        self._atajo = self._vigia = None
+
+    def configurar_captura(self):
+        """Arranca o para el atajo y el vigía según los ajustes. Devuelve el error del atajo, si lo hay."""
+        self._detener_captura()
+        if os.name != 'nt':
+            return None
+        if self._ajustes.get('captura_atajo'):
+            try:
+                self._atajo = captura.Atajo(self._ajustes.get('captura_tecla'), self._recibir_captura)
+                self._atajo.iniciar()
+            except ValueError as e:
+                self._atajo = None
+                return str(e)
+        if self._ajustes.get('captura_portapapeles'):
+            self._vigia = captura.VigiaPortapapeles(self._recibir_captura, captura.sitio_reconocido)
+            self._vigia.iniciar()
+        return self._error_captura()
+
+    def estado_captura(self):
+        return {'error': self._error_captura(), 'atajo': bool(self._atajo and not self._atajo.error),
+                'portapapeles': bool(self._vigia)}
+
+    def _enviar_a_la_interfaz(self, urls, accion='auto'):
+        if self._ventana is None:
+            return
+        try:
+            self._ventana.evaluate_js(f'recibirCaptura({json.dumps(urls)}, {json.dumps(accion)})')
+        except Exception:  # noqa: BLE001 - la ventana pudo cerrarse
+            return
+        visible = True
+        try:
+            hwnd = self._hwnd()
+            import ctypes
+            visible = bool(hwnd and ctypes.windll.user32.IsWindowVisible(hwnd) and not ctypes.windll.user32.IsIconic(hwnd))
+        except Exception:  # noqa: BLE001
+            pass
+        if not visible and self._ajustes.get('notificaciones'):
+            destino = 'stack' if self._ajustes.get('modo_stack') else 'JabsDLP'
+            notificar.mostrar(f'Enviado a {destino}', urls[0][:120], None, None, self._icono_avisos)
+
+    def _recibir_captura(self, urls, desde_atajo):
+        """Del atajo (siempre se envía) o del vigía del portapapeles (sugerir con la burbuja o enviar)."""
+        if desde_atajo or self._ajustes.get('captura_modo') == 'auto':
+            self._enviar_a_la_interfaz(urls)
+        else:
+            self._sugerir(urls[0])
+
+    def _sugerir(self, url):
+        if self._burbuja is None or captura.pantalla_completa_activa():
+            return
+        from urllib.parse import urlsplit
+        self._sugerida = url
+        datos = {'url': url, 'dominio': (urlsplit(url).hostname or '').removeprefix('www.'),
+                 'stack': bool(self._ajustes.get('modo_stack')), 'idioma': self.idioma(),
+                 'claro': self._ajustes.get('tema') == 'claro'}
+        try:
+            self._burbuja.evaluate_js(f'mostrar({json.dumps(datos)})')
+        except Exception:  # noqa: BLE001
+            return
+        hwnd = ventana.hwnd_por_titulo('JabsDLP · enlace')
+        if hwnd:
+            izq, arriba, der, abajo = captura.area_trabajo()
+            esc = ventana.escala(hwnd)
+            ancho, alto = int(372 * esc), int(104 * esc)
+            x, y = der - ancho - int(16 * esc), abajo - alto - int(16 * esc)
+            ventana.mostrar_sin_foco(hwnd, x, y, ancho, alto)
+            # La primera vez que se muestra, WinForms la recoloca: se vuelve a poner en su sitio
+            for espera in (0.15, 0.5):
+                threading.Timer(espera, ventana.mostrar_sin_foco, args=(hwnd, x, y, ancho, alto)).start()
+        else:
+            self._burbuja.show()
+        if self._temporizador_burbuja:
+            self._temporizador_burbuja.cancel()
+        self._temporizador_burbuja = threading.Timer(7.0, self._ocultar_burbuja)
+        self._temporizador_burbuja.daemon = True
+        self._temporizador_burbuja.start()
+
+    def _ocultar_burbuja(self):
+        self._sugerida = None
+        hwnd = ventana.hwnd_por_titulo('JabsDLP · enlace')
+        if hwnd:
+            ventana.ocultar(hwnd)
+        elif self._burbuja is not None:
+            try:
+                self._burbuja.hide()
+            except Exception:  # noqa: BLE001
+                pass
+
+    def burbuja_accion(self, accion):
+        """Botones de la burbuja: 'stack' | 'descargar' | 'cerrar'."""
+        url = self._sugerida
+        self._ocultar_burbuja()
+        if url and accion in ('stack', 'descargar'):
+            self._enviar_a_la_interfaz([url], accion)
+        return True
+
+    def burbuja_mantener(self):
+        """El ratón está encima de la burbuja: no se cierra mientras tanto."""
+        if self._temporizador_burbuja:
+            self._temporizador_burbuja.cancel()
+        return True
+
+    def burbuja_soltar(self):
+        if self._sugerida:
+            self._temporizador_burbuja = threading.Timer(3.0, self._ocultar_burbuja)
+            self._temporizador_burbuja.daemon = True
+            self._temporizador_burbuja.start()
+        return True
 
     def portapapeles(self):
         try:

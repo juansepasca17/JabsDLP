@@ -67,16 +67,44 @@ def main():
         procesos.avisar_instancia_abierta()
         return
     api = Api()
+    claro = api._ajustes.get('tema') == 'claro'
+    ancho, alto = 1320, 860
+    try:  # que quepa sobre la barra de tareas (pantallas de 1080p al 125 %, portátiles…)
+        import ctypes
+        from jabsdlp.captura import area_trabajo
+        izq, arriba, der, abajo = area_trabajo()
+        escala = ctypes.windll.user32.GetDpiForSystem() / 96.0
+        ancho = max(1000, min(ancho, int((der - izq) / escala) - 40))
+        alto = max(660, min(alto, int((abajo - arriba) / escala) - 40))
+    except (AttributeError, OSError):
+        pass
     ventana = webview.create_window(
         APP_NAME,
         url=recurso('ui', 'index.html'),
         js_api=api,
-        width=1320,
-        height=860,
+        width=ancho,
+        height=alto,
         min_size=(1000, 660),
-        background_color='#09090b',
+        background_color='#f4f4f7' if claro else '#09090b',   # sin fogonazo oscuro en el tema claro
+        fullscreen=bool(api._ajustes.get('pantalla_completa')),
     )
     api._ventana = ventana
+
+    # Burbuja para sugerir enlaces copiados (Ajustes → Captura rápida). Oculta hasta que haga falta.
+    api._burbuja = webview.create_window(
+        'JabsDLP · enlace', url=recurso('ui', 'burbuja.html'), js_api=api, width=372, height=104,
+        frameless=True, on_top=True, hidden=True, focus=False, resizable=False,
+        background_color='#f4f4f7' if claro else '#111115')
+
+    def al_mostrar():
+        # La barra de título sigue el tema de la app (pywebview la pone según el de Windows)
+        from jabsdlp.ventana import tema_barra
+        tema = api._ajustes.get('tema')
+        if tema != 'sistema':
+            tema_barra(api._hwnd(), tema == 'claro')
+        api.configurar_captura()
+
+    ventana.events.shown += al_mostrar
     # La X cierra la app: con "retomar" se guardan los pendientes para continuarlos al reabrir
     ventana.events.closing += lambda: api.cerrar()
 
@@ -111,6 +139,15 @@ def main():
 
         ventana.events.minimized += al_minimizar
         ventana.events.closed += bandeja.ocultar
+
+    def al_cerrar():
+        api._detener_captura()
+        try:
+            api._burbuja.destroy()   # sin esto la app seguiría viva con la burbuja oculta
+        except Exception:  # noqa: BLE001
+            pass
+
+    ventana.events.closed += al_cerrar
 
     icono = recurso('assets', 'icono.ico')
     webview.start(debug='--debug' in sys.argv, icon=icono if os.path.exists(icono) else None)

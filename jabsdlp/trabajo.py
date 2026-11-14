@@ -519,7 +519,7 @@ def ejecutar(trabajo, ajustes, herramientas, cubeta=None, limite_aria2=0):
     manifiesto = trabajo.es_manifiesto      # enlace directo .m3u8/.mpd: configuración predeterminada de yt-dlp
     completo = bool(ajustes.get('log_completo'))
     carpeta = ajustes.carpeta()
-    if trabajo.subcarpeta and ajustes.get('subcarpeta_playlist'):
+    if trabajo.subcarpeta and (ajustes.get('subcarpeta_playlist') or (trabajo.prefs or {}).get('_stack')):
         carpeta = os.path.join(carpeta, sanitize_filename(trabajo.subcarpeta, restricted=False))
     progreso, postproceso = _ganchos(trabajo, cubeta)
     cookies_tmp = None
