@@ -76,6 +76,7 @@ function pedirTexto(titulo, valor = '', si = 'Guardar') {
 // playlist con su lista); el stack es un panel lateral fijo a la derecha. Cada elemento guarda su propia
 // configuración (preferencias, formato elegido, videos marcados de una playlist…).
 S.stack = { nombre: '', items: [], sel: null };
+S.stackAbierto = false;   // el panel empieza plegado: se despliega con la pestaña del borde derecho
 
 function nombreStackPorDefecto() {
   const d = new Date(), p = n => String(n).padStart(2, '0');
@@ -131,6 +132,8 @@ async function agregarAlStack(urls) {
   if (!S.stack.sel || !itemSel()) seleccionarStack(ultimo.uid);
   else renderDescargar();
   toast(nuevos === 1 ? 'Añadido al stack.' : `${nuevos} enlaces añadidos al stack.`, 'ok');
+  const tab = $('#tab-stack');
+  if (tab) { tab.classList.remove('aviso-nuevo'); void tab.offsetWidth; tab.classList.add('aviso-nuevo'); }
   guardarStackLuego();
   return true;
 }
@@ -311,14 +314,28 @@ function pintarPanelStack() {
     panel.className = 'panel-stack';
     document.body.appendChild(panel);
   }
-  const visible = S.vista === 'descargar' && S.ajustes?.modo_stack && S.stack.items.length > 0;
+  let pestana = $('#tab-stack');
+  if (!pestana) {
+    pestana = document.createElement('button');
+    pestana.id = 'tab-stack';
+    pestana.className = 'tab-stack';
+    pestana.dataset.accion = 'stack-abrir';
+    document.body.appendChild(pestana);
+  }
+  const hay = S.vista === 'descargar' && S.ajustes?.modo_stack && S.stack.items.length > 0;
+  const visible = hay && S.stackAbierto;
   document.body.classList.toggle('con-stack', !!visible);
-  panel.classList.toggle('oculto', !visible);
+  panel.classList.toggle('abierto', !!visible);
+  pestana.classList.toggle('oculto', !hay || visible);
+  const analizando = S.stack.items.some(i => i.estado === 'analizando');
+  pestana.innerHTML = `${ico('chevron-izq', 'sm')}${ico(analizando ? 'loader' : 'layers', analizando ? 'sm spin' : 'sm')}<span>Stack</span><b>${S.stack.items.length}</b>`;
+  pestana.title = 'Mostrar el stack';
   if (!visible) return;
   const incluidos = S.stack.items.filter(i => i.incluir && i.estado !== 'error' && i.estado !== 'enviado');
   const scroll = panel.querySelector('.ps-lista')?.scrollTop;
   panel.innerHTML = `
-    <div class="pc-cabecera"><span class="ps-titulo">${ico('layers', 'sm')}<b>Stack</b> <span class="cuenta">(${S.stack.items.length})</span></span></div>
+    <div class="pc-cabecera"><span class="ps-titulo">${ico('layers', 'sm')}<b>Stack</b> <span class="cuenta">(${S.stack.items.length})</span></span>
+      <button class="btn chico icono" data-accion="stack-cerrar" title="Plegar el stack">${ico('chevron-der', 'sm')}</button></div>
     <div class="ps-carpeta"><label class="campo" style="margin:0"><span>Carpeta</span>
       <input class="entrada" id="stack-nombre" spellcheck="false" maxlength="120" value="${esc(S.stack.nombre)}"></label></div>
     <div class="ps-lista">${S.stack.items.map((i, n) => filaPanelStack(i, n + 1)).join('')}</div>
@@ -366,6 +383,8 @@ document.addEventListener('click', async e => {
     if (ver) return seleccionarStack(ver.dataset.stackVer);
   }
   const accion = t.closest('[data-accion]')?.dataset.accion;
+  if (accion === 'stack-abrir') { S.stackAbierto = true; return pintarPanelStack(); }
+  if (accion === 'stack-cerrar') { S.stackAbierto = false; return pintarPanelStack(); }
   if (accion === 'stack-descargar') return descargarStack();
   if (accion === 'stack-quitar-actual') return quitarDelStack(S.stack.sel);
   if (accion === 'stack-vaciar') {

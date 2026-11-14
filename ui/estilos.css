@@ -588,7 +588,21 @@ body.con-fab .contenido { padding-bottom: 84px; }
 
 /* Panel lateral del stack (fijo a la derecha en Descargar, como el de Colecciones) */
 .panel-stack { position: fixed; top: 0; right: 0; bottom: 0; width: 360px; z-index: 30; display: flex; flex-direction: column;
-  background: var(--panel); border-left: 1px solid var(--border); }
+  background: var(--panel); border-left: 1px solid var(--border); transform: translateX(105%); transition: transform .22s ease;
+  box-shadow: -12px 0 30px rgba(0, 0, 0, .18); }
+.panel-stack.abierto { transform: none; }
+.principal { transition: margin-right .22s ease; }
+/* Pestaña con flecha en el borde derecho para desplegar el stack */
+.tab-stack { position: fixed; right: 0; top: 50%; transform: translateY(-50%); z-index: 29; display: flex; flex-direction: column;
+  align-items: center; gap: 8px; padding: 14px 8px; border: 1px solid var(--accent-border); border-right: 0;
+  border-radius: 12px 0 0 12px; background: var(--card); color: var(--accent); cursor: pointer;
+  box-shadow: -6px 0 18px rgba(0, 0, 0, .2); transition: padding .15s, background .15s; }
+.tab-stack:hover { padding-right: 12px; background: var(--accent-bg); }
+.tab-stack span { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 12.5px; font-weight: 600; letter-spacing: .3px; }
+.tab-stack b { min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--accent); color: var(--accent-ink);
+  font-size: 11px; display: inline-flex; align-items: center; justify-content: center; }
+.tab-stack.aviso-nuevo { animation: aviso-stack .9s ease 2; }
+@keyframes aviso-stack { 50% { transform: translateY(-50%) translateX(-6px); background: var(--accent-bg); } }
 body.con-stack .principal { margin-right: 360px; }
 body.con-stack .fab { right: 382px; }
 .ps-titulo { display: flex; align-items: center; gap: 8px; flex: 1; font-size: 15px; }
@@ -625,3 +639,5 @@ body.con-stack .columnas { grid-template-columns: minmax(220px, 0.7fr) minmax(0,
 body.con-stack .fila-buscar { flex-wrap: wrap; }
 body.con-stack .fila-buscar .entrada { flex: 1 1 100%; }
 @media (max-width: 1100px) { body.con-stack .columnas { grid-template-columns: minmax(0, 1fr); } }
+body.con-stack .pie-opciones { flex-wrap: wrap; }
+body.con-stack .pie-opciones .acciones { flex: 1 1 100%; margin-left: 0; flex-wrap: wrap; justify-content: flex-end; }

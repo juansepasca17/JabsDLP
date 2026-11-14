@@ -332,6 +332,7 @@
     'Este enlace no se puede apilar (¿es un torrent o un lote?).': 'This link can\'t be stacked (is it a torrent or a batch?).',
     'Pega enlaces o playlists (o usa el atajo de captura rápida) y se irán sumando a la derecha. Elige uno para verlo y configurarlo como siempre; después descárgalos todos juntos en una carpeta.':
       'Paste links or playlists (or use the quick capture shortcut) and they will pile up on the right. Pick one to see and set it up as usual; then download them all together into one folder.',
+    'Mostrar el stack': 'Show the stack', 'Plegar el stack': 'Collapse the stack',
   };
 
   const MESES = { ene: 'Jan', feb: 'Feb', mar: 'Mar', abr: 'Apr', may: 'May', jun: 'Jun', jul: 'Jul', ago: 'Aug', sep: 'Sep', oct: 'Oct', nov: 'Nov', dic: 'Dec' };
