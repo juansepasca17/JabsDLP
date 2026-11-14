@@ -2,6 +2,13 @@
 
 /* ================= iconos (trazos estilo Lucide) ================= */
 const ICONOS = {
+  star: '<path d="M11.5 2.7a.6.6 0 0 1 1 0l2.6 5.3 5.8.8a.6.6 0 0 1 .3 1l-4.2 4.1 1 5.8a.6.6 0 0 1-.8.6L12 17.6l-5.2 2.7a.6.6 0 0 1-.8-.6l1-5.8-4.2-4.1a.6.6 0 0 1 .3-1l5.8-.8Z"/>',
+  bookmark: '<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>',
+  library: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
+  grip: '<circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/>',
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>',
+  'chevron-der': '<path d="m9 18 6-6-6-6"/>',
+  'chevron-izq': '<path d="m15 18-6-6 6-6"/>',
   download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>',
   list: '<line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/>',
   settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
@@ -232,7 +239,7 @@ const S = {
 };
 
 /* ================= navegación ================= */
-const TITULOS = { descargar: 'Descargar', cola: 'Cola de descargas', ajustes: 'Ajustes' };
+const TITULOS = { descargar: 'Descargar', biblioteca: 'Biblioteca', cola: 'Cola de descargas', ajustes: 'Ajustes' };
 function irA(vista) {
   S.vista = vista;
   $$('.nav').forEach(b => b.classList.toggle('activo', b.dataset.vista === vista));
@@ -240,6 +247,7 @@ function irA(vista) {
   $('#titulo-vista').textContent = TITULOS[vista];
   if (vista === 'cola') refrescarCola();
   if (vista === 'ajustes') { pintarAjustes(); refrescarHerramientas(); }
+  if (vista === 'biblioteca') abrirBiblioteca();
 }
 
 /* ================= metadatos ================= */
@@ -494,6 +502,7 @@ function pieHTML(texto, habilitado) {
   return `<div class="pie-opciones">
       <div class="destino" title="${esc(destino)}">${ico('folder', 'sm')}<span>${esc(destino)}</span></div>
       <div class="acciones">
+        ${['video', 'playlist', 'lote'].includes(S.analisis?.tipo) ? `<button class="btn pildora" data-accion="guardar-en-coleccion" title="Guardar para más tarde o para compartir">${ico('bookmark')}Guardar</button>` : ''}
         <button class="btn pildora" data-accion="cancelar-analisis">${ico('x')}Cancelar</button>
         <button class="btn pildora primario" data-accion="descargar" ${habilitado ? '' : 'disabled'}>${ico('check')}${esc(texto)}</button>
       </div>
@@ -610,6 +619,8 @@ function inicioHTML() {
 }
 
 function renderDescargar() {
+  if (S.ajustes?.modo_stack && !S.cargando && !S.analisis && !S.error) return renderStack();
+  $('#stack-vista')?.classList.add('oculto');
   $$('#modo button').forEach(b => b.classList.toggle('activo', b.dataset.modo === S.modo));
   $('#btn-analizar').innerHTML = S.cargando ? `${ico('loader', 'spin')}Analizando…` : `${ico('search')}Analizar`;
   $('#btn-analizar').disabled = S.cargando;
@@ -752,6 +763,14 @@ async function analizar() {
   const texto = $('#url').value.trim();
   if (!texto) { toast('Pega una URL primero.', 'err'); $('#url').focus(); return; }
   cerrarMenu();
+  if (S.ajustes.modo_stack && S.modo !== 'playlist') {
+    const urls = texto.split(/\s+/).filter(t => /^https?:\/\//i.test(t));
+    if (urls.length && urls.every(apilable)) {
+      $('#url').value = '';
+      agregarAlStack(urls);
+      return;
+    }
+  }
   S.cargando = true; S.error = null; S.analisis = null; S.calc = null;
   S.seleccion = null; S.audioId = null; S.verManual = false;
   S.recorte = null; S.quitarAnuncios = false; S.sponsor = null;
@@ -1096,6 +1115,10 @@ async function borrarPlantilla(id) {
 function pintarAjustes() {
   const a = S.ajustes;
   pintarPlantillas();
+  aplicarBotonColecciones();
+  $('#aj-captura-error').textContent = a.captura_error ? ` ${a.captura_error}` : '';
+  $('#url').placeholder = a.modo_stack ? 'Pega enlaces: se irán sumando al stack'
+    : 'Pega la URL de un video, playlist o canal (o varias URLs a la vez)';
   $$('[data-ajuste]').forEach(el => {
     const k = el.dataset.ajuste;
     if (el.type === 'checkbox') el.checked = !!a[k];
@@ -1131,6 +1154,7 @@ function aplicarTema() {
   const tema = S.ajustes.tema || 'oscuro';
   const claro = tema === 'claro' || (tema === 'sistema' && window.matchMedia('(prefers-color-scheme: light)').matches);
   document.documentElement.dataset.tema = claro ? 'claro' : 'oscuro';
+  API?.aplicar_tema_ventana?.(claro);   // barra de título de Windows del mismo color que la app
 }
 
 function aplicarIdioma() {
@@ -1220,6 +1244,11 @@ function pintarYtdlp(y) {
 async function guardarAjuste(cambios) {
   S.ajustes = await API.guardar_ajustes(cambios);
   pintarAjustes();
+  if ('modo_stack' in cambios) {
+    if (cambios.modo_stack) { S.analisis = null; S.error = null; }
+    renderDescargar();
+  }
+  if (S.ajustes.captura_error) toast(esc(S.ajustes.captura_error), 'err');
   if ('gpu' in cambios || 'calidad' in cambios) { await refrescarHerramientas(); if (S.analisis?.tipo === 'video') recalcular(); }
   if ('recomendacion' in cambios && S.vista === 'descargar' && S.analisis) renderOpciones();
 }
@@ -1512,6 +1541,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id
 document.addEventListener('error', e => { if (e.target.tagName === 'IMG' && !e.target.classList.contains('logo')) e.target.remove(); }, true);
 
 function cuandoListo(fn) {
+  // Espera a que carguen todos los scripts (organizar.js va después de app.js)
+  if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', () => cuandoListo(fn), { once: true }); return; }
   if (window.__MOCK_API__) { API = window.__MOCK_API__; fn(); return; }
   if (window.pywebview?.api) { API = window.pywebview.api; fn(); return; }
   window.addEventListener('pywebviewready', () => { API = window.pywebview.api; fn(); }, { once: true });
@@ -1525,6 +1556,8 @@ cuandoListo(async () => {
   S.prefs = { ...r.ajustes.prefs };
   S.herr = r.herramientas;
   $('#version').textContent = `v${r.version}`;
+  await cargarStackGuardado();
+  cargarColecciones();
   pintarAjustes();
   renderDescargar();
   refrescarHerramientas();

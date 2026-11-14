@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+  <title>JabsDLP · enlace</title>
+  <link rel="stylesheet" href="estilos.css">
+  <style>
+    html, body { height: 100%; margin: 0; background: var(--card); overflow: hidden; }
+    .burbuja { display: flex; align-items: center; gap: 12px; height: 100%; box-sizing: border-box; padding: 12px 14px;
+               border: 1px solid var(--border-2); border-radius: 0; user-select: none; }
+    .burbuja img { width: 34px; height: 34px; border-radius: 9px; flex: none; }
+    .burbuja .txt { flex: 1; min-width: 0; }
+    .burbuja .txt b { display: block; font-size: 13px; color: var(--text); }
+    .burbuja .txt small { display: block; font-size: 12px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .burbuja .botones { display: flex; gap: 6px; flex: none; }
+    .burbuja .btn { padding: 6px 10px; font-size: 12.5px; }
+    .burbuja .cerrar { position: absolute; top: 4px; right: 6px; background: none; border: 0; color: var(--dim); cursor: pointer; font-size: 14px; }
+    .barra-tiempo { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--accent); width: 100%; transform-origin: left; }
+    .barra-tiempo.corre { transition: transform 6.5s linear; transform: scaleX(0); }
+  </style>
+</head>
+<body>
+  <div class="burbuja">
+    <img src="logo.png" alt="">
+    <div class="txt"><b id="titulo">¿Enviar a JabsDLP?</b><small id="dominio" class="no-traducir"></small></div>
+    <div class="botones">
+      <button class="btn chico" id="btn-stack" data-accion="stack">Al stack</button>
+      <button class="btn chico primario" data-accion="descargar">Descargar</button>
+    </div>
+    <button class="cerrar" data-accion="cerrar" title="Descartar">✕</button>
+    <div class="barra-tiempo" id="tiempo"></div>
+  </div>
+  <script src="burbuja.js"></script>
+</body>
+</html>

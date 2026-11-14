@@ -16,8 +16,10 @@
       <div><b>JabsDLP</b><small id="version">v1.4.0</small></div>
     </div>
     <button class="nav activo" data-vista="descargar"><i data-ico="download"></i>Descargar</button>
+    <button class="nav" data-vista="biblioteca"><i data-ico="library"></i>Biblioteca</button>
     <button class="nav" data-vista="cola"><i data-ico="list"></i>Cola<span class="contador" id="contador-cola">0</span></button>
     <button class="nav" data-vista="ajustes"><i data-ico="settings"></i>Ajustes</button>
+    <button class="nav nav-colecciones" data-accion="abrir-colecciones"><i data-ico="bookmark"></i>Colecciones<span class="contador" id="contador-colecciones">0</span></button>
     <div class="pie">
       <div class="estado-linea"><span class="punto" id="punto-ffmpeg"></span><span id="txt-ffmpeg">ffmpeg…</span></div>
       <div class="estado-linea"><span class="punto" id="punto-gpu"></span><span id="txt-gpu">Detectando GPU…</span></div>
@@ -47,6 +49,8 @@
               <button data-modo="video" class="activo"><i data-ico="video" class="sm"></i>Video</button>
               <button data-modo="playlist"><i data-ico="playlist" class="sm"></i>Playlist</button>
             </div>
+            <label class="chip-stack" title="Modo stack: los enlaces se van sumando a una lista para descargarlos juntos en una carpeta">
+              <input type="checkbox" data-ajuste="modo_stack"><span><i data-ico="layers" class="sm"></i>Stack</span></label>
             <button class="btn primario" data-accion="analizar" id="btn-analizar"><i data-ico="search"></i>Analizar</button>
           </div>
         </div>
@@ -94,6 +98,31 @@
       </section>
 
       <!-- ================= AJUSTES ================= -->
+      <!-- ================= BIBLIOTECA ================= -->
+      <section class="vista" id="vista-biblioteca">
+        <div class="card pad bib-cabecera">
+          <div class="bib-carpetas" id="bib-carpetas"></div>
+          <div class="bib-herramientas">
+            <div class="migas no-traducir" id="bib-migas"></div>
+            <input class="entrada" id="bib-buscar" type="search" spellcheck="false" placeholder="Buscar por nombre…">
+            <select class="entrada chica" id="bib-tipo">
+              <option value="todo">Todo</option><option value="video">Video</option><option value="audio">Audio</option>
+            </select>
+            <select class="entrada chica" id="bib-fecha">
+              <option value="todo">Cualquier fecha</option><option value="hoy">Hoy</option>
+              <option value="semana">Esta semana</option><option value="mes">Este mes</option>
+            </select>
+            <select class="entrada chica" id="bib-orden">
+              <option value="fecha">Más recientes</option><option value="nombre">Nombre</option><option value="tamano">Tamaño</option>
+            </select>
+            <button class="btn chico" id="bib-favs" data-accion="bib-favs" title="Solo favoritos"><i data-ico="star" class="sm"></i>Favoritos</button>
+            <button class="btn chico icono" data-accion="bib-recargar" title="Actualizar"><i data-ico="refresh" class="sm"></i></button>
+          </div>
+        </div>
+        <div class="bib-rejilla" id="bib-rejilla"></div>
+        <div class="bib-seleccion oculto" id="bib-seleccion"></div>
+      </section>
+
       <section class="vista" id="vista-ajustes">
         <div class="rejilla-ajustes">
           <div class="card pad">
@@ -325,6 +354,42 @@
                 <option value="en">English</option>
               </select>
             </div>
+            <div class="ajuste">
+              <div class="txt"><b>Abrir en pantalla completa</b><small>También puedes entrar o salir en cualquier momento con F11.</small></div>
+              <label class="switch"><input type="checkbox" data-ajuste="pantalla_completa"><span></span></label>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Botón de Colecciones</b><small>En la barra lateral o flotando abajo a la derecha.</small></div>
+              <select class="entrada chica" data-ajuste="boton_colecciones">
+                <option value="lateral">En la barra lateral</option>
+                <option value="flotante">Flotante (abajo a la derecha)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="card pad">
+            <h2 class="titulo-seccion"><i data-ico="zap"></i>Captura rápida</h2>
+            <div class="ajuste">
+              <div class="txt"><b>Atajo para enviar enlaces</b><small>Selecciona un enlace en cualquier programa (o cópialo) y pulsa el atajo: se envía a JabsDLP sin copiar, pegar ni cambiar de ventana. Con el modo stack, se suma al stack.<span class="err-texto" id="aj-captura-error"></span></small></div>
+              <select class="entrada chica" data-ajuste="captura_tecla">
+                <option value="ctrl+alt+x">Ctrl + Alt + X</option>
+                <option value="ctrl+shift+x">Ctrl + Shift + X</option>
+                <option value="ctrl+alt+d">Ctrl + Alt + D</option>
+              </select>
+              <label class="switch"><input type="checkbox" data-ajuste="captura_atajo"><span></span></label>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Vigilar el portapapeles</b><small>Al copiar un enlace de video (por ejemplo, Compartir → Copiar enlace), JabsDLP lo detecta. Solo sitios que yt-dlp reconoce.</small></div>
+              <select class="entrada chica" data-ajuste="captura_modo">
+                <option value="sugerir">Preguntar con una burbuja</option>
+                <option value="auto">Añadir sin preguntar</option>
+              </select>
+              <label class="switch"><input type="checkbox" data-ajuste="captura_portapapeles"><span></span></label>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Descargar al añadir al stack</b><small>Cada enlace que se sume al stack empieza a descargarse al momento, con tu configuración actual. Apagado: se acumulan y los descargas juntos.</small></div>
+              <label class="switch"><input type="checkbox" data-ajuste="stack_auto"><span></span></label>
+            </div>
           </div>
 
           <div class="card pad">
@@ -363,6 +428,9 @@
     </div>
   </div>
 </div>
+<button class="fab oculto" id="fab-colecciones" data-accion="abrir-colecciones"><i data-ico="bookmark"></i><span>Colecciones</span><b class="contador" id="contador-fab">0</b></button>
+<div class="velo oculto" id="velo-colecciones" data-accion="cerrar-colecciones"></div>
+<aside class="panel-colecciones" id="panel-colecciones" aria-hidden="true"></aside>
 <div class="toasts" id="toasts"></div>
 <div class="menu oculto" id="menu" role="menu"></div>
 <div class="modal oculto" id="modal" role="dialog" aria-modal="true">
@@ -380,5 +448,6 @@
 <script src="i18n.js"></script>
 <script src="mock.js"></script>
 <script src="app.js"></script>
+<script src="organizar.js"></script>
 </body>
 </html>

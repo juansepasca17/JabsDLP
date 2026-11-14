@@ -30,6 +30,8 @@
     plantillas_args: [{ id: 'capitulos', nombre: 'Capítulos y fecha de descarga', args: '--embed-chapters --no-mtime' },
                       { id: 'platzi', nombre: 'Platzi (Referer)', args: '--referer https://platzi.com/' }],
     plantilla_args_id: 'capitulos',
+    modo_stack: /[?&]stack(&|$)/.test(location.search), stack_auto: false, captura_atajo: false, captura_tecla: 'ctrl+alt+x', captura_portapapeles: false,
+    captura_modo: 'sugerir', pantalla_completa: false, boton_colecciones: /[?&]fab(&|$)/.test(location.search) ? 'flotante' : 'lateral', carpetas_biblioteca: [],
   };
   // Capturas: index.html?mock=1&idioma=en&tema=claro
   const param = n => (location.search.match(new RegExp(`[?&]${n}=(\\w+)`)) || [])[1];
@@ -169,6 +171,17 @@
       .map((t, i) => ({ indice: i + 1, url: `https://www.youtube.com/watch?v=c${i}`, titulo: `C++ ${String(i + 1).padStart(2, '0')} · ${t}`, duracion: 900 + i * 137, miniatura: miniatura(200 + i * 6, 250, `C++ ${i + 1}`) })),
   });
 
+  let coleccionesMock = [
+    { id: 'favoritos', nombre: '★ Favoritos', items: [
+      { ruta: 'C:\\Users\\usuario\\Videos\\JabsDLP\\Atardecer.mp4', titulo: 'Atardecer en la Patagonia · Timelapse 4K', existe: true } ] },
+    { id: 'c1', nombre: 'Clips de Juanito', items: [
+      { url: 'https://www.youtube.com/watch?v=j1', titulo: 'Juanito en la montaña', miniatura: miniatura(15, 40, 'Juanito'), duracion: 312 },
+      { url: 'https://www.youtube.com/watch?v=j2', titulo: 'Juanito cocina arepas', miniatura: miniatura(40, 10, 'Arepas'), duracion: 845 },
+      { url: 'https://www.youtube.com/watch?v=j3', titulo: 'Juanito y el skate', miniatura: miniatura(260, 300, 'Skate'), duracion: 129 },
+      { ruta: 'D:\\Clips\\viejo.mp4', titulo: 'Clip que se movió de carpeta', existe: false } ] },
+    { id: 'c2', nombre: 'Para ver el finde', items: [
+      { url: 'https://vimeo.com/1', titulo: 'Documental de ballenas', miniatura: miniatura(200, 220, 'Ballenas'), duracion: 3120 } ] },
+  ];
   window.__MOCK_API__ = {
     async iniciar() { return { ok: true, app: 'JabsDLP', version: '1.4.0', ytdlp: '2026.08.19', ajustes, herramientas }; },
     async herramientas() { return herramientas; },
@@ -221,6 +234,44 @@
                    '[debug] yt-dlp version stable@2026.08.19', '[generic] index-v1-a1: Downloading m3u8 information', '[hlsnative] Total fragments: 412'] };
     },
     async copiar() { return true; },
+    // ---- 1.6.0 ----
+    async cargar_stack() { return { nombre: 'Clips para el video de viajes', items: [
+      { url: 'https://www.youtube.com/watch?v=a1', titulo: 'Atardecer en la Patagonia · Timelapse 4K', miniatura: miniatura(22, 280, 'Patagonia'), duracion: 214 },
+      { url: 'https://www.youtube.com/watch?v=a2', titulo: 'Glaciar Perito Moreno desde el aire', miniatura: miniatura(195, 230, 'Glaciar'), duracion: 388, prefs: { resolucion: '720' } },
+      { url: 'https://www.tiktok.com/@viajes/video/1', titulo: 'Cascada escondida en Misiones', miniatura: miniatura(120, 160, 'Cascada'), duracion: 41 },
+      { url: 'https://vimeo.com/123', titulo: 'Música ambiente para montaje', miniatura: miniatura(300, 330, 'Música'), duracion: 182, prefs: { tipo: 'audio' } },
+    ] }; },
+    async guardar_stack() { return true; },
+    async colecciones() { return coleccionesMock.map(c => ({ id: c.id, nombre: c.nombre, cantidad: c.items.length, fija: c.id === 'favoritos',
+      miniaturas: c.items.map(i => i.miniatura).filter(Boolean).slice(0, 3) })); },
+    async coleccion(id) { const c = coleccionesMock.find(x => x.id === id); return c ? { ok: true, coleccion: { ...c, fija: c.id === 'favoritos' } } : { ok: false, error: 'No existe' }; },
+    async crear_coleccion(nombre, items) { const id = 'c' + Date.now(); coleccionesMock.push({ id, nombre, items: [...(items || [])] }); return { ok: true, resultado: id, colecciones: await this.colecciones() }; },
+    async agregar_a_coleccion(id, items) { const c = coleccionesMock.find(x => x.id === id); c.items.push(...items); return { ok: true, resultado: items.length, colecciones: await this.colecciones() }; },
+    async quitar_de_coleccion(id, item) { const c = coleccionesMock.find(x => x.id === id); c.items = c.items.filter(i => (i.url || i.ruta) !== (item.url || item.ruta)); return { ok: true, colecciones: await this.colecciones() }; },
+    async renombrar_coleccion(id, nombre) { coleccionesMock.find(x => x.id === id).nombre = nombre; return { ok: true, colecciones: await this.colecciones() }; },
+    async borrar_coleccion(id) { coleccionesMock = coleccionesMock.filter(x => x.id !== id); return { ok: true, colecciones: await this.colecciones() }; },
+    async reordenar_coleccion(id, a, b) { const c = coleccionesMock.find(x => x.id === id); c.items.splice(b, 0, c.items.splice(a, 1)[0]); return { ok: true, colecciones: await this.colecciones() }; },
+    async alternar_favorito(item) { const f = coleccionesMock[0]; const i = f.items.findIndex(x => x.ruta === item.ruta); if (i >= 0) f.items.splice(i, 1); else f.items.push(item); return { ok: true, resultado: i < 0, colecciones: await this.colecciones() }; },
+    async exportar_coleccion() { return { ok: true, ruta: 'C:\\Users\\usuario\\Documents\\Clips.jabs', exportados: 4, omitidos: 0 }; },
+    async importar_coleccion() { return null; },
+    async descargar_coleccion() { return { ok: true, agregados: 3 }; },
+    async biblioteca_carpetas() { return [{ ruta: 'C:\\Users\\usuario\\Videos\\JabsDLP', nombre: 'JabsDLP', principal: true },
+                                         { ruta: 'D:\\Clips', nombre: 'Clips', principal: false }]; },
+    async biblioteca_listar(raiz, sub) {
+      const ahora = Date.now() / 1000;
+      const nombres = ['Atardecer en la Patagonia · Timelapse 4K.mp4', 'Curso de C++ desde cero · Clases y objetos.mp4', 'Layla Unplugged · Lección de guitarra.m4a',
+        'Glaciar Perito Moreno desde el aire.mp4', 'Receta de alfajores caseros.webm', 'Podcast · Episodio 42.mp3', 'Cascada escondida en Misiones.mp4', 'Música ambiente para montaje.opus'];
+      return { ok: true, ruta: raiz, sub: sub || '', recortado: false, carpetas: sub ? [] : [{ nombre: 'Clips para el video de viajes' }, { nombre: 'Curso de C++' }],
+        archivos: nombres.map((n, i) => ({ nombre: n, ruta: `${raiz}\\${n}`, tamano: (i + 1) * 48e6, fecha: ahora - i * 70000,
+          tipo: /\.(m4a|mp3|opus)$/.test(n) ? 'audio' : 'video', favorito: i === 0 || i === 3 })) };
+    },
+    async biblioteca_miniatura(ruta) { const h = [...ruta].reduce((a, c) => a + c.charCodeAt(0), 0) % 360; return /\.(m4a|mp3|opus)$/.test(ruta) ? null : miniatura(h, (h + 60) % 360, ''); },
+    async biblioteca_agregar_carpeta() { return null; },
+    async biblioteca_quitar_carpeta() { return { ok: true, carpetas: await this.biblioteca_carpetas() }; },
+    async biblioteca_abrir() { return { ok: true }; },
+    async biblioteca_papelera(rutas) { return { ok: true, movidos: rutas.length, fallidos: 0 }; },
+    async aplicar_tema_ventana() { return true; },
+    async alternar_pantalla_completa() { return true; },
     async pausar_cola(p) { pausado = !!p; return resumen(); },
     async descargar_aria2() { herramientas.aria2.ruta = 'C:\\Users\\usuario\\AppData\\Local\\JabsDLP\\aria2\\aria2c.exe'; herramientas.aria2.de_la_app = true; return herramientas.aria2.descarga; },
     async elegir_aria2() { return null; },
