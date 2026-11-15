@@ -123,7 +123,7 @@ cmake -S "quickjs-$QJS_VER" -B qjs-build \
   -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN_CMAKE" -DANDROID_ABI=$ABI -DANDROID_PLATFORM=android-$API \
   -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DQJS_BUILD_EXAMPLES=OFF \
   -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS_16K"
-cmake --build qjs-build --target qjs -j"$NUCLEOS"
+cmake --build qjs-build --target qjs_exe -j"$NUCLEOS"
 QJS="$(find qjs-build -maxdepth 2 -type f -name qjs | head -n1)"
 [ -n "$QJS" ] || { echo "No se encontró el binario qjs"; exit 1; }
 cp "$QJS" "$SALIDA/$ABI/libqjs.so"
