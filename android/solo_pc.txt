@@ -1,0 +1,20 @@
+# Funciones de jabsdlp/api.py que no existen en Android.
+# Formato: nombre = respuesta en JSON que recibe la interfaz si la llama (por defecto, un error amable).
+# La interfaz no se toca: los botones de estas funciones se esconden con app/src/main/assets/android/android.css.
+
+# aria2 y ffmpeg para Windows (.exe): en Android ffmpeg viene dentro del APK y aria2 no existe
+descargar_aria2 = {"ok": false, "error": "aria2 no está disponible en Android."}
+desinstalar_aria2 = {"ok": false, "error": "aria2 no está disponible en Android."}
+elegir_aria2 = null
+descargar_ffmpeg = {"ok": false, "error": "En Android ffmpeg ya viene incluido en la app."}
+elegir_ffmpeg = null
+
+# Captura rápida (atajo de teclado, vigía del portapapeles y burbuja): en Android se usa Compartir → JabsDLP
+configurar_captura = null
+estado_captura = {"error": null, "atajo": false, "portapapeles": false}
+burbuja_accion = true
+burbuja_mantener = true
+burbuja_soltar = true
+
+# No la llama la interfaz: en Android la llama Kotlin al quitar la app de recientes (puente.cerrar)
+cerrar = true

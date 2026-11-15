@@ -1,0 +1,12 @@
+# Compilación
+.gradle/
+build/
+app/build/
+local.properties
+.idea/
+*.iml
+# Binarios compilados por scripts/compilar_nativos.sh (se regeneran)
+nativos/
+# Claves de firma: NUNCA al repo (van como secretos de GitHub)
+*.jks
+*.keystore

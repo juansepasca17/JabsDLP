@@ -1,0 +1,9 @@
+# Paquetes de Python que van dentro del APK (Chaquopy). El workflow regenera este archivo con la versión
+# más reciente de yt-dlp y el yt-dlp-ejs que esa versión fija. Solo paquetes de Python puro:
+# curl_cffi (impersonación) y libtorrent (torrents en Ver) tienen partes en C sin versión para Android.
+yt-dlp
+yt-dlp-ejs
+certifi
+mutagen
+requests
+urllib3

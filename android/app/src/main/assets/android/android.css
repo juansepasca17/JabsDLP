@@ -1,0 +1,108 @@
+/* JabsDLP para Android: adapta la interfaz del PC (ui/, sin tocarla) a la pantalla del celular
+   y esconde lo que solo existe en el PC. Todas las reglas van con html.android para ganar a estilos.css. */
+
+/* ---------- Funciones solo de PC ---------- */
+html.android .ajuste:has([data-ajuste="motor"]),
+html.android .ajuste:has([data-ajuste="subida_torrent_kb"]),
+html.android .ajuste:has(#aj-aria2),
+html.android .ajuste:has([data-ajuste="gpu"]),
+html.android .ajuste:has([data-ajuste="decodificar_gpu"]),
+html.android .ajuste:has([data-accion="detectar-gpu"]),
+html.android .ajuste:has([data-ajuste="bandeja_al_minimizar"]),
+html.android .ajuste:has([data-ajuste="captura_atajo"]),
+html.android .ajuste:has([data-ajuste="captura_portapapeles"]),
+html.android .ajuste:has([data-ajuste="boton_colecciones"]),
+html.android #aj-fila-navegador,
+html.android [data-cookies="navegador"],
+html.android [data-accion="elegir-ffmpeg"],
+html.android [data-accion="descargar-ffmpeg"],
+html.android .sidebar .pie,
+html.android .fab { display: none !important; }
+
+/* ---------- Celular (vertical o tablet pequeña) ---------- */
+@media (max-width: 999px) {
+  html.android { --nav-alto: 62px; }
+  html.android body { font-size: 14px; -webkit-tap-highlight-color: transparent; }
+  html.android .app { display: block; height: 100%; }
+
+  /* La barra lateral pasa a ser la barra de pestañas de abajo */
+  html.android .sidebar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 45; height: var(--nav-alto);
+    display: flex; flex-direction: row; align-items: stretch; gap: 0; padding: 0 2px;
+    border-right: 0; border-top: 1px solid var(--border); background: var(--bg, #09090b); overflow: hidden;
+  }
+  html.android .sidebar .marca { display: none; }
+  html.android .sidebar .nav {
+    flex: 1 1 0; min-width: 0; margin: 0; padding: 7px 0 6px; border: 0; border-radius: 0; background: transparent;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    font-size: 10.5px; line-height: 1.1; position: relative; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  html.android .sidebar .nav .ico, html.android .sidebar .nav i, html.android .sidebar .nav svg { width: 21px; height: 21px; margin: 0; }
+  html.android .sidebar .nav.activo { background: transparent; color: var(--accent, #8b8cf8); }
+  html.android .sidebar .nav.nav-colecciones { margin-top: 0; border: 0; }
+  html.android .sidebar .nav.nav-colecciones.oculto { display: flex !important; }
+  html.android .sidebar .nav .contador {
+    position: absolute; top: 3px; left: calc(50% + 6px); margin: 0; min-width: 16px; height: 16px; padding: 0 4px;
+    font-size: 10px; line-height: 16px; border-radius: 8px;
+  }
+  html.android .sidebar .nav-colecciones .contador { display: none; }
+
+  html.android .principal { height: calc(100% - var(--nav-alto)); }
+  html.android .barra { padding: 10px 14px; min-height: 0; height: auto; }
+  html.android .barra h1 { font-size: 17px; }
+  html.android .vista { padding: 12px 12px 22px; }
+  html.android .card.pad { padding: 14px; }
+
+  /* Buscar */
+  html.android .fila-buscar { flex-wrap: wrap; gap: 8px; }
+  html.android .fila-buscar .entrada { flex: 1 1 100%; min-width: 0; font-size: 15px; }
+  html.android .fila-buscar .segmentado { flex: 1 1 auto; }
+  html.android .fila-buscar .segmentado button { flex: 1; justify-content: center; }
+  html.android .fila-buscar .btn.primario { flex: 1 1 auto; justify-content: center; }
+  html.android .columnas { grid-template-columns: minmax(0, 1fr); gap: 14px; margin-top: 14px; }
+  html.android .cabecera-col { flex-wrap: wrap; gap: 8px; }
+  html.android .grupo-pref { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  html.android .pie-opciones { flex-wrap: wrap; }
+  html.android .pie-opciones .destino { flex: 1 1 100%; }
+  html.android .pie-opciones .acciones { margin-left: 0; flex: 1 1 100%; flex-wrap: wrap; justify-content: stretch; gap: 8px; }
+  html.android .pie-opciones .acciones .btn { flex: 1 1 auto; min-width: 0; padding-left: 10px; padding-right: 10px; justify-content: center; }
+  html.android .pie-opciones .acciones .btn.primario { flex: 1 1 100%; }
+  html.android .item-pl { grid-template-columns: 22px 56px minmax(0, 1fr) auto; gap: 8px; padding: 8px; }
+  html.android .item-pl > :nth-child(2) { display: none; }
+  html.android .item-stack { grid-template-columns: 22px 56px minmax(0, 1fr) auto 30px; }
+  html.android .item-stack > :nth-child(2), html.android .item-stack > :nth-child(6) { display: none; }
+  html.android .panel-recorte { min-width: 0; }
+
+  /* Cola */
+  html.android .controles-cola { padding: 12px; gap: 10px; }
+  html.android .controles-cola .resumen { flex: 1 1 100%; }
+  html.android .controles-cola .derecha { margin-left: 0; flex-wrap: wrap; width: 100%; }
+  html.android .controles-cola .derecha .btn { flex: 1 1 calc(50% - 8px); justify-content: center; }
+  html.android .trabajo { grid-template-columns: 96px minmax(0, 1fr); gap: 10px; padding: 10px; }
+  html.android .trabajo .mini { width: 96px; }
+  html.android .trabajo .acciones { grid-column: 1 / -1; justify-content: flex-end; flex-wrap: wrap; }
+  html.android .trabajo .sub { white-space: normal; flex-wrap: wrap; }
+
+  /* Ajustes */
+  html.android .rejilla-ajustes { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  html.android .ajuste { flex-wrap: wrap; gap: 8px 12px; }
+  html.android .ajuste .txt { flex: 1 1 60%; }
+  html.android .ajuste > .entrada, html.android .ajuste > select { max-width: 100%; }
+  html.android .ajuste > input.entrada[style*="width"] { width: 100% !important; }
+  html.android .ajuste .segmentado { flex-wrap: wrap; }
+  html.android .fila-prueba { flex-wrap: wrap; }
+
+  /* Ver y Biblioteca */
+  html.android .bib-rejilla { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  html.android .bib-herramientas .entrada { flex: 1 1 100%; }
+
+  /* Paneles y avisos */
+  html.android .panel-colecciones { width: 100%; max-width: 100vw; bottom: var(--nav-alto); }
+  html.android .modal { padding: 12px; }
+  html.android .modal .caja { padding: 16px; }
+  html.android .modal .acciones { flex-wrap: wrap; }
+  html.android .menu, html.android [role="menu"] { max-width: calc(100vw - 16px); }
+}
+
+/* Fila propia de Android en Ajustes (la añade android.js) */
+html.android .ajuste-android .txt small { display: block; }
