@@ -1,0 +1,143 @@
+name: Android
+
+on:
+  push:
+    tags: ['v*-android']
+    branches: [main]
+    paths: ['android/**', 'jabsdlp/**', 'ui/**', 'requirements.txt', '.github/workflows/android.yml', 'android-paquete.b64']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versión a publicar (vacío = la de jabsdlp/__init__.py)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Desempacar android/ (instalación inicial)
+        id: paquete
+        run: |
+          if [ -f android-paquete.b64 ]; then
+            base64 -d android-paquete.b64 | tar xz
+            git rm -q android-paquete.b64
+            git add android
+            git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -q -m "Android 1.7.1: carpeta android/ (desempacada del paquete)"
+            git push
+            echo "instalado=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Versión
+        id: version
+        shell: bash
+        run: |
+          pc=$(python3 -c "import re;print(re.search(r\"VERSION\s*=\s*'([^']+)'\", open('jabsdlp/__init__.py').read()).group(1))")
+          android=$(sed -nE 's/^\s*versionName = "([^"]+)".*/\1/p' android/app/build.gradle.kts)
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then pedida="${GITHUB_REF_NAME#v}"; pedida="${pedida%-android}";
+          else pedida="${{ github.event.inputs.version }}"; pedida="${pedida#v}"; fi
+          pedida="${pedida:-$pc}"
+          echo "PC: $pc · Android: $android · pedida: $pedida"
+          if [[ "$android" != "$pedida" ]]; then
+            echo "::error::versionName de android/app/build.gradle.kts ($android) no coincide con $pedida (ver android/PORTAR.md)."
+            exit 1
+          fi
+          echo "version=$pedida" >> "$GITHUB_OUTPUT"
+          publicar=false
+          if [[ "$GITHUB_REF_TYPE" == "tag" || "$GITHUB_EVENT_NAME" == "workflow_dispatch" || "${{ steps.paquete.outputs.instalado }}" == "true" ]]; then publicar=true; fi
+          echo "publicar=$publicar" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: actions/setup-python@v5
+        id: python
+        with:
+          python-version: '3.13'
+
+      - name: Funciones de la Api clasificadas
+        run: python android/scripts/revisar_api.py
+
+      - name: Paquetes de Python (última yt-dlp)
+        run: python android/scripts/requisitos.py
+
+      - name: Caché de ffmpeg y QuickJS
+        id: cache-nativos
+        uses: actions/cache@v4
+        with:
+          path: android/nativos
+          key: nativos-${{ runner.os }}-${{ hashFiles('android/scripts/compilar_nativos.sh') }}
+
+      - name: Compilar ffmpeg y QuickJS
+        if: steps.cache-nativos.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq autoconf automake libtool pkg-config cmake nasm file >/dev/null
+          NDK="${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_HOME:-$ANDROID_NDK_ROOT}}"
+          echo "NDK: $NDK"
+          bash android/scripts/compilar_nativos.sh "$NDK" android/nativos
+
+      - name: Clave de firma
+        env:
+          KEYSTORE_B64: ${{ secrets.JABSDLP_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/jabsdlp.jks"
+            echo "JABSDLP_KEYSTORE=$RUNNER_TEMP/jabsdlp.jks" >> "$GITHUB_ENV"
+          else
+            echo "::warning::Falta el secreto JABSDLP_KEYSTORE_B64: el APK se firma con una clave de prueba."
+          fi
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14.3'
+
+      - name: Compilar APK
+        working-directory: android
+        env:
+          JABSDLP_BUILD_PYTHON: ${{ steps.python.outputs.python-path }}
+          JABSDLP_KEYSTORE_PASS: ${{ secrets.JABSDLP_KEYSTORE_PASS }}
+          JABSDLP_KEY_ALIAS: ${{ secrets.JABSDLP_KEY_ALIAS }}
+          JABSDLP_KEY_PASS: ${{ secrets.JABSDLP_KEY_PASS }}
+        run: gradle --no-daemon --stacktrace assembleRelease
+
+      - name: Nombre del APK
+        id: apk
+        run: |
+          origen=$(ls android/app/build/outputs/apk/release/*.apk | head -n1)
+          destino="JabsDLP-${{ steps.version.outputs.version }}-android.apk"
+          cp "$origen" "$destino"
+          echo "archivo=$destino" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: JabsDLP-${{ steps.version.outputs.version }}-android
+          path: ${{ steps.apk.outputs.archivo }}
+          retention-days: 30
+
+      - name: Subir a la release
+        if: steps.version.outputs.publicar == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          APK: ${{ steps.apk.outputs.archivo }}
+        run: |
+          tag="v$VERSION"
+          notas="android/notas/$VERSION.md"
+          [ -f "$notas" ] || { echo "::error::Falta $notas"; exit 1; }
+          gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --title "JabsDLP $VERSION" --notes "" --target "$GITHUB_SHA"
+          gh release upload "$tag" "$APK" --clobber
+          gh release view "$tag" --json body -q .body > cuerpo.md
+          { cat cuerpo.md; printf '\n\n---\n\n'; cat "$notas"; } > nueva.md && mv nueva.md cuerpo.md
+          gh release edit "$tag" --notes-file cuerpo.md
