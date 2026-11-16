@@ -40,6 +40,28 @@ class Puente(private val contexto: Context, private val web: WebView) {
     @JavascriptInterface
     fun versionApp(): String = contexto.packageManager.getPackageInfo(contexto.packageName, 0).versionName ?: ""
 
+    /** Pantalla completa del reproductor de Ver: esconde las barras y, si se pide, gira a horizontal. */
+    @JavascriptInterface
+    fun pantallaCompleta(activa: Boolean, horizontal: Boolean) {
+        (contexto as? MainActivity)?.let { a -> a.runOnUiThread { a.modoVideo(activa, horizontal) } }
+    }
+
+    /** Exporta el log de la app (Python + interfaz, sacado del logcat de este proceso) con «Compartir». */
+    @JavascriptInterface
+    fun compartirLog(): Boolean = (contexto as? MainActivity)?.compartirLog() ?: false
+
+    // ---------- tarjeta SD ----------
+    /** Carpeta propia de JabsDLP en la tarjeta SD (Android/media/com.jabsdlp.app), o "" si no hay SD. */
+    @JavascriptInterface
+    fun carpetaSd(): String = Plataforma.carpetaSd()?.absolutePath ?: ""
+
+    @JavascriptInterface
+    fun carpetaInterna(): String = Plataforma.carpetaDescargas().absolutePath
+
+    /** Si la ruta está en una tarjeta SD que ya no está (la sacaron), false. Las rutas de la memoria interna, true. */
+    @JavascriptInterface
+    fun carpetaDisponible(ruta: String): Boolean = Plataforma.carpetaDisponible(ruta)
+
     private fun leerAsset(ruta: String) = contexto.assets.open(ruta).bufferedReader().use { it.readText() }
 }
 

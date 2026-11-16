@@ -17,8 +17,8 @@
     <application
         android:name=".App"
         android:label="@string/app_name"
-        android:icon="@drawable/ic_launcher"
-        android:roundIcon="@drawable/ic_launcher"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:theme="@style/Tema.JabsDLP"
         android:requestLegacyExternalStorage="true"
         android:networkSecurityConfig="@xml/red"
@@ -42,6 +42,19 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
+
+        <!-- Compartir → «Ver en JabsDLP»: abre el enlace en la pestaña Ver en lugar de Descargar -->
+        <activity-alias
+            android:name=".VerEnJabsDLP"
+            android:targetActivity=".MainActivity"
+            android:label="Ver en JabsDLP"
+            android:exported="true">
+            <intent-filter android:label="Ver en JabsDLP">
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity-alias>
 
         <activity
             android:name=".Reinicio"

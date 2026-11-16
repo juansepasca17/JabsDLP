@@ -731,3 +731,45 @@ body.ver-completa .reproductor { border-radius: 0; max-height: none; aspect-rati
 .ver-recientes { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 6px; }
 .ver-reciente { border: 1px solid var(--border); background: var(--card); }
 .ver-reciente.perdido { opacity: .5; }
+
+/* ---------- 1.7.2 ---------- */
+html:not(.android) .ajuste.solo-tactil { display: none !important; }
+/* Ver: detalle del error (log completo) */
+#ver-detalle { margin-top: 12px; }
+.detalle-acciones { display: flex; justify-content: flex-end; padding: 8px 10px; border-top: 1px solid var(--border); }
+/* Ver en pantallas estrechas: la lista va debajo del video y el título usa todo el ancho */
+@media (max-width: 999px) {
+  .ver-cuerpo:has(.ver-lista:not(.oculto)) { grid-template-columns: minmax(0, 1fr); }
+  .ver-titulo { flex-wrap: wrap; }
+  .ver-titulo .txt { flex: 1 1 100%; }
+  .ver-titulo .acciones { justify-content: flex-start; flex: 1 1 100%; }
+  .reproductor { max-height: none; }
+}
+/* Pantalla completa propia (celular): el reproductor ocupa toda la pantalla */
+body.ver-completa-css .reproductor { position: fixed; inset: 0; z-index: 100; max-height: none; aspect-ratio: auto; height: 100%; border-radius: 0; }
+body.ver-completa-css .sidebar, body.ver-completa-css #tab-stack { display: none !important; }
+/* Gestos de toque: aviso de ±10 s a cada lado */
+.rp-salto { position: absolute; top: 0; bottom: 0; width: 38%; z-index: 2; display: grid; place-items: center; pointer-events: none;
+  color: #fff; font-weight: 600; font-size: 14px; opacity: 0; transition: opacity .25s; }
+.rp-salto.izq { left: 0; background: radial-gradient(ellipse at left, rgba(255,255,255,.18), transparent 70%); }
+.rp-salto.der { right: 0; background: radial-gradient(ellipse at right, rgba(255,255,255,.18), transparent 70%); }
+.rp-salto.visible { opacity: 1; transition: none; }
+/* Biblioteca: con algo seleccionado todas las tarjetas muestran su casilla y un toque las marca */
+.bib-rejilla.modo-sel .bib-mini .casilla { opacity: 1; }
+.bib-rejilla.modo-sel .bib-archivo { cursor: pointer; user-select: none; }
+@media (hover: none) {
+  .bib-mini .casilla, .bib-mini .estrella { opacity: 1; }
+}
+/* Ajustes: buscador y secciones plegables */
+.buscar-ajustes { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.buscar-ajustes .entrada { flex: 1; }
+.rejilla-ajustes { align-items: start; }
+.rejilla-ajustes > .card > .titulo-seccion { cursor: pointer; user-select: none; }
+.rejilla-ajustes > .card > .titulo-seccion::after { content: ""; margin-left: auto; width: 8px; height: 8px; border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted); transform: rotate(45deg); transition: transform .15s; }
+.rejilla-ajustes > .card.plegada > .titulo-seccion { margin-bottom: 0; }
+.rejilla-ajustes > .card.plegada > .titulo-seccion::after { transform: rotate(-45deg); }
+.rejilla-ajustes > .card.plegada > :not(.titulo-seccion) { display: none !important; }
+.rejilla-ajustes .ajuste.no-coincide { display: none !important; }
+.rejilla-ajustes > .card.sin-coincidencias { display: none; }
+.aviso-sd { display: flex; gap: 10px; align-items: flex-start; }

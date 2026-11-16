@@ -84,7 +84,9 @@ function nombreStackPorDefecto() {
 }
 
 function esPlaylistUrl(url) { return /[?&]list=|\/playlist|\/sets\/|\/album\//i.test(url); }
-function apilable(url) { return /^https?:\/\//i.test(url) && !/\.(m3u8|mpd)$/i.test(url.split(/[?#]/)[0]); }
+// El stack acepta videos, playlists, magnets, .torrent y enlaces directos (.m3u8/.mpd, archivos)
+function apilable(url) { return /^(https?:\/\/|magnet:\?)/i.test(url); }
+function esTorrentUrl(url) { return /^magnet:\?/i.test(url) || /\.torrent$/i.test(url.split(/[?#]/)[0]); }
 function hostDe(url) { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; } }
 
 let temporizadorStack = null;
@@ -122,7 +124,7 @@ async function agregarAlStack(urls) {
   let nuevos = 0, ultimo = null;
   for (const url of urls) {
     if (S.stack.items.some(i => i.url === url)) continue;
-    const item = nuevoItem(url, esPlaylistUrl(url) || S.modo === 'playlist' ? 'playlist' : 'video');
+    const item = nuevoItem(url, esTorrentUrl(url) ? 'torrent' : esPlaylistUrl(url) || S.modo === 'playlist' ? 'playlist' : 'video');
     S.stack.items.push(item);
     ultimo = item;
     nuevos++;
@@ -143,7 +145,12 @@ async function analizarItem(item) {
   let r;
   try { r = await API.analizar(item.url, item.tipo, item.est.prefs || S.prefs); } catch (e) { r = { ok: false, error: String(e) }; }
   if (!S.stack.items.includes(item)) return;
-  if (r.ok && (r.datos.tipo === 'video' || r.datos.tipo === 'playlist')) {
+  if (r.ok && (r.datos.tipo === 'torrent' || r.datos.tipo === 'manifiesto')) {
+    item.datos = r.datos;
+    item.tipo = r.datos.tipo;
+    item.estado = 'listo';
+    if (S.ajustes.stack_auto) await enviarItems([item]);
+  } else if (r.ok && (r.datos.tipo === 'video' || r.datos.tipo === 'playlist')) {
     item.datos = r.datos;
     item.tipo = r.datos.tipo;
     item.estado = 'listo';
@@ -158,7 +165,7 @@ async function analizarItem(item) {
     if (S.ajustes.stack_auto) await enviarItems([item]);
   } else {
     item.estado = 'error';
-    item.error = r.ok ? 'Este enlace no se puede apilar (¿es un torrent o un lote?).' : r.error;
+    item.error = r.ok ? 'Este enlace no se puede apilar (¿es un lote de varios enlaces?).' : r.error;
   }
   if (S.stack.sel === item.uid) cargarItem(item);
   guardarStackLuego();
@@ -215,6 +222,10 @@ async function enviarItems(items) {
       const marcados = i.est.plSel || (i.marcados ? new Set(i.marcados) : null);
       entradas.filter(e => !marcados || marcados.has(e.indice))
         .forEach(e => lista.push({ url: e.url, titulo: e.titulo, miniatura: e.miniatura, duracion: e.duracion, canal: e.canal || d.canal, prefs }));
+    } else if (i.tipo === 'torrent' || i.tipo === 'manifiesto' || esTorrentUrl(i.url)) {
+      // torrents y enlaces directos: van con su propio tipo (aria2 o el modo .m3u8/.mpd con Referer)
+      lista.push({ url: i.url, titulo: d.titulo || i.titulo, tipo: esTorrentUrl(i.url) ? 'torrent' : 'manifiesto',
+                   referer: d.referer || null, duracion: d.duracion ?? i.duracion });
     } else {
       lista.push({ url: i.url, titulo: d.titulo || i.titulo, miniatura: d.miniatura || i.miniatura, duracion: d.duracion ?? i.duracion,
                    canal: d.canal || i.canal, prefs, spec: specDe(i) });
@@ -266,7 +277,7 @@ async function cargarStackGuardado() {
   S.stack = {
     nombre: s.nombre || '', sel: null,
     items: s.items.map(d => ({
-      uid: Math.random().toString(36).slice(2), url: d.url, tipo: d.tipo === 'playlist' ? 'playlist' : 'video',
+      uid: Math.random().toString(36).slice(2), url: d.url, tipo: ['playlist', 'torrent', 'manifiesto'].includes(d.tipo) ? d.tipo : 'video',
       estado: 'guardado', datos: null, incluir: d.incluir !== false, titulo: d.titulo, miniatura: d.miniatura,
       duracion: d.duracion, canal: d.canal, spec: d.spec || null, entradas: d.entradas || null, marcados: d.marcados || null,
       est: { prefs: d.prefs || null },
@@ -293,6 +304,8 @@ function filaPanelStack(i, n) {
     : i.estado === 'error' ? 'Error: ' + (i.error || '')
     : i.estado === 'enviado' ? 'En la cola'
     : i.tipo === 'playlist' ? `Playlist · ${marcados}/${cantidad} videos`
+    : i.tipo === 'torrent' ? 'Torrent · sin seed'
+    : i.tipo === 'manifiesto' ? `Enlace directo · ${hostDe(i.url)}`
     : `${hostDe(i.url)}${(d.duracion ?? i.duracion) ? ' · ' + fmt.dur(d.duracion ?? i.duracion) : ''}`;
   const etiqueta = etiquetaItem(i);
   return `<div class="ps-item ${S.stack.sel === i.uid ? 'activo' : ''} ${i.estado}" data-stack-ver="${i.uid}">
@@ -302,6 +315,7 @@ function filaPanelStack(i, n) {
         ${i.estado === 'analizando' ? `<span class="ps-cargando">${ico('loader', 'sm spin')}</span>` : ''}</span>
       <span class="txt"><b class="no-traducir" title="${esc(titulo)}">${esc(titulo)}</b><small class="${i.estado === 'error' ? 'err-texto' : ''}">${esc(sub)}</small></span>
       ${etiqueta ? `<span class="insignia acento">${esc(etiqueta)}</span>` : ''}
+      ${i.tipo !== 'torrent' && i.estado !== 'error' ? `<button class="btn chico icono fantasma" data-stack-tv="${i.uid}" title="Ver en la pestaña Ver">${ico('tv', 'sm')}</button>` : ''}
       <button class="btn chico icono fantasma" data-stack-quitar="${i.uid}" title="Quitar del stack">${ico('x', 'sm')}</button>
     </div>`;
 }
@@ -379,6 +393,8 @@ document.addEventListener('click', async e => {
     }
     const quitar = t.closest('[data-stack-quitar]');
     if (quitar) return quitarDelStack(quitar.dataset.stackQuitar);
+    const tv = t.closest('[data-stack-tv]');
+    if (tv) { guardarEstadoActual(); return verStack(tv.dataset.stackTv); }
     const ver = t.closest('[data-stack-ver]');
     if (ver) return seleccionarStack(ver.dataset.stackVer);
   }
@@ -413,7 +429,7 @@ document.addEventListener('input', e => {
 
 /* ================= CAPTURA RÁPIDA (la llama Python) ================= */
 function recibirCaptura(urls, accion) {
-  urls = (urls || []).filter(u => /^https?:\/\//i.test(u));
+  urls = (urls || []).filter(u => /^(https?:\/\/|magnet:\?)/i.test(u));
   if (!urls.length) return;
   if (accion === 'descargar') {
     API.descargar({ tipo: 'lote', urls, prefs: S.prefs }).then(r => {
@@ -756,6 +772,7 @@ function observarMinis() {
 function pintarSeleccionBib() {
   const barra = $('#bib-seleccion');
   const n = B.sel.size;
+  $('#bib-rejilla')?.classList.toggle('modo-sel', n > 0);
   barra.classList.toggle('oculto', !n);
   if (!n) return;
   barra.innerHTML = `<span><b>${n}</b> ${n === 1 ? 'seleccionado' : 'seleccionados'}</span>
@@ -794,6 +811,14 @@ document.addEventListener('click', async e => {
       const [i, j] = [visibles.indexOf(B.ultimo), visibles.indexOf(ruta)].sort((x, y) => x - y);
       if (i >= 0) visibles.slice(i, j + 1).forEach(r => B.sel.add(r));
     } else if (B.sel.has(ruta)) B.sel.delete(ruta); else B.sel.add(ruta);
+    B.ultimo = ruta;
+    return pintarBiblioteca();
+  }
+  // Modo selección: con algo marcado, tocar cualquier tarjeta la marca o desmarca
+  const tarjeta = t.closest('.bib-archivo');
+  if (tarjeta && B.sel.size && !t.closest('button')) {
+    const ruta = tarjeta.dataset.bibRuta;
+    if (B.sel.has(ruta)) B.sel.delete(ruta); else B.sel.add(ruta);
     B.ultimo = ruta;
     return pintarBiblioteca();
   }
@@ -848,7 +873,7 @@ document.addEventListener('click', async e => {
 });
 document.addEventListener('dblclick', e => {
   const a = e.target.closest('.bib-archivo');
-  if (a && !e.target.closest('button, .casilla')) API.biblioteca_abrir(a.dataset.bibRuta, false);
+  if (a && !B.sel.size && !e.target.closest('button, .casilla')) API.biblioteca_abrir(a.dataset.bibRuta, false);
 });
 ['#bib-buscar', '#bib-tipo', '#bib-fecha', '#bib-orden'].forEach(sel => {
   document.addEventListener(sel === '#bib-buscar' ? 'input' : 'change', e => { if (e.target.matches(sel)) pintarBiblioteca(); });
@@ -858,3 +883,71 @@ document.addEventListener('dblclick', e => {
 document.addEventListener('keydown', e => {
   if (e.key === 'F11') { e.preventDefault(); API?.alternar_pantalla_completa(); }
 });
+
+/* ================= Ajustes: buscador y secciones plegables (1.7.2) ================= */
+const PLEGADAS_CLAVE = 'jabsdlp.ajustes.plegadas';
+function seccionesPlegadas() {
+  try { return new Set(JSON.parse(localStorage.getItem(PLEGADAS_CLAVE) || '[]')); } catch { return new Set(); }
+}
+function guardarPlegadas(conjunto) {
+  try { localStorage.setItem(PLEGADAS_CLAVE, JSON.stringify([...conjunto])); } catch { /* sin almacenamiento */ }
+}
+
+function prepararAjustes() {
+  const rejilla = $('#vista-ajustes .rejilla-ajustes');
+  if (!rejilla || $('#buscar-ajustes')) return;
+  rejilla.insertAdjacentHTML('beforebegin', `<div class="buscar-ajustes">
+      <input id="buscar-ajustes" class="entrada" type="search" spellcheck="false" autocomplete="off" placeholder="Buscar en los ajustes">
+      <button class="btn chico fantasma" data-accion="ajustes-plegar">Plegar todo</button>
+      <button class="btn chico fantasma" data-accion="ajustes-desplegar">Desplegar todo</button></div>`);
+  const plegadas = seccionesPlegadas();
+  [...rejilla.children].forEach((card, n) => {
+    card.dataset.seccion = n;
+    if (plegadas.has(String(n))) card.classList.add('plegada');
+  });
+}
+
+function normalizarTexto(t) { return (t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+
+function filtrarAjustes() {
+  const q = normalizarTexto($('#buscar-ajustes')?.value.trim());
+  $$('#vista-ajustes .rejilla-ajustes > .card').forEach(card => {
+    if (!q) {
+      card.classList.remove('sin-coincidencias');
+      card.querySelectorAll('.no-coincide').forEach(el => el.classList.remove('no-coincide'));
+      card.classList.toggle('plegada', seccionesPlegadas().has(card.dataset.seccion));
+      return;
+    }
+    const enTitulo = normalizarTexto(card.querySelector('.titulo-seccion')?.textContent).includes(q);
+    let alguno = false;
+    card.querySelectorAll(':scope > .ajuste').forEach(fila => {
+      const coincide = enTitulo || normalizarTexto(fila.textContent).includes(q);
+      fila.classList.toggle('no-coincide', !coincide);
+      alguno = alguno || coincide;
+    });
+    card.classList.toggle('sin-coincidencias', !alguno && !enTitulo);
+    card.classList.remove('plegada');   // al buscar se ve todo lo que coincide
+  });
+}
+
+document.addEventListener('input', e => { if (e.target.id === 'buscar-ajustes') filtrarAjustes(); });
+document.addEventListener('click', e => {
+  const titulo = e.target.closest('#vista-ajustes .rejilla-ajustes > .card > .titulo-seccion');
+  if (titulo && !e.target.closest('button, a, input, label, select')) {
+    if ($('#buscar-ajustes')?.value.trim()) return;
+    const card = titulo.parentNode, plegadas = seccionesPlegadas();
+    card.classList.toggle('plegada');
+    if (card.classList.contains('plegada')) plegadas.add(card.dataset.seccion); else plegadas.delete(card.dataset.seccion);
+    return guardarPlegadas(plegadas);
+  }
+  const accion = e.target.closest('[data-accion]')?.dataset.accion;
+  if (accion === 'ajustes-plegar' || accion === 'ajustes-desplegar') {
+    const plegar = accion === 'ajustes-plegar';
+    $('#buscar-ajustes').value = '';
+    const todas = $$('#vista-ajustes .rejilla-ajustes > .card');
+    todas.forEach(c => c.classList.toggle('plegada', plegar));
+    guardarPlegadas(new Set(plegar ? todas.map(c => c.dataset.seccion) : []));
+    filtrarAjustes();
+  }
+});
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', prepararAjustes); else prepararAjustes();

@@ -3,7 +3,6 @@
 
 /* ---------- Funciones solo de PC ---------- */
 html.android .ajuste:has([data-ajuste="motor"]),
-html.android .ajuste:has([data-ajuste="subida_torrent_kb"]),
 html.android .ajuste:has(#aj-aria2),
 html.android .ajuste:has([data-ajuste="gpu"]),
 html.android .ajuste:has([data-ajuste="decodificar_gpu"]),
@@ -17,7 +16,21 @@ html.android [data-cookies="navegador"],
 html.android [data-accion="elegir-ffmpeg"],
 html.android [data-accion="descargar-ffmpeg"],
 html.android .sidebar .pie,
+html.android .ajuste:has([data-ajuste="pantalla_completa"]),
+html.android [data-accion="torrent-ver"],
 html.android .fab { display: none !important; }
+
+/* ---------- Reproductor de Ver en el celular ---------- */
+html.android .rp-volumen, html.android [data-rp="atras"], html.android [data-rp="adelante"] { display: none !important; }
+html.android .rp-btn { width: 34px; height: 34px; }
+html.android .rp-btn.texto { padding: 0 6px; }
+html.android .rp-controles { padding: 20px 8px 6px; }
+/* el tiempo va en su propia línea, encima de los botones, para que quepan todos en un teléfono estrecho */
+html.android .rp-fila { flex-wrap: wrap; gap: 0 2px; }
+html.android .rp-tiempo { order: -1; flex: 1 1 100%; font-size: 12px; margin: 0 0 2px 4px; white-space: nowrap; }
+html.android .rp-menu { right: 8px !important; max-height: 70%; bottom: 58px; }
+html.android .reproductor:not(.controles-visibles) { cursor: auto; }
+html.android body.ver-completa-css .reproductor video { object-fit: contain; }
 
 /* ---------- Celular (vertical o tablet pequeña) ---------- */
 @media (max-width: 999px) {
@@ -95,9 +108,22 @@ html.android .fab { display: none !important; }
   /* Ver y Biblioteca */
   html.android .bib-rejilla { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
   html.android .bib-herramientas .entrada { flex: 1 1 100%; }
+  html.android .bib-herramientas #bib-buscar { flex: 1 1 100%; min-width: 0; }
+  html.android .bib-herramientas select.entrada, html.android .bib-herramientas select { flex: 1 1 28%; min-width: 0; padding-left: 8px; padding-right: 22px; font-size: 13px; }
+
+  /* Ver */
+  html.android .ver-titulo .acciones .btn { flex: 1 1 auto; justify-content: center; }
+  html.android .ver-recientes { grid-template-columns: minmax(0, 1fr); }
+  html.android .ver-lista { max-height: none; position: static; }
 
   /* Paneles y avisos */
   html.android .panel-colecciones { width: 100%; max-width: 100vw; bottom: var(--nav-alto); }
+  html.android .panel-stack { width: 100%; max-width: 100vw; bottom: var(--nav-alto); }
+  html.android .tab-stack { bottom: calc(var(--nav-alto) + 90px); top: auto; transform: none; }
+  html.android .buscar-ajustes { flex-wrap: wrap; }
+  html.android .buscar-ajustes .entrada { flex: 1 1 100%; }
+  html.android .bib-seleccion { bottom: 8px; }
+  html.android .bib-seleccion .btn { flex: 1 1 auto; justify-content: center; }
   html.android .modal { padding: 12px; }
   html.android .modal .caja { padding: 16px; }
   html.android .modal .acciones { flex-wrap: wrap; }

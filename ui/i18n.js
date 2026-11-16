@@ -368,6 +368,22 @@
     'Conectando con el torrent…': 'Connecting to the torrent…', 'Buscando pares…': 'Looking for peers…',
     'No llegó la información del torrent (pocos pares o enlace caducado).': 'The torrent info didn\'t arrive (few peers or expired link).',
     'Este torrent no tiene ningún video ni audio para reproducir.': 'This torrent has no video or audio to play.',
+    // 1.7.2
+    'Cerrar': 'Close', 'Quitar el video y volver al inicio': 'Remove the video and go back to the start',
+    'Quitar y volver al inicio': 'Remove and go back to the start', 'Copiar log': 'Copy log', 'Log copiado.': 'Log copied.',
+    'No se pudo copiar.': 'Could not copy.', 'Idioma del audio': 'Audio language', 'El stack está vacío.': 'The stack is empty.',
+    'Ver en la pestaña Ver': 'Watch in the Watch tab', 'No se pudieron cargar los subtítulos.': 'Could not load the subtitles.', 'Torrent · sin seed': 'Torrent · no seeding', 'Buscar en los ajustes': 'Search settings',
+    'Plegar todo': 'Collapse all', 'Desplegar todo': 'Expand all', 'Gestos en el reproductor': 'Player gestures',
+    'Un toque muestra los controles y dos toques a un lado adelantan o atrasan 10 s. Apagado: un toque pausa.':
+      'One tap shows the controls and a double tap on a side skips 10 s forward or back. Off: one tap pauses.',
+    'Ver torrents no está disponible en esta versión de JabsDLP.': 'Watching torrents is not available in this version of JabsDLP.',
+    'Este enlace no se puede apilar (¿es un lote de varios enlaces?).': 'This link can\'t be stacked (is it a batch of several links?).',
+    'En Android todavía no se pueden descargar ni ver torrents (aria2 y libtorrent no están disponibles para celular). Usa la versión de PC.':
+      'Torrents can\'t be downloaded or watched on Android yet (aria2 and libtorrent are not available for phones). Use the PC version.',
+    'En Android todavía no se pueden ver torrents: libtorrent no está disponible para celular. Puedes verlos en la versión de PC.':
+      'Torrents can\'t be watched on Android yet: libtorrent is not available for phones. You can watch them in the PC version.',
+    'En Android todavía no se pueden descargar torrents: aria2, el programa que los descarga, no está disponible para celular. Descárgalo desde la versión de PC.':
+      'Torrents can\'t be downloaded on Android yet: aria2, the program that downloads them, is not available for phones. Download it with the PC version.',
   };
 
   const MESES = { ene: 'Jan', feb: 'Feb', mar: 'Mar', abr: 'Apr', may: 'May', jun: 'Jun', jul: 'Jul', ago: 'Aug', sep: 'Sep', oct: 'Oct', nov: 'Nov', dic: 'Dec' };

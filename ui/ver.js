@@ -39,8 +39,9 @@ async function verOrigen(origen, opciones = {}) {
   const esTorrent = /^magnet:\?/i.test(origen) || /\.torrent(\?|$)/i.test(origen);
   if (esTorrent && !(await confirmarAviso(['torrent_ver']))) return false;
   if (S.vista !== 'ver') irA('ver');
-  video().pause();
   V.cargando = true;
+  limpiarReproductor();   // el anterior deja de sonar y de descargar mientras se prepara este
+  $('#ver-detalle')?.remove();
   pintarEstadoVer(esTorrent ? 'Conectando con el torrent…' : 'Preparando…', true);
   $('#reproductor').classList.remove('oculto');
   $('#ver-inicio').innerHTML = '';
@@ -48,12 +49,68 @@ async function verOrigen(origen, opciones = {}) {
   try { r = await API.ver(origen, opciones.referer || null); } catch (e) { r = { ok: false, error: String(e) }; }
   V.cargando = false;
   if (!r.ok) {
-    pintarEstadoVer(r.error, false, true);
-    $('#ver-info').innerHTML = '';
+    limpiarReproductor();
+    V.datos = null;
+    errorVer(r.error, r.detalle);
+    $('#ver-info').innerHTML = `<div class="ver-titulo"><div class="txt"></div><div class="acciones">
+      <button class="btn chico" data-accion="ver-cerrar" title="Quitar y volver al inicio">${ico('x', 'sm')}Cerrar</button></div></div>`;
     return false;
   }
   cargarFuente(r.datos, opciones.desde || 0);
   return true;
+}
+
+/* Error en el reproductor; con «Mostrar log completo» también el detalle y «Copiar log», como en la Cola */
+function errorVer(texto, detalle = null) {
+  pintarEstadoVer(texto, false, true);
+  $('#ver-detalle')?.remove();
+  if (!S.ajustes.log_completo) return;
+  const info = detalle || `${texto}\nOrigen: ${V.datos?.origen || $('#ver-url').value || ''}\nModo: ${V.datos?.modo || '-'}`;
+  $('#ver-info').insertAdjacentHTML('beforebegin', `<div class="detalle no-traducir" id="ver-detalle">
+      <pre>${esc(info)}</pre>
+      <div class="detalle-acciones"><button class="btn chico" data-accion="ver-copiar-log">${ico('copy', 'sm')}Copiar log</button></div></div>`);
+  $('#ver-detalle').dataset.texto = info;
+}
+
+/* Pista de audio inicial: la original del video (YouTube con doblajes) o, si no, la del idioma del sistema */
+function elegirAudioInicial() {
+  const pistas = V.hls?.audioTracks || [];
+  if (pistas.length < 2 || V.audioElegido) return;
+  V.audioElegido = true;
+  const idioma = p => (p.lang || '').toLowerCase();
+  const original = (V.datos?.audio_original || '').toLowerCase();
+  const sistema = (navigator.language || 'es').slice(0, 2).toLowerCase();
+  let i = original ? pistas.findIndex(p => idioma(p) === original) : -1;
+  if (i < 0 && original) i = pistas.findIndex(p => idioma(p).split('-')[0] === original.split('-')[0]);
+  if (i < 0) i = pistas.findIndex(p => /original/i.test(p.name || ''));
+  if (i < 0) i = pistas.findIndex(p => idioma(p).startsWith(sistema));
+  if (i >= 0 && i !== V.hls.audioTrack) V.hls.audioTrack = i;
+}
+
+function nombreAudio(p, i) {
+  let nombre = p.name || p.lang || `Pista ${i + 1}`;
+  try { if (p.lang && !p.name) nombre = new Intl.DisplayNames([navigator.language || 'es'], { type: 'language' }).of(p.lang); } catch { /* idioma raro */ }
+  const original = V.datos?.audio_original;
+  if (original && (p.lang || '').toLowerCase().split('-')[0] === original.toLowerCase().split('-')[0] && !/original/i.test(nombre)) nombre += ' (original)';
+  return nombre;
+}
+
+/* X: quita el video y deja la pestaña como antes de cargarlo */
+function cerrarVer() {
+  guardarProgresoVer();
+  limpiarReproductor();
+  V.datos = null; V.lista = []; V.actual = -1; V.coleccion = null; V.nombreLista = '';
+  clearInterval(temporizadorTorrent);
+  API.detener_ver();
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  if (V.completaCss) completaCss(false);
+  $('#reproductor').classList.add('oculto');
+  pintarEstadoVer('');
+  $('#ver-detalle')?.remove();
+  $('#ver-info').innerHTML = '';
+  $('#ver-url').value = '';
+  pintarListaVer();
+  pintarInicioVer();
 }
 
 function limpiarReproductor() {
@@ -61,7 +118,7 @@ function limpiarReproductor() {
   if (V.hls) { V.hls.destroy(); V.hls = null; }
   v.pause();
   v.removeAttribute('src');
-  [...v.querySelectorAll('track')].forEach(t => t.remove());
+  [...v.querySelectorAll('track')].forEach(t => { if (t.src.startsWith('blob:')) URL.revokeObjectURL(t.src); t.remove(); });
   v.load();
 }
 
@@ -75,11 +132,16 @@ function cargarFuente(datos, desde) {
   v.playbackRate = V.velocidad;
   $('#reproductor').classList.toggle('solo-audio', !!datos.solo_audio);
   $('#reproductor').style.setProperty('--fondo-audio', datos.miniatura ? `url("${datos.miniatura.replace(/"/g, '')}")` : 'none');
+  V.audioElegido = false;
+  try { v.currentTime = 0; } catch { /* sin medio */ }   // el siguiente empieza en 0:00, no donde iba el anterior
   if (datos.modo === 'hls') {
     if (window.Hls?.isSupported()) {
-      V.hls = new Hls({ maxBufferLength: 40, enableWorker: true });
-      V.hls.on(Hls.Events.ERROR, (_, e) => { if (e.fatal) pintarEstadoVer('No se pudo cargar el video (error de red o enlace caducado).', false, true); });
-      V.hls.on(Hls.Events.MANIFEST_PARSED, () => { if (desde) v.currentTime = desde; v.play().catch(() => {}); });
+      // buffer moderado: en pausa hls.js deja de pedir segmentos al llenarlo (y tras un rato se para del todo)
+      V.hls = new Hls({ maxBufferLength: 30, maxMaxBufferLength: 60, backBufferLength: 30, enableWorker: true, startPosition: desde || 0 });
+      V.hls.on(Hls.Events.ERROR, (_, e) => { if (e.fatal) errorVer('No se pudo cargar el video (error de red o enlace caducado).', `${e.type}: ${e.details}${e.response?.code ? ` (HTTP ${e.response.code})` : ''}`); });
+      V.hls.on(Hls.Events.MANIFEST_PARSED, () => { elegirAudioInicial(); v.play().catch(() => {}); });
+      V.hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, () => { elegirAudioInicial(); actualizarBotonesVer(); });
+      V.hls.on(Hls.Events.AUDIO_TRACK_SWITCHED, actualizarBotonesVer);
       V.hls.loadSource(datos.src);
       V.hls.attachMedia(v);
     } else {
@@ -90,17 +152,20 @@ function cargarFuente(datos, desde) {
     v.src = `${datos.src}?t=${V.offset.toFixed(2)}`;
   } else {
     v.src = datos.src;
-    if (desde) v.addEventListener('loadedmetadata', () => { v.currentTime = desde; }, { once: true });
+    const inicio = desde || 0;
+    v.addEventListener('loadedmetadata', () => { if (Math.abs(v.currentTime - inicio) > 0.5) v.currentTime = inicio; }, { once: true });
   }
+  // Las pistas se crean vacías: el VTT se descarga al activarla (ver activarSubtitulo)
   (datos.subtitulos || []).forEach((s, i) => {
     const t = document.createElement('track');
-    Object.assign(t, { kind: 'subtitles', label: s.nombre, srclang: (s.idioma || 'und').slice(0, 8), src: s.src });
+    Object.assign(t, { kind: 'subtitles', label: s.nombre, srclang: (s.idioma || 'und').slice(0, 8) });
     v.appendChild(t);
     t.track.mode = 'disabled';
     t.dataset.n = i;
   });
   if (datos.modo !== 'hls') v.play().catch(() => {});
   pintarEstadoVer('', false);
+  $('#ver-detalle')?.remove();
   pintarInfoVer();
   pintarListaVer();
   actualizarBotonesVer();
@@ -150,6 +215,7 @@ function pintarInfoVer() {
         <button class="btn chico" data-accion="ver-guardar" title="Guardar en una colección">${ico('star', 'sm')}Guardar</button>
         ${remoto ? `<button class="btn chico" data-accion="ver-descargar" title="Descargarlo">${ico('download', 'sm')}Descargar</button>` : ''}
         <button class="btn chico" data-accion="ver-lista-panel" title="Listas y colecciones">${ico('playlist', 'sm')}Listas</button>
+        <button class="btn chico icono" data-accion="ver-cerrar" title="Quitar el video y volver al inicio">${ico('x', 'sm')}</button>
       </div></div>`;
 }
 
@@ -162,6 +228,7 @@ function actualizarBotonesVer() {
   $('#rp-subs').classList.toggle('activo', V.subActual >= 0);
   $('#rp-subs').classList.toggle('oculto', !(V.datos?.subtitulos || []).length);
   $('#rp-calidad').classList.toggle('oculto', !(V.hls?.levels?.length > 1));
+  $('#rp-audio').classList.toggle('oculto', !(V.hls?.audioTracks?.length > 1));
   $$('[data-rp="anterior"], [data-rp="siguiente"]').forEach(b => b.classList.toggle('oculto', V.lista.length < 2));
 }
 
@@ -208,6 +275,13 @@ function abrirMenuVer(tipo, ancla) {
   let opciones = [];
   if (tipo === 'velocidad') opciones = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map(v => [v, `${v}×`, v === V.velocidad]);
   if (tipo === 'subs') opciones = [[-1, 'Desactivados', V.subActual < 0], ...(V.datos?.subtitulos || []).map((s, i) => [i, s.nombre, V.subActual === i])];
+  if (tipo === 'audio') {
+    // la original y la del idioma del sistema primero; luego el resto por nombre
+    const sistema = (navigator.language || 'es').slice(0, 2).toLowerCase();
+    const peso = (p, nombre) => (/original/i.test(nombre) ? 0 : (p.lang || '').toLowerCase().startsWith(sistema) ? 1 : 2);
+    opciones = (V.hls?.audioTracks || []).map((p, i) => [i, nombreAudio(p, i), V.hls.audioTrack === i, p])
+      .sort((a, b) => peso(a[3], a[1]) - peso(b[3], b[1]) || a[1].localeCompare(b[1]));
+  }
   if (tipo === 'calidad') {
     const niveles = V.hls?.levels || [];
     opciones = [[-1, 'Automática', V.hls?.autoLevelEnabled], ...niveles.map((l, i) => [i, l.height ? `${l.height}p` : `${Math.round(l.bitrate / 1000)} kbps`, !V.hls.autoLevelEnabled && V.hls.currentLevel === i])]
@@ -226,20 +300,86 @@ function elegirOpcionVer(valor) {
   const tipo = $('#rp-menu').dataset.tipo;
   const v = video();
   if (tipo === 'velocidad') { V.velocidad = +valor; v.playbackRate = V.velocidad; }
-  if (tipo === 'subs') activarSubtitulo(+valor);
+  if (tipo === 'subs') activarSubtitulo(+valor).then(actualizarBotonesVer);
   if (tipo === 'calidad') { if (+valor < 0) V.hls.currentLevel = -1; else V.hls.currentLevel = +valor; }
+  if (tipo === 'audio' && V.hls) V.hls.audioTrack = +valor;
   cerrarMenuVer();
   actualizarBotonesVer();
 }
 
-function activarSubtitulo(n) {
+async function activarSubtitulo(n) {
+  // <track src="http://127.0.0.1…"> es de otro origen que la página y el WebView lo bloquea (CORS); se descarga
+  // con fetch y se le da como blob:, que sí es del mismo origen
+  const el = video().querySelectorAll('track')[n];
+  const sub = V.datos?.subtitulos?.[n];
+  if (el && sub && !el.dataset.cargado) {
+    el.dataset.cargado = '1';
+    try {
+      const texto = await (await fetch(sub.src)).text();
+      el.src = URL.createObjectURL(new Blob([texto], { type: 'text/vtt' }));
+    } catch { delete el.dataset.cargado; toast('No se pudieron cargar los subtítulos.', 'err'); }
+  }
   const pistas = video().textTracks;
   for (let i = 0; i < pistas.length; i++) pistas[i].mode = i === n ? 'showing' : 'disabled';
   V.subActual = n;
 }
 
+/* ---------- gestos táctiles (celular): un toque muestra u oculta los controles, doble toque a un lado = ±10 s ---------- */
+const esAndroid = () => document.documentElement.classList.contains('android');
+function gestosActivos() {
+  return (esAndroid() || matchMedia('(hover: none) and (pointer: coarse)').matches) && S.ajustes?.ver_gestos !== false;
+}
+let toqueTimer = null, ultimoToque = 0, ladoToque = null, saltoTimer = null;
+function toqueGesto(e) {
+  const r = $('#reproductor').getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width;
+  const lado = x < 0.38 ? 'izq' : x > 0.62 ? 'der' : null;
+  const ahora = Date.now();
+  if (lado && lado === ladoToque && ahora - ultimoToque < 320) {   // doble toque (o más) en el mismo lado
+    clearTimeout(toqueTimer); toqueTimer = null;
+    ultimoToque = ahora;
+    V.saltoAcumulado = (V.saltoAcumulado || 0) + 10;
+    saltarA(tiempoVer() + (lado === 'der' ? 10 : -10));
+    const aviso = $(`#rp-salto-${lado}`);
+    aviso.textContent = `${lado === 'der' ? '+' : '−'}${V.saltoAcumulado} s`;
+    $$('.rp-salto').forEach(el => el.classList.toggle('visible', el === aviso));
+    clearTimeout(saltoTimer);
+    saltoTimer = setTimeout(() => { $$('.rp-salto').forEach(el => el.classList.remove('visible')); V.saltoAcumulado = 0; }, 700);
+    return;
+  }
+  ultimoToque = ahora; ladoToque = lado;
+  clearTimeout(toqueTimer);
+  toqueTimer = setTimeout(() => {   // un solo toque: controles
+    toqueTimer = null;
+    const rp = $('#reproductor');
+    if (rp.classList.contains('controles-visibles') && !video().paused) { clearTimeout(V.ocultarTimer); rp.classList.remove('controles-visibles'); cerrarMenuVer(); }
+    else mostrarControles();
+  }, lado ? 300 : 0);
+}
+
 /* ---------- pantalla completa (el reproductor llena la ventana y la ventana la pantalla) ---------- */
+// En Android: el reproductor ocupa la pantalla con CSS y la app esconde las barras del sistema (y gira a horizontal)
+function completaCss(activar, bloquearGiro = true) {
+  V.completaCss = activar;
+  if (!activar) V.completaPorGiro = false;
+  document.body.classList.toggle('ver-completa-css', activar);
+  $('[data-rp="completa"]').innerHTML = ico(activar ? 'minimizar' : 'maximizar');
+  const v = video();
+  const horizontal = !v.videoHeight || v.videoWidth >= v.videoHeight;
+  try { window.JabsAndroid?.pantallaCompleta?.(activar, activar && bloquearGiro && horizontal); } catch { /* fuera de Android */ }
+  mostrarControles();
+}
+window.salirCompletaVer = () => { if (V.completaCss) { completaCss(false); return true; } return false; };
+if (window.matchMedia) {
+  matchMedia('(orientation: landscape)').addEventListener('change', e => {
+    if (!esAndroid() || !V.datos || S.vista !== 'ver') return;
+    if (e.matches && !V.completaCss) { completaCss(true, false); V.completaPorGiro = true; }   // girar el teléfono
+    else if (!e.matches && V.completaCss && V.completaPorGiro) completaCss(false);
+  });
+}
+
 async function alternarCompletaVer() {
+  if (esAndroid()) return completaCss(!V.completaCss);
   const rp = $('#reproductor');
   if (document.fullscreenElement) {
     await document.exitFullscreen().catch(() => {});
@@ -269,6 +409,25 @@ async function verColeccion(id, indice = 0) {
   irA('ver');
   $('#ver-lista').classList.remove('oculto');
   await abrirItemLista(Math.min(indice, items.length - 1), true);
+}
+
+/* El stack de Descargar como lista de reproducción (las playlists del stack se despliegan en sus videos) */
+function elementosStack() {
+  return (S.stack?.items || []).filter(i => !(esAndroid() && i.tipo === 'torrent')).flatMap(i => {
+    const d = i.datos || {};
+    if (i.tipo === 'playlist') return (d.entradas || i.entradas || []).map(e => ({ url: e.url, titulo: e.titulo, miniatura: e.miniatura, duracion: e.duracion, uid: i.uid }));
+    return [{ url: i.url, titulo: d.titulo || i.titulo, miniatura: d.miniatura || i.miniatura, duracion: d.duracion ?? i.duracion, uid: i.uid }];
+  }).filter(e => e.url);
+}
+
+function verStack(uid = null) {
+  const items = elementosStack();
+  if (!items.length) return toast('El stack está vacío.', 'err');
+  guardarProgresoVer();
+  V.lista = items; V.coleccion = null; V.nombreLista = 'Stack';
+  if (S.vista !== 'ver') irA('ver');
+  $('#ver-lista').classList.remove('oculto');
+  abrirItemLista(Math.max(0, uid ? items.findIndex(e => e.uid === uid) : 0));
 }
 
 async function abrirItemLista(n, preguntarContinuar = false) {
@@ -330,6 +489,10 @@ function pintarListaVer() {
         </div>`;
       }).join('')}</div>` : ''}
     <div class="vl-colecciones">
+      ${elementosStack().length ? `<div class="etiqueta-grupo">${ico('layers', 'sm')}Stack</div>
+        <div class="pc-item ${V.nombreLista === 'Stack' && !V.coleccion ? 'activo' : ''}" data-accion="ver-stack">
+          ${collage(elementosStack().map(e => e.miniatura).filter(Boolean).slice(0, 3))}<span class="txt"><b>Stack</b><small>${elementosStack().length} ${elementosStack().length === 1 ? 'elemento' : 'elementos'}</small></span>
+          ${ico('play', 'sm')}</div>` : ''}
       <div class="etiqueta-grupo">${ico('bookmark', 'sm')}Tus colecciones</div>
       ${cols.map(c => `<div class="pc-item ${c.id === V.coleccion ? 'activo' : ''}" data-ver-coleccion="${esc(c.id)}">
           ${collage(c.miniaturas || [])}<span class="txt"><b class="no-traducir">${esc(c.nombre)}</b><small>${c.cantidad} ${c.cantidad === 1 ? 'elemento' : 'elementos'}</small></span>
@@ -341,6 +504,7 @@ function pintarListaVer() {
 async function pintarInicioVer() {
   if (V.datos || V.cargando) return;
   const vistos = await API.vistos();
+  if (V.datos || V.cargando) return;   // mientras tanto se empezó a cargar un video
   $('#ver-inicio').innerHTML = `<div class="vacio ver-vacio">
       <div class="circulo">${ico('tv')}</div>
       <b>Mira videos sin descargarlos</b>
@@ -367,14 +531,25 @@ function iniciarVer() {
   v.addEventListener('playing', () => pintarEstadoVer(''));
   v.addEventListener('canplay', () => pintarEstadoVer(''));
   v.addEventListener('ended', () => { guardarProgresoVer(true); siguienteVer(); });
-  v.addEventListener('error', () => { if (V.datos && v.getAttribute('src')) pintarEstadoVer('No se pudo reproducir este video aquí. Prueba a descargarlo.', false, true); });
+  v.addEventListener('error', () => {
+    if (V.datos && v.getAttribute('src') && !V.hls) errorVer('No se pudo reproducir este video aquí. Prueba a descargarlo.',
+      `Error del reproductor: ${v.error?.code || '?'} ${v.error?.message || ''}\nModo: ${V.datos.modo}\nOrigen: ${V.datos.origen}`);
+  });
+  // En pausa: hls.js para de pedir segmentos al rato (no gasta datos de más); al reanudar sigue donde iba
+  let pausaTimer = null;
+  v.addEventListener('pause', () => { clearTimeout(pausaTimer); pausaTimer = setTimeout(() => { if (v.paused && V.hls) { V.hls.stopLoad(); V.hlsParado = V.hls; } }, 15000); });
+  v.addEventListener('play', () => { clearTimeout(pausaTimer); if (V.hls && V.hlsParado === V.hls) { V.hlsParado = null; V.hls.startLoad(v.currentTime); } });
+  v.addEventListener('seeking', () => { if (V.hls && V.hlsParado === V.hls) { V.hlsParado = null; V.hls.startLoad(v.currentTime); } });
   v.addEventListener('loadedmetadata', () => { actualizarBotonesVer(); pintarTiempo(); });
   const rp = $('#reproductor');
-  rp.addEventListener('mousemove', mostrarControles);
+  rp.addEventListener('mousemove', () => { if (!gestosActivos()) mostrarControles(); });
   rp.addEventListener('click', e => {
-    if (e.target === v || e.target.closest('#rp-centro') || e.target.closest('#rp-estado')) { alternarPlay(); destello(v.paused ? 'pause' : 'play'); }
+    if (!(e.target === v || e.target.closest('#rp-centro') || e.target.closest('#rp-estado') || e.target.closest('.rp-salto'))) return;
+    if ($('#rp-estado').classList.contains('error')) return;
+    if (gestosActivos()) return toqueGesto(e);
+    alternarPlay(); destello(v.paused ? 'pause' : 'play');
   });
-  rp.addEventListener('dblclick', e => { if (e.target === v) alternarCompletaVer(); });
+  rp.addEventListener('dblclick', e => { if (e.target === v && !gestosActivos()) alternarCompletaVer(); });
   // línea de tiempo: clic y arrastrar
   const linea = $('#rp-linea');
   const posicion = e => { const r = linea.getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)); };
@@ -406,7 +581,7 @@ document.addEventListener('click', async e => {
     if (a === 'siguiente') return siguienteVer(true);
     if (a === 'anterior') return anteriorVer();
     if (a === 'completa') return alternarCompletaVer();
-    if (['velocidad', 'subs', 'calidad'].includes(a)) return abrirMenuVer(a, rpBtn);
+    if (['velocidad', 'subs', 'calidad', 'audio'].includes(a)) return abrirMenuVer(a, rpBtn);
   }
   const opcion = t.closest('[data-rp-opcion]');
   if (opcion) return elegirOpcionVer(opcion.dataset.rpOpcion);
@@ -448,6 +623,12 @@ document.addEventListener('click', async e => {
     case 'ver-aleatorio': V.aleatorio = !V.aleatorio; return pintarListaVer();
     case 'ver-repetir': V.repetir = { no: 'lista', lista: 'uno', uno: 'no' }[V.repetir]; return pintarListaVer();
     case 'ver-desde-cero': return saltarA(0);
+    case 'ver-cerrar': return cerrarVer();
+    case 'ver-copiar-log': {
+      const ok = await API.copiar($('#ver-detalle')?.dataset.texto || '');
+      return toast(ok ? 'Log copiado.' : 'No se pudo copiar.', ok ? 'ok' : 'err');
+    }
+    case 'ver-stack': return verStack();
     case 'torrent-ver': if (S.analisis?.url) { V.lista = []; V.coleccion = null; return verOrigen(S.analisis.url); } return;
     case 'col-ver': return verColeccion(C.abierta);
   }
@@ -474,6 +655,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id
 // Al salir de la pestaña se pausa (y se guarda el progreso)
 const irAOriginal = irA;
 irA = function (vista) {   // eslint-disable-line no-global-assign
+  if (S.vista === 'ver' && vista !== 'ver' && V.completaCss) completaCss(false);
   if (S.vista === 'ver' && vista !== 'ver' && V.datos) {
     guardarProgresoVer(); video().pause();
     if (V.datos.torrent) { limpiarReproductor(); V.datos = null; API.detener_ver(); clearInterval(temporizadorTorrent); }  // deja de compartir
@@ -482,6 +664,9 @@ irA = function (vista) {   // eslint-disable-line no-global-assign
   if (vista === 'ver') { pintarInicioVer(); pintarListaVer(); }
 };
 TITULOS.ver = 'Ver';
+
+// Android: «Compartir → Ver en JabsDLP» abre el enlace aquí
+window.verCompartido = url => { guardarProgresoVer(); V.lista = []; V.coleccion = null; $('#ver-url').value = url; return verOrigen(url); };
 
 function verLocal(ruta) { guardarProgresoVer(); V.lista = []; V.coleccion = null; return verOrigen(ruta); }
 

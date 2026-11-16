@@ -114,6 +114,29 @@ object Plataforma {
         }
     }
 
+    /** Miniatura de un video con los decodificadores de Android (AV1, VP9, HEVC…: el ffmpeg incluido no decodifica AV1).
+     *  Guarda un JPEG de 320 px de ancho en `destino`. */
+    @JvmStatic
+    fun miniatura(ruta: String, destino: String): Boolean {
+        val r = android.media.MediaMetadataRetriever()
+        return try {
+            r.setDataSource(ruta)
+            val duracion = r.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+            val instante = if (duracion > 16_000) 8_000_000L else duracion * 500L   // microsegundos
+            val opcion = android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+            val cuadro = (if (android.os.Build.VERSION.SDK_INT >= 27) r.getScaledFrameAtTime(instante, opcion, 320, 320)
+                else r.getFrameAtTime(instante, opcion)) ?: return false
+            val alto = (cuadro.height * 320f / cuadro.width).toInt().coerceAtLeast(1)
+            val final = if (cuadro.width != 320) android.graphics.Bitmap.createScaledBitmap(cuadro, 320, alto, true) else cuadro
+            File(destino).outputStream().use { final.compress(android.graphics.Bitmap.CompressFormat.JPEG, 78, it) }
+            File(destino).length() > 0
+        } catch (e: Exception) {
+            false
+        } finally {
+            runCatching { r.release() }
+        }
+    }
+
     @JvmStatic
     fun escanear(ruta: String) {
         MediaScannerConnection.scanFile(app, arrayOf(ruta), null, null)
@@ -173,5 +196,17 @@ object Plataforma {
     /** Carpeta por defecto: Descargas/JabsDLP (se ve en la app Archivos y en la Galería). */
     fun carpetaDescargas(): File =
         File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "JabsDLP")
+
+    /** En la tarjeta SD Android solo deja escribir por ruta en la carpeta propia de la app
+     *  (Android/media/com.jabsdlp.app): se ve en la Galería y no hace falta ningún permiso. */
+    fun carpetaSd(): File? = app.externalMediaDirs.filterNotNull()
+        .firstOrNull { Environment.isExternalStorageRemovable(it) && Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED }
+        ?.also { it.mkdirs() }
+
+    fun carpetaDisponible(ruta: String): Boolean {
+        if (!ruta.startsWith("/storage/") || ruta.startsWith("/storage/emulated/") || ruta.startsWith("/storage/self/")) return true
+        val volumen = File(ruta.split("/").take(3).joinToString("/"))   // /storage/XXXX-XXXX
+        return volumen.isDirectory && volumen.canRead() && (File(ruta).isDirectory || File(ruta).parentFile?.canWrite() == true)
+    }
 
 }

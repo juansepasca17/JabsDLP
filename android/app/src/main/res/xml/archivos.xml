@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Rutas que se pueden pasar a otras apps (abrir un video descargado) -->
+<!-- Rutas que se pueden pasar a otras apps (abrir un video descargado, compartir el log) -->
 <paths>
     <external-path name="almacenamiento" path="." />
     <cache-path name="cache" path="." />
     <files-path name="datos" path="." />
+    <!-- Tarjeta SD (/storage/XXXX-XXXX/Android/media/com.jabsdlp.app): external-path solo cubre la memoria interna -->
+    <root-path name="sd" path="storage" />
 </paths>

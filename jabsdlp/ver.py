@@ -122,7 +122,10 @@ def _subtitulos_de(info, proxy):
         for codigo in idiomas:
             if codigo == 'live_chat' or codigo.split('-')[0] in vistos or (auto and len(lista) >= 6):
                 continue
-            pista = next((f for f in fuentes[codigo] if f.get('ext') == 'vtt' and f.get('url')), None)
+            # YouTube da dos «vtt» para los automáticos: uno es una lista HLS por trozos (m3u8_native) y el otro el
+            # archivo entero. Se prefiere el entero: el troceado se ve a saltos.
+            vtts = [f for f in fuentes[codigo] if f.get('ext') == 'vtt' and f.get('url')]
+            pista = next((f for f in vtts if 'm3u8' not in str(f.get('protocol') or '')), vtts[0] if vtts else None)
             if not pista:
                 continue
             if auto and not (codigo.endswith('-orig') or codigo.split('-')[0] in IDIOMAS_PREFERIDOS):
@@ -134,6 +137,12 @@ def _subtitulos_de(info, proxy):
             if len(lista) >= 12:
                 return lista
     return lista
+
+
+def _audio_original(f):
+    """YouTube con doblajes: la pista original lleva language_preference alto o «original» en la nota."""
+    nota = f'{f.get("format_note") or ""} {f.get("format") or ""}'.lower()
+    return ('original' in nota) + ((f.get('language_preference') or 0) >= 10) - ('dubbed' in nota or 'doblado' in nota)
 
 
 def elegir_fuente(info, url, referer=None):
@@ -163,12 +172,12 @@ def elegir_fuente(info, url, referer=None):
     if videos and audios:
         v = max(videos, key=lambda f: ((f.get('height') or 0) <= 1080, f.get('vcodec', '').startswith('avc1'),
                                        f.get('height') or 0, f.get('tbr') or 0))
-        a = max(audios, key=lambda f: (f.get('acodec', '').startswith('mp4a'), f.get('abr') or f.get('tbr') or 0))
+        a = max(audios, key=lambda f: (_audio_original(f), f.get('acodec', '').startswith('mp4a'), f.get('abr') or f.get('tbr') or 0))
         return 'remux', {'entradas': [(v['url'], v.get('http_headers')), (a['url'], a.get('http_headers'))]}
     solos = [f for f in formatos if f.get('url') and _compatible(f.get('acodec'), AUDIO_COMPATIBLE)
              and f.get('vcodec') in (None, 'none') and f.get('protocol') in ('https', 'http')]
     if solos:
-        a = max(solos, key=lambda f: f.get('abr') or f.get('tbr') or 0)
+        a = max(solos, key=lambda f: (_audio_original(f), f.get('abr') or f.get('tbr') or 0))
         return 'directo-audio', {'url': a['url'], 'cabeceras': a.get('http_headers') or {}}
     if es_manifiesto(url) == 'mpd' or info.get('url'):
         return 'remux', {'entradas': [(info.get('url') or url, {'Referer': referer} if referer else None)]}
@@ -200,7 +209,17 @@ def resolver_enlace(url, proxy, opciones_ytdlp, referer=None):
         'titulo': info.get('title') or url, 'canal': info.get('channel') or info.get('uploader'),
         'duracion': info.get('duration'), 'miniatura': info.get('thumbnail'), 'origen': url,
         'en_vivo': bool(info.get('is_live')), 'subtitulos': _subtitulos_de(info, proxy),
+        'audio_original': idioma_original(info),
     }
+
+
+def idioma_original(info):
+    """Idioma del audio original (YouTube marca la pista original con language_preference 10)."""
+    mejor = max((f for f in info.get('formats') or [] if f.get('acodec') not in (None, 'none') and f.get('language')),
+                key=lambda f: f.get('language_preference') or -1, default=None)
+    if mejor and (mejor.get('language_preference') or -1) >= 10:
+        return str(mejor['language'])
+    return None
 
 
 # ---------- vistos recientemente ----------

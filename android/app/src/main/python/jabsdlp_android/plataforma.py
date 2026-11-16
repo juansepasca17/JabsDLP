@@ -72,6 +72,33 @@ def tema_barra(hwnd, claro):
     return True
 
 
+# ---------- miniaturas de la Biblioteca ----------
+_miniatura_pc = None
+
+
+def miniatura(ruta, ffmpeg=None):
+    """Como biblioteca.miniatura del PC, pero el fotograma lo saca Android (MediaMetadataRetriever): los videos de
+    YouTube suelen venir en AV1 y el ffmpeg incluido no lo decodifica. Si Android no puede, se prueba con ffmpeg."""
+    import base64
+    import hashlib
+
+    from jabsdlp import biblioteca
+    from jabsdlp.ajustes import carpeta_local
+    if biblioteca.tipo_archivo(ruta) != 'video' or not os.path.isfile(ruta):
+        return None
+    st = os.stat(ruta)
+    clave = hashlib.sha1(f'{os.path.normcase(ruta)}|{st.st_mtime}|{st.st_size}'.encode('utf-8')).hexdigest()
+    carpeta = os.path.join(carpeta_local(), 'miniaturas')
+    os.makedirs(carpeta, exist_ok=True)
+    cache = os.path.join(carpeta, clave + '.jpg')
+    if not (os.path.isfile(cache) and os.path.getsize(cache) > 0):
+        _llamar('miniatura', str(ruta), str(cache), defecto=False)
+    if os.path.isfile(cache) and os.path.getsize(cache) > 0:
+        with open(cache, 'rb') as f:
+            return 'data:image/jpeg;base64,' + base64.b64encode(f.read()).decode('ascii')
+    return _miniatura_pc(ruta, ffmpeg) if _miniatura_pc else None
+
+
 # ---------- papelera ----------
 def carpeta_papelera():
     ruta = os.path.join(_datos or os.environ.get('APPDATA', '.'), 'papelera')
@@ -159,6 +186,24 @@ def adaptar_api(Api):
     def configurar_captura(self):
         return None   # en Android los enlaces llegan con "Compartir → JabsDLP"
 
+    def _sin_aria2(self):
+        return ('En Android todavía no se pueden descargar torrents: aria2, el programa que los descarga, '
+                'no está disponible para celular. Descárgalo desde la versión de PC.')
+
+    ver_pc = Api.ver
+
+    def ver(self, origen, referer=None):
+        from jabsdlp.utilidades import es_torrent
+        if es_torrent((origen or '').strip()):
+            try:
+                import libtorrent  # noqa: F401
+            except ImportError:
+                return {'ok': False, 'error': 'En Android todavía no se pueden ver torrents: libtorrent no está '
+                                              'disponible para celular. Puedes verlos en la versión de PC.'}
+        return ver_pc(self, origen, referer)
+
+    Api._sin_aria2 = _sin_aria2
+    Api.ver = ver
     Api._dialogo = _dialogo
     Api.reiniciar = reiniciar
     Api.alternar_pantalla_completa = alternar_pantalla_completa

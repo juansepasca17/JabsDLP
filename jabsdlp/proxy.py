@@ -353,6 +353,17 @@ class Proxy:
         if d.get('url'):
             with self._pedir(d['url'], d['cabeceras']) as r:
                 texto = r.read(5 * 1024 * 1024).decode('utf-8', 'replace')
+            if texto.lstrip().startswith('#EXTM3U'):   # subtítulos en HLS: se juntan todos los trozos en un VTT
+                partes = []
+                for linea in texto.splitlines():
+                    linea = linea.strip()
+                    if linea and not linea.startswith('#'):
+                        with self._pedir(urllib.parse.urljoin(d["url"], linea), d["cabeceras"]) as r:
+                            trozo = r.read(5 * 1024 * 1024).decode('utf-8', 'replace')
+                        partes.append(trozo if not partes else re.sub(r'^﻿?WEBVTT[^\n]*\n(?:[^\n]+\n)*', '', trozo))
+                    if len(partes) >= 400:
+                        break
+                texto = '\n'.join(partes)
         elif d.get('ruta') and os.path.isfile(d['ruta']):
             if d.get('pista') is not None:
                 ffmpeg = self.ffmpeg() if self.ffmpeg else None
@@ -367,13 +378,54 @@ class Proxy:
                     texto = f.read(5 * 1024 * 1024)
         else:
             return self._error(h, 404)
-        cuerpo = srt_a_vtt(texto).encode('utf-8')
+        cuerpo = limpiar_vtt(srt_a_vtt(texto)).encode('utf-8')
         h.send_response(200)
         h.send_header('Content-Type', 'text/vtt; charset=utf-8')
         h.send_header('Content-Length', str(len(cuerpo)))
         h.send_header('Access-Control-Allow-Origin', '*')
         h.end_headers()
         h.wfile.write(cuerpo)
+
+
+_TIEMPO_VTT = re.compile(r'(?:(\d+):)?(\d{2}):(\d{2})\.(\d{3})')
+_CUE_VTT = re.compile(r'^((?:\d+:)?\d{2}:\d{2}\.\d{3})\s+-->\s+((?:\d+:)?\d{2}:\d{2}\.\d{3})[^\n]*\n(.*?)(?=\n\n|\Z)',
+                      re.S | re.M)
+
+
+def _segundos_vtt(t):
+    m = _TIEMPO_VTT.match(t)
+    return int(m.group(1) or 0) * 3600 + int(m.group(2)) * 60 + int(m.group(3)) + int(m.group(4)) / 1000
+
+
+def _tiempo_vtt(s):
+    ms = int(round(s * 1000))
+    return f'{ms // 3600000:02d}:{ms // 60000 % 60:02d}:{ms // 1000 % 60:02d}.{ms % 1000:03d}'
+
+
+def limpiar_vtt(texto):
+    """Subtítulos automáticos de YouTube: vienen «rodando» (cada palabra con su tiempo, frases repetidas en cues
+    que se solapan y cues de 10 ms entre medias). El navegador los apila y saltan, como si el video se parara.
+    Se quitan las marcas, los cues diminutos y los repetidos, y ninguno se solapa con el siguiente."""
+    if '<c>' not in texto and not re.search(r'<\d{2}:\d{2}', texto):
+        return texto
+    cues = []
+    for m in _CUE_VTT.finditer(texto.replace('\r\n', '\n')):
+        inicio, fin = _segundos_vtt(m.group(1)), _segundos_vtt(m.group(2))
+        lineas = [re.sub(r'<[^>]+>', '', l).strip() for l in m.group(3).split('\n')]
+        lineas = [l for l in lineas if l]
+        if not lineas or fin - inicio < 0.05:
+            continue
+        if cues and cues[-1][2] == lineas:
+            cues[-1][1] = max(cues[-1][1], fin)
+            continue
+        cues.append([inicio, fin, lineas])
+    for actual, siguiente in zip(cues, cues[1:]):
+        actual[1] = min(actual[1], siguiente[0])
+    salida = ['WEBVTT', '']
+    for inicio, fin, lineas in cues:
+        if fin - inicio >= 0.05:
+            salida += [f'{_tiempo_vtt(inicio)} --> {_tiempo_vtt(fin)}', *lineas, '']
+    return '\n'.join(salida)
 
 
 def srt_a_vtt(texto):

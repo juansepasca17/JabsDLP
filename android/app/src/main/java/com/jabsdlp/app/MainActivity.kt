@@ -3,6 +3,7 @@ package com.jabsdlp.app
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -51,6 +52,7 @@ class MainActivity : ComponentActivity() {
     private var futuroArchivo: CompletableFuture<String?>? = null
     private var pantallaCompletaAplicada = false
     private var completa = false
+    private var videoCompleto = false
 
     // ---------- selector de archivos y carpetas (los diálogos del PC) ----------
     private val abrirDocumento = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -142,6 +144,7 @@ class MainActivity : ComponentActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (vistaVideo != null) salirDeVideo()
+                else if (videoCompleto) web.evaluateJavascript("window.salirCompletaVer && salirCompletaVer()", null)
                 else moveTaskToBack(true)   // atrás no cierra la app: las descargas siguen
             }
         })
@@ -216,11 +219,14 @@ class MainActivity : ComponentActivity() {
             return
         }
         val lista = JSONArray(urls).toString()
+        // «Ver en JabsDLP» (el alias) abre el enlace en la pestaña Ver; «Descargar con JabsDLP», en Descargar
+        val ver = intent.component?.className?.endsWith(".VerEnJabsDLP") == true
+        val accion = if (ver) "if (window.verCompartido) { verCompartido(lista[0]); return; }" else "recibirCaptura(lista, 'auto'); return;"
         // Espera a que la interfaz haya cargado los ajustes antes de entregar el enlace
         web.evaluateJavascript("""
             (function entregar(n){
               var lista = $lista;
-              try { if (window.recibirCaptura && S && S.ajustes && S.ajustes.tema !== undefined) { recibirCaptura(lista, 'auto'); return; } } catch (e) {}
+              try { if (window.recibirCaptura && S && S.ajustes && S.ajustes.tema !== undefined) { $accion } } catch (e) {}
               if (n < 200) setTimeout(function(){ entregar(n + 1); }, 150);
             })(0);
         """.trimIndent(), null)
@@ -262,7 +268,13 @@ class MainActivity : ComponentActivity() {
     private fun rutaDeCarpeta(uri: Uri): String? {
         val id = runCatching { DocumentsContract.getTreeDocumentId(uri) }.getOrNull() ?: return null
         val partes = id.split(":", limit = 2)
-        if (uri.authority != "com.android.externalstorage.documents" || !partes[0].equals("primary", true)) return null
+        if (uri.authority != "com.android.externalstorage.documents") return null
+        if (!partes[0].equals("primary", true)) {
+            // Tarjeta SD: solo se puede escribir por ruta en la carpeta propia de la app (Android/media/com.jabsdlp.app)
+            val sd = Plataforma.carpetaSd() ?: return null
+            Toast.makeText(this, "En la tarjeta SD JabsDLP guarda en su propia carpeta: ${sd.absolutePath}", Toast.LENGTH_LONG).show()
+            return sd.absolutePath
+        }
         return File(raizAlmacenamiento, partes.getOrElse(1) { "" }).absolutePath
     }
 
@@ -319,11 +331,42 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Pantalla completa del reproductor de Ver (la hace la interfaz con CSS): barras del sistema y giro. */
+    fun modoVideo(activa: Boolean, horizontal: Boolean) {
+        videoCompleto = activa
+        barrasOcultas(activa || completa)
+        requestedOrientation = if (activa && horizontal) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+    }
+
+    /** Log de la app (logcat de este proceso: Python, la interfaz y Android) a un archivo y «Compartir». */
+    fun compartirLog(): Boolean = try {
+        val texto = Runtime.getRuntime().exec(arrayOf("logcat", "-d", "-v", "time", "--pid=${android.os.Process.myPid()}"))
+            .inputStream.bufferedReader().use { it.readText() }
+        val version = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "?"
+        val carpeta = File(cacheDir, "log").apply { mkdirs() }
+        val archivo = File(carpeta, "jabsdlp-log.txt")
+        archivo.writeText("JabsDLP $version · Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · ${Build.MODEL}\n\n" +
+            ocultarTokens(texto.takeLast(2_000_000)))
+        val uri = androidx.core.content.FileProvider.getUriForFile(this, "$packageName.archivos", archivo)
+        val enviar = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_STREAM, uri)
+            .putExtra(Intent.EXTRA_SUBJECT, "Log de JabsDLP").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        runOnUiThread { runCatching { startActivity(Intent.createChooser(enviar, "Compartir el log")) } }
+        true
+    } catch (e: Exception) {
+        false
+    }
+
+    /** Como ocultar_tokens del PC: los parámetros de las URLs que suelen ser tokens o firmas no salen en el log. */
+    private fun ocultarTokens(texto: String): String =
+        Regex("""([?&](?:token|sig|signature|key|auth|access_token|policy|expires|hdnts|hmac|session)[^=&\s]*=)[^&\s"']+""",
+            RegexOption.IGNORE_CASE).replace(texto) { it.groupValues[1] + "***" }
+
     private fun salirDeVideo() {
         vistaVideo?.let { raiz.removeView(it) }
         vistaVideo = null
         cerrarVideo?.onCustomViewHidden()
         cerrarVideo = null
-        barrasOcultas(completa)
+        barrasOcultas(completa || videoCompleto)
     }
 }

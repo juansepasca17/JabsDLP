@@ -566,7 +566,9 @@ function renderOpciones() {
     const a = S.analisis;
     cont.innerHTML = `<div class="etiqueta-grupo" style="margin-top:14px">${ico('download', 'sm')}Torrent</div>
       <div class="nota">Se descarga con aria2, con la subida limitada a ${esc(String(S.ajustes.subida_torrent_kb || 20))} KB/s y <b>sin seed</b>: al terminar deja de compartir.</div>
-      ${a.aria2 ? '' : `<div class="aviso">${ico('alert', 'sm')}<span>Los torrents necesitan aria2. Instálalo en <a data-vista="ajustes">Ajustes → Red y velocidad</a>.</span></div>`}
+      ${a.aria2 ? '' : document.documentElement.classList.contains('android')
+        ? `<div class="aviso">${ico('alert', 'sm')}<span>En Android todavía no se pueden descargar ni ver torrents (aria2 y libtorrent no están disponibles para celular). Usa la versión de PC.</span></div>`
+        : `<div class="aviso">${ico('alert', 'sm')}<span>Los torrents necesitan aria2. Instálalo en <a data-vista="ajustes">Ajustes → Red y velocidad</a>.</span></div>`}
       <button class="btn chico" style="margin-top:12px" data-accion="torrent-ver">${ico('tv', 'sm')}Ver sin descargar</button>
       ${pieHTML('Descargar torrent', !!a.aria2)}`;
     return;
@@ -785,7 +787,7 @@ async function analizar() {
   if (!texto) { toast('Pega una URL primero.', 'err'); $('#url').focus(); return; }
   cerrarMenu();
   if (S.ajustes.modo_stack) {
-    const urls = texto.split(/\s+/).filter(t => /^https?:\/\//i.test(t));
+    const urls = texto.split(/\s+/).filter(t => /^(https?:\/\/|magnet:\?)/i.test(t));
     if (urls.length && urls.every(apilable)) {
       $('#url').value = '';
       agregarAlStack(urls);

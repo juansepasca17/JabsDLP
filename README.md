@@ -26,6 +26,22 @@ y [ffmpeg](https://ffmpeg.org).
   - Puede buscar actualizaciones al abrir, como mucho una vez al día.
   - Solo guarda la última versión descargada. La que va dentro del `.exe` queda siempre como respaldo y la app vuelve a ella si la descargada falla.
 
+### Novedades de la 1.7.2
+
+- **Pestaña Ver:**
+  - **Idioma del audio**: en videos con doblajes (YouTube) se elige sola la pista original, o si no la de tu idioma,
+    y puedes cambiarla con el botón nuevo del reproductor.
+  - Los **subtítulos automáticos** de YouTube ya no van a saltos (YouTube los manda por trozos y ahora se juntan).
+  - Botón **X** para quitar el video y volver a la pantalla inicial.
+  - Al cambiar de video, el nuevo empieza en 0:00 y el anterior deja de descargarse.
+  - En pausa deja de pedir el video al rato, así que no gasta datos de más.
+  - El **stack** se puede ver como lista de reproducción (en *Listas* o con el botón de cada elemento del stack).
+  - Con *Mostrar log completo* activado, los errores de Ver muestran el detalle con **Copiar log**, como en la Cola.
+- **Stack**: acepta también magnets, archivos `.torrent` y enlaces directos `.m3u8`/`.mpd`.
+- **Biblioteca**: al marcar un archivo entras en modo selección: tocar cualquier otro lo marca, y
+  *Quitar selección* lo desactiva.
+- **Ajustes**: buscador arriba y secciones que se pliegan y despliegan (se recuerda cuáles dejaste plegadas).
+
 ### Novedades de la 1.7.1
 
 - **Torrents en la pestaña Ver**: pega un magnet o un enlace `.torrent` (o pulsa **Ver sin descargar** en el panel

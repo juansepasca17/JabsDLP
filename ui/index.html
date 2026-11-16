@@ -113,9 +113,10 @@
         <div class="ver-cuerpo" id="ver-cuerpo">
           <div class="ver-principal">
             <div class="reproductor oculto" id="reproductor" tabindex="0">
-              <video id="video" playsinline preload="auto"></video>
+              <video id="video" playsinline preload="auto" poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></video>
               <div class="rp-estado" id="rp-estado"></div>
               <div class="rp-centro" id="rp-centro"></div>
+              <div class="rp-salto izq" id="rp-salto-izq"></div><div class="rp-salto der" id="rp-salto-der"></div>
               <div class="rp-controles" id="rp-controles">
                 <div class="rp-linea" id="rp-linea"><div class="rp-cargado" id="rp-cargado"></div><div class="rp-avance" id="rp-avance"></div>
                   <div class="rp-bola" id="rp-bola"></div><div class="rp-globo" id="rp-globo">0:00</div></div>
@@ -130,6 +131,7 @@
                   <span class="rp-tiempo" id="rp-tiempo">0:00 / 0:00</span>
                   <span class="rp-espacio"></span>
                   <button class="rp-btn texto" data-rp="velocidad" id="rp-velocidad" title="Velocidad">1×</button>
+                  <button class="rp-btn oculto" data-rp="audio" id="rp-audio" title="Idioma del audio"><i data-ico="languages"></i></button>
                   <button class="rp-btn" data-rp="subs" id="rp-subs" title="Subtítulos (C)"><i data-ico="subtitulos"></i></button>
                   <button class="rp-btn" data-rp="calidad" id="rp-calidad" title="Calidad"><i data-ico="settings"></i></button>
                   <button class="rp-btn" data-rp="completa" title="Pantalla completa (F)"><i data-ico="maximizar"></i></button>
@@ -403,6 +405,10 @@
             <div class="ajuste">
               <div class="txt"><b>Abrir en pantalla completa</b><small>También puedes entrar o salir en cualquier momento con F11.</small></div>
               <label class="switch"><input type="checkbox" data-ajuste="pantalla_completa"><span></span></label>
+            </div>
+            <div class="ajuste solo-tactil">
+              <div class="txt"><b>Gestos en el reproductor</b><small>Un toque muestra los controles y dos toques a un lado adelantan o atrasan 10 s. Apagado: un toque pausa.</small></div>
+              <label class="switch"><input type="checkbox" data-ajuste="ver_gestos"><span></span></label>
             </div>
             <div class="ajuste">
               <div class="txt"><b>Botón de Colecciones</b><small>En la barra lateral o flotando abajo a la derecha.</small></div>

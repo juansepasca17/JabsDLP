@@ -1,2 +1,4 @@
 # Archivos de terceros verificados por SHA-256: sin conversión de saltos de línea
 ui/vendor/** -text
+# Scripts de bash: siempre con LF (en Windows se ejecutan desde WSL)
+*.sh text eol=lf

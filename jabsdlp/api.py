@@ -292,7 +292,7 @@ class Api:
                 if not es_torrent(url):
                     return {'ok': False, 'error': 'No es un enlace magnet ni un archivo .torrent.'}
                 if not aria2.ruta(self._ajustes):
-                    return {'ok': False, 'error': 'Los torrents necesitan aria2: instálalo en Ajustes → Red y velocidad.'}
+                    return {'ok': False, 'error': self._sin_aria2()}
                 trabajos.append(Trabajo(url, {'tipo': 'torrent'}, nombre_torrent(url), titulo_formato='Torrent · sin seed'))
             elif tipo == 'manifiesto':
                 url = (solicitud.get('url') or '').strip()
@@ -309,10 +309,26 @@ class Api:
                                         duracion=solicitud.get('duracion')))
             elif tipo == 'stack':
                 items = [i for i in (solicitud.get('items') or [])[:500]
-                         if isinstance(i, dict) and str(i.get('url') or '').lower().startswith(('http://', 'https://'))]
+                         if isinstance(i, dict) and str(i.get('url') or '').strip().lower().startswith(('http://', 'https://', 'magnet:?'))]
                 nombre = sanitize_filename(str(solicitud.get('nombre') or '').strip()[:120], restricted=False) \
                     or time.strftime('Stack %Y-%m-%d %H-%M')
                 grupo = uuid.uuid4().hex[:12]
+                # magnets/.torrent (con aria2) y enlaces .m3u8/.mpd van con su propio tipo, como fuera del stack
+                normales = []
+                for item in items:
+                    url = str(item['url']).strip()
+                    if es_torrent(url):
+                        if not aria2.ruta(self._ajustes):
+                            return {'ok': False, 'error': self._sin_aria2()}
+                        trabajos.append(Trabajo(url, {'tipo': 'torrent'}, nombre_torrent(url), titulo_formato='Torrent · sin seed'))
+                    elif es_manifiesto(url):
+                        nombre_m = nombre_manifiesto(str(item.get('titulo') or '').strip() or url)
+                        trabajos.append(Trabajo(url, {'tipo': 'manifiesto', 'referer': referer_desde(url), 'nombre': nombre_m},
+                                                nombre_m, titulo_formato=f'Enlace directo .{es_manifiesto(url)}',
+                                                duracion=item.get('duracion')))
+                    elif url.lower().startswith(('http://', 'https://')):
+                        normales.append(item)
+                items = normales
                 for n, item in enumerate(items, start=1):
                     propias = item.get('prefs') if isinstance(item.get('prefs'), dict) else {}
                     p = dict(normalizar({**prefs, **propias}), _stack=True)  # _stack: siempre en su subcarpeta
@@ -581,10 +597,31 @@ class Api:
                     borrar_temporal(temporal)
         except ver_mod.NoReproducible as e:
             return {'ok': False, 'error': str(e)}
+        except ImportError as e:
+            if 'libtorrent' in str(e):
+                return {'ok': False, 'error': 'Ver torrents no está disponible en esta versión de JabsDLP.',
+                        'detalle': self._detalle_error()}
+            r = _fallo(e)
+            r['detalle'] = self._detalle_error()
+            return r
         except Exception as e:  # noqa: BLE001
-            return _fallo(e)
+            r = _fallo(e)
+            r['detalle'] = self._detalle_error()
+            return r
         ver_mod.anotar_visto(datos)
         return _ok(datos=datos)
+
+    def _sin_aria2(self):
+        """Mensaje cuando falta aria2 (en Android se sustituye: allí no se puede instalar)."""
+        return 'Los torrents necesitan aria2: instálalo en Ajustes → Red y velocidad.'
+
+    def _detalle_error(self):
+        """Traza del último error (sin tokens) para la pestaña Ver, solo con «Mostrar log completo» activado."""
+        if not self._ajustes.get('log_completo'):
+            return None
+        import traceback
+        from .utilidades import ocultar_tokens
+        return ocultar_tokens(traceback.format_exc())[-20000:]
 
     def ver_abrir_archivo(self):
         ruta = self._dialogo('OPEN', directory=self._ajustes.carpeta(),

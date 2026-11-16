@@ -15,7 +15,10 @@ import sys
 import types
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-EXCLUIR = {'.venv', 'venv', 'build', 'dist', '__pycache__', '.pytest_cache', '.git', '.claude', '.vs', '.vscode'}
+# .gradle y nativos: lo que genera la compilación de Android (ignorado por git; los binarios llevan textos
+# fijos como «BEGIN ENCRYPTED PRIVATE KEY» de mbedTLS que no son claves)
+EXCLUIR = {'.venv', 'venv', 'build', 'dist', '__pycache__', '.pytest_cache', '.git', '.claude', '.vs', '.vscode',
+           '.gradle', 'nativos'}
 BINARIOS = {'.ico', '.png', '.jpg', '.jpeg', '.webp', '.exe', '.zip', '.pyc'}
 SECRETOS = {
     'token de GitHub': r'gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}',

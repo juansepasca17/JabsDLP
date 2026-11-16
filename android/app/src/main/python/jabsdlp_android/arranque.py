@@ -16,7 +16,8 @@ def _enlazar_binarios(bin_dir, nativos):
     """ffmpeg, ffprobe y qjs viven en nativeLibraryDir (lo único ejecutable en Android) con nombre lib*.so.
     Se enlazan con su nombre normal en una carpeta del PATH: así el código del PC los encuentra con shutil.which."""
     os.makedirs(bin_dir, exist_ok=True)
-    for nombre, so in (('ffmpeg', 'libffmpeg.so'), ('ffprobe', 'libffprobe.so'), ('qjs', 'libqjs.so')):
+    for nombre, so in (('ffmpeg', 'libffmpeg.so'), ('ffprobe', 'libffprobe.so'), ('qjs', 'libqjs.so'),
+                       ('aria2c', 'libaria2c.so')):
         origen = os.path.join(nativos, so)
         destino = os.path.join(bin_dir, nombre)
         try:
@@ -101,6 +102,8 @@ def preparar(datos, cache, descargas, nativos, nativo=None):
 
     from jabsdlp import biblioteca
     biblioteca.papelera = plataforma.papelera
+    plataforma._miniatura_pc = biblioteca.miniatura
+    biblioteca.miniatura = plataforma.miniatura
 
     from jabsdlp.api import Api
     plataforma.adaptar_api(Api)
