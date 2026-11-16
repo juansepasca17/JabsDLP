@@ -17,7 +17,6 @@ html.android [data-accion="elegir-ffmpeg"],
 html.android [data-accion="descargar-ffmpeg"],
 html.android .sidebar .pie,
 html.android .ajuste:has([data-ajuste="pantalla_completa"]),
-html.android [data-accion="torrent-ver"],
 html.android .fab { display: none !important; }
 
 /* ---------- Reproductor de Ver en el celular ---------- */
@@ -28,7 +27,17 @@ html.android .rp-controles { padding: 20px 8px 6px; }
 /* el tiempo va en su propia línea, encima de los botones, para que quepan todos en un teléfono estrecho */
 html.android .rp-fila { flex-wrap: wrap; gap: 0 2px; }
 html.android .rp-tiempo { order: -1; flex: 1 1 100%; font-size: 12px; margin: 0 0 2px 4px; white-space: nowrap; }
-html.android .rp-menu { right: 8px !important; max-height: 70%; bottom: 58px; }
+/* menús del reproductor (velocidad, audio, subtítulos, calidad). Por defecto, desplegados junto a su botón
+   (ver.js los coloca); con «Panel desde abajo» en Ajustes, como panel inferior */
+html.android .rp-menu { position: fixed; z-index: 60; min-width: 0; padding: 6px; border-radius: 14px; background: #18181b;
+  border: 1px solid rgba(255, 255, 255, .12); box-shadow: 0 10px 34px rgba(0, 0, 0, .6); overscroll-behavior: contain; }
+html.android .rp-menu .rp-filtro { display: block; width: 100%; box-sizing: border-box; }
+html.android[data-menu-ver="panel"] .rp-menu { left: 8px !important; right: 8px !important; top: auto !important; width: auto !important;
+  bottom: calc(var(--nav-alto, 62px) + 8px) !important; max-height: 55vh !important; box-shadow: 0 -8px 30px rgba(0, 0, 0, .5); }
+html.android[data-menu-ver="panel"] body.ver-completa-css .rp-menu { bottom: 8px !important; left: auto !important;
+  width: min(360px, 60vw) !important; max-height: 75vh !important; }
+html.android .rp-opcion { border-radius: 10px; }
+html.android .rp-opcion.on { background: rgba(229, 72, 77, .12); }
 html.android .reproductor:not(.controles-visibles) { cursor: auto; }
 html.android body.ver-completa-css .reproductor video { object-fit: contain; }
 
@@ -132,3 +141,5 @@ html.android body.ver-completa-css .reproductor video { object-fit: contain; }
 
 /* Fila propia de Android en Ajustes (la añade android.js) */
 html.android .ajuste-android .txt small { display: block; }
+html.android .acciones-log { display: flex; gap: 8px; flex-wrap: wrap; }
+html.android .rp-opcion { padding: 13px 12px; font-size: 15px; }

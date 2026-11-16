@@ -57,7 +57,7 @@ jobs:
           if [[ "$GITHUB_REF_TYPE" == "tag" || "$GITHUB_EVENT_NAME" == "workflow_dispatch" || "${{ steps.paquete.outputs.instalado }}" == "true" ]]; then publicar=true; fi
           echo "publicar=$publicar" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'

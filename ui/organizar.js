@@ -394,7 +394,7 @@ document.addEventListener('click', async e => {
     const quitar = t.closest('[data-stack-quitar]');
     if (quitar) return quitarDelStack(quitar.dataset.stackQuitar);
     const tv = t.closest('[data-stack-tv]');
-    if (tv) { guardarEstadoActual(); return verStack(tv.dataset.stackTv); }
+    if (tv) { guardarEstadoActual(); return verUnoDelStack(tv.dataset.stackTv); }
     const ver = t.closest('[data-stack-ver]');
     if (ver) return seleccionarStack(ver.dataset.stackVer);
   }
@@ -542,6 +542,7 @@ async function pintarColeccion(id) {
           : `<span class="sin-img">${ico(i.ruta ? 'file' : 'link', 'sm')}</span>`}
         <span class="txt"><b class="no-traducir" title="${esc(i.titulo || i.url || i.ruta)}">${esc(i.titulo || i.url || i.ruta.split(/[\\/]/).pop())}</b>
           <small>${i.ruta ? (i.existe ? 'Archivo descargado' : 'No encontrado (¿lo moviste o borraste?)') : esc(new URL(i.url).hostname.replace(/^www\./, ''))}${i.duracion ? ' · ' + fmt.dur(i.duracion) : ''}</small></span>
+        ${i.url || i.existe ? `<button class="btn chico icono" data-col-uno="${n}" title="Ver solo este">${ico('play', 'sm')}</button>` : ''}
         <button class="btn chico icono" data-col-quitar="${n}" title="Quitar de la colección">${ico('x', 'sm')}</button>
       </div>`).join('') || '<small class="dim">Vacía. Añade videos con «Guardar en colección» desde Descargar, el stack o la Biblioteca.</small>'}
     </div>`;
@@ -558,6 +559,12 @@ async function trasCambio(r, mensaje) {
 }
 
 document.addEventListener('click', async e => {
+  // tocar un elemento (o su ▶) lo reproduce solo; el botón «Ver» de arriba reproduce la colección entera
+  const uno = e.target.closest('[data-col-uno]') || (!e.target.closest('button, .asa') && e.target.closest('#panel-colecciones .pc-elemento'));
+  if (uno && C.abierta) {
+    const n = uno.dataset.colUno ?? uno.dataset.pos;
+    return verUnoDeColeccion(C.abierta, +n);
+  }
   const quitar = e.target.closest('[data-col-quitar]');
   if (quitar) {
     const items = JSON.parse($('#panel-colecciones').dataset.items || '[]');
@@ -667,7 +674,8 @@ function itemsParaColeccion() {
 }
 
 /* ================= BIBLIOTECA ================= */
-const B = { carpetas: [], raiz: null, sub: '', datos: null, minis: {}, sel: new Set(), soloFavs: false, ultimo: null };
+const B = { carpetas: [], raiz: null, sub: '', datos: null, minis: {}, sel: new Set(), soloFavs: false, ultimo: null,
+            recursivo: (() => { try { return localStorage.getItem('jabsdlp.bib.subcarpetas') === '1'; } catch { return false; } })() };
 let observadorMinis = null;
 
 async function abrirBiblioteca() {
@@ -688,7 +696,7 @@ function pintarCarpetasBib() {
 async function cargarBiblioteca() {
   if (!B.raiz) { $('#bib-rejilla').innerHTML = ''; return; }
   $('#bib-rejilla').innerHTML = '<div class="esqueleto" style="height:160px;border-radius:12px"></div>';
-  const r = await API.biblioteca_listar(B.raiz, B.sub);
+  const r = await API.biblioteca_listar(B.raiz, B.sub, B.recursivo);
   if (!r.ok) { B.datos = null; $('#bib-rejilla').innerHTML = `<div class="aviso">${ico('alert', 'sm')}<span>${esc(r.error)}</span></div>`; return; }
   B.datos = r;
   B.sel.clear();
@@ -715,6 +723,7 @@ function pintarBiblioteca() {
   $('#bib-migas').innerHTML = `<a data-bib-sub="">${esc(B.carpetas.find(c => c.ruta === B.raiz)?.nombre || 'Carpeta')}</a>`
     + partes.map((p, i) => ` <span class="dim">›</span> <a data-bib-sub="${esc(partes.slice(0, i + 1).join('\\'))}">${esc(p)}</a>`).join('');
   $('#bib-favs').classList.toggle('primario', B.soloFavs);
+  $('#bib-subcarpetas')?.classList.toggle('primario', B.recursivo);
   const archivos = filtrarBib();
   const filtrando = $('#bib-buscar').value.trim() || B.soloFavs || $('#bib-tipo').value !== 'todo' || $('#bib-fecha').value !== 'todo';
   const carpetas = filtrando ? [] : d.carpetas;
@@ -734,7 +743,7 @@ function pintarBiblioteca() {
           <button class="estrella ${a.favorito ? 'on' : ''}" data-bib-fav="${esc(a.ruta)}" title="${a.favorito ? 'Quitar de favoritos' : 'Añadir a favoritos'}">${ico('star', 'sm')}</button>
         </div>
         <div class="bib-info"><b class="no-traducir">${esc(a.nombre)}</b>
-          <small>${esc(fmt.bytes(a.tamano))} · ${esc(new Date(a.fecha * 1000).toLocaleDateString())}</small></div>
+          <small>${a.carpeta ? `<span class="no-traducir">${ico('folder', 'sm')}${esc(a.carpeta)}</span> · ` : ''}${esc(fmt.bytes(a.tamano))} · ${esc(new Date(a.fecha * 1000).toLocaleDateString())}</small></div>
         <div class="bib-acciones">
           <button class="btn chico icono" data-bib-ver="${esc(a.ruta)}" title="Ver aquí">${ico('tv', 'sm')}</button>
           <button class="btn chico icono" data-bib-abrir="${esc(a.ruta)}" title="Abrir con otro programa">${ico('play', 'sm')}</button>
@@ -858,6 +867,10 @@ document.addEventListener('click', async e => {
     }
     case 'bib-recargar': B.minis = {}; return cargarBiblioteca();
     case 'bib-favs': B.soloFavs = !B.soloFavs; return pintarBiblioteca();
+    case 'bib-subcarpetas':
+      B.recursivo = !B.recursivo;
+      try { localStorage.setItem('jabsdlp.bib.subcarpetas', B.recursivo ? '1' : '0'); } catch { /* sin almacenamiento */ }
+      return cargarBiblioteca();
     case 'bib-sel-nada': B.sel.clear(); return pintarBiblioteca();
     case 'bib-playlist': return abrirColecciones({ agregar: itemsBib([...B.sel]), nombre: 'Mi playlist' }).then(() => $('[data-accion="col-nueva"]')?.click());
     case 'bib-a-coleccion': return abrirColecciones({ agregar: itemsBib([...B.sel]) });
@@ -898,8 +911,8 @@ function prepararAjustes() {
   if (!rejilla || $('#buscar-ajustes')) return;
   rejilla.insertAdjacentHTML('beforebegin', `<div class="buscar-ajustes">
       <input id="buscar-ajustes" class="entrada" type="search" spellcheck="false" autocomplete="off" placeholder="Buscar en los ajustes">
-      <button class="btn chico fantasma" data-accion="ajustes-plegar">Plegar todo</button>
-      <button class="btn chico fantasma" data-accion="ajustes-desplegar">Desplegar todo</button></div>`);
+      <button class="btn chico" data-accion="ajustes-plegar" title="Plegar todas las secciones (o toca el título de cada una)">${ico('minimizar', 'sm')}Plegar todo</button>
+      <button class="btn chico" data-accion="ajustes-desplegar" title="Desplegar todas las secciones">${ico('maximizar', 'sm')}Desplegar todo</button></div>`);
   const plegadas = seccionesPlegadas();
   [...rejilla.children].forEach((card, n) => {
     card.dataset.seccion = n;

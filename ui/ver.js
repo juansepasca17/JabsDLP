@@ -15,6 +15,8 @@ function duracionVer() {
   if (V.datos?.modo === 'remux') return V.datos.duracion || 0;
   return Number.isFinite(v.duration) && v.duration > 0 ? v.duration : V.datos?.duracion || 0;
 }
+// remux: ?t= segundo de inicio, &a= pista de audio elegida
+function srcRemux(t) { return `${V.datos.src}?t=${t.toFixed(2)}${V.audioRemux ? `&a=${V.audioRemux}` : ''}`; }
 function tiempoVer() { return (V.datos?.modo === 'remux' ? V.offset : 0) + (video().currentTime || 0); }
 
 function saltarA(t) {
@@ -24,7 +26,7 @@ function saltarA(t) {
   if (V.datos?.modo === 'remux') {
     const reproduciendo = !v.paused;
     V.offset = t;
-    v.src = `${V.datos.src}?t=${t.toFixed(2)}`;
+    v.src = srcRemux(t);
     if (reproduciendo) v.play().catch(() => {});
   } else {
     v.currentTime = t;
@@ -89,7 +91,7 @@ function elegirAudioInicial() {
 
 function nombreAudio(p, i) {
   let nombre = p.name || p.lang || `Pista ${i + 1}`;
-  try { if (p.lang && !p.name) nombre = new Intl.DisplayNames([navigator.language || 'es'], { type: 'language' }).of(p.lang); } catch { /* idioma raro */ }
+  try { if (p.lang && !p.name) nombre = new Intl.DisplayNames([window.I18N?.idioma || 'es'], { type: 'language' }).of(p.lang); } catch { /* idioma raro */ }
   const original = V.datos?.audio_original;
   if (original && (p.lang || '').toLowerCase().split('-')[0] === original.toLowerCase().split('-')[0] && !/original/i.test(nombre)) nombre += ' (original)';
   return nombre;
@@ -133,6 +135,7 @@ function cargarFuente(datos, desde) {
   $('#reproductor').classList.toggle('solo-audio', !!datos.solo_audio);
   $('#reproductor').style.setProperty('--fondo-audio', datos.miniatura ? `url("${datos.miniatura.replace(/"/g, '')}")` : 'none');
   V.audioElegido = false;
+  V.audioRemux = 0;
   try { v.currentTime = 0; } catch { /* sin medio */ }   // el siguiente empieza en 0:00, no donde iba el anterior
   if (datos.modo === 'hls') {
     if (window.Hls?.isSupported()) {
@@ -149,7 +152,7 @@ function cargarFuente(datos, desde) {
     }
   } else if (datos.modo === 'remux') {
     V.offset = desde || 0;
-    v.src = `${datos.src}?t=${V.offset.toFixed(2)}`;
+    v.src = srcRemux(V.offset);
   } else {
     v.src = datos.src;
     const inicio = desde || 0;
@@ -204,7 +207,7 @@ function itemActual() { return V.lista[V.actual] || null; }
 function pintarInfoVer() {
   const d = V.datos;
   if (!d) { $('#ver-info').innerHTML = ''; return; }
-  const enLista = V.lista.length ? `<span>${ico('playlist', 'sm')}${esc(V.nombreLista || 'Lista')} · ${V.actual + 1} de ${V.lista.length}</span>` : '';
+  const enLista = V.lista.length > 1 ? `<span>${ico('playlist', 'sm')}${esc(V.nombreLista || 'Lista')} · ${V.actual + 1} de ${V.lista.length}</span>` : '';
   const remoto = /^https?:\/\//i.test(d.origen || '');
   $('#ver-info').innerHTML = `<div class="ver-titulo">
       <div class="txt"><b class="no-traducir">${esc(d.titulo)}</b>
@@ -227,8 +230,8 @@ function actualizarBotonesVer() {
   $('#rp-velocidad').textContent = `${V.velocidad}×`;
   $('#rp-subs').classList.toggle('activo', V.subActual >= 0);
   $('#rp-subs').classList.toggle('oculto', !(V.datos?.subtitulos || []).length);
-  $('#rp-calidad').classList.toggle('oculto', !(V.hls?.levels?.length > 1));
-  $('#rp-audio').classList.toggle('oculto', !(V.hls?.audioTracks?.length > 1));
+  $('#rp-calidad').classList.toggle('oculto', !(nivelesCalidad().length > 1));
+  $('#rp-audio').classList.toggle('oculto', !(V.hls?.audioTracks?.length > 1 || (!V.hls && V.datos?.audios?.length > 1)));
   $$('[data-rp="anterior"], [data-rp="siguiente"]').forEach(b => b.classList.toggle('oculto', V.lista.length < 2));
 }
 
@@ -274,26 +277,92 @@ function abrirMenuVer(tipo, ancla) {
   if (menu.classList.contains('visible') && menu.dataset.tipo === tipo) return cerrarMenuVer();
   let opciones = [];
   if (tipo === 'velocidad') opciones = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map(v => [v, `${v}×`, v === V.velocidad]);
-  if (tipo === 'subs') opciones = [[-1, 'Desactivados', V.subActual < 0], ...(V.datos?.subtitulos || []).map((s, i) => [i, s.nombre, V.subActual === i])];
+  if (tipo === 'subs') opciones = [[-1, 'Desactivados', V.subActual < 0], ...(V.datos?.subtitulos || []).map((s, i) => [i, nombreSubtitulo(s), V.subActual === i])];
   if (tipo === 'audio') {
     // la original y la del idioma del sistema primero; luego el resto por nombre
     const sistema = (navigator.language || 'es').slice(0, 2).toLowerCase();
     const peso = (p, nombre) => (/original/i.test(nombre) ? 0 : (p.lang || '').toLowerCase().startsWith(sistema) ? 1 : 2);
-    opciones = (V.hls?.audioTracks || []).map((p, i) => [i, nombreAudio(p, i), V.hls.audioTrack === i, p])
-      .sort((a, b) => peso(a[3], a[1]) - peso(b[3], b[1]) || a[1].localeCompare(b[1]));
+    if (V.hls) {
+      opciones = (V.hls.audioTracks || []).map((p, i) => [i, nombreAudio(p, i), V.hls.audioTrack === i, p])
+        .sort((a, b) => peso(a[3], a[1]) - peso(b[3], b[1]) || a[1].localeCompare(b[1]));
+    } else {   // archivo local con varias pistas o audio aparte (se une al vuelo)
+      opciones = (V.datos?.audios || []).map((p, i) => {
+        let nombre = p.nombre;
+        try { if (p.idioma && /^[a-z]{2,3}(-|$)/.test(p.idioma)) nombre = `${new Intl.DisplayNames([window.I18N?.idioma || 'es'], { type: 'language' }).of(p.idioma)}${p.nombre && p.nombre !== p.idioma ? ` · ${p.nombre}` : ''}`; } catch { /* idioma raro */ }
+        if (p.original && !/original/i.test(nombre)) nombre += ' (original)';
+        return [i, nombre, (V.audioRemux || 0) === i];
+      });
+    }
   }
   if (tipo === 'calidad') {
-    const niveles = V.hls?.levels || [];
-    opciones = [[-1, 'Automática', V.hls?.autoLevelEnabled], ...niveles.map((l, i) => [i, l.height ? `${l.height}p` : `${Math.round(l.bitrate / 1000)} kbps`, !V.hls.autoLevelEnabled && V.hls.currentLevel === i])]
-      .sort((a, b) => (b[0] < 0) - (a[0] < 0) || (niveles[b[0]]?.height || 0) - (niveles[a[0]]?.height || 0));
+    opciones = [[-1, 'Automática', !!V.hls?.autoLevelEnabled], ...nivelesCalidad().map(({ i, l }) =>
+      [i, `${l.height ? `${l.height}p` : `${Math.round(l.bitrate / 1000)} kbps`}${(l.frameRate || 0) > 31 ? Math.round(l.frameRate) : ''}`,
+       !V.hls.autoLevelEnabled && (V.hls.currentLevel === i || V.hls.nextLevel === i)])];
   }
   menu.dataset.tipo = tipo;
-  menu.innerHTML = opciones.map(([v, t, on]) => `<button class="rp-opcion ${on ? 'on' : ''}" data-rp-opcion="${v}">${on ? ico('check', 'sm') : '<span class="ico sm"></span>'}<span class="no-traducir-num">${esc(t)}</span></button>`).join('');
+  menu.innerHTML = (opciones.length > 12 ? `<input class="entrada chica rp-filtro" type="search" placeholder="${tipo === 'subs' ? 'Buscar idioma' : 'Buscar'}" autocomplete="off">` : '')
+    + opciones.map(([v, t, on]) => `<button class="rp-opcion ${on ? 'on' : ''}" data-rp-opcion="${v}" data-texto="${esc(normalizarTexto(t))}">${on ? ico('check', 'sm') : '<span class="ico sm"></span>'}<span class="no-traducir-num">${esc(t)}</span></button>`).join('');
   menu.classList.add('visible');
   menu.classList.remove('oculto');
   const rp = $('#reproductor').getBoundingClientRect(), b = ancla.getBoundingClientRect();
   menu.style.right = `${Math.max(8, rp.right - b.right)}px`;
+  ['left', 'top', 'bottom', 'width', 'maxHeight'].forEach(k => { menu.style[k] = ''; });
+  if (esAndroid() && S.ajustes?.ver_menu !== 'panel') colocarDesplegable(menu, b);
+  menu.querySelector('.rp-opcion.on')?.scrollIntoView({ block: 'nearest' });
 }
+// Nombre del subtítulo en el idioma de la app («Spanish (traducción automática)» -> «Español (traducción automática)»)
+function nombreSubtitulo(s) {
+  let extra = (s.nombre.match(/ \((automáticos|traducción automática)\)$/) || [''])[0];
+  if (window.I18N?.idioma === 'en') extra = extra.replace('traducción automática', 'auto-translated').replace('automáticos', 'auto-generated');
+  try {
+    const codigo = (s.idioma || '').replace(/-orig$/, '');
+    if (codigo) {
+      const n = new Intl.DisplayNames([window.I18N?.idioma || 'es'], { type: 'language' }).of(codigo);
+      if (n && n !== codigo) return n.charAt(0).toUpperCase() + n.slice(1) + extra;
+    }
+  } catch { /* código raro: se deja el nombre que da el sitio */ }
+  return s.nombre;
+}
+document.addEventListener('input', e => {
+  if (!e.target.classList?.contains('rp-filtro')) return;
+  const q = normalizarTexto(e.target.value.trim());
+  $$('#rp-menu .rp-opcion').forEach(b => { b.style.display = !q || b.dataset.texto.includes(q) ? '' : 'none'; });
+});
+
+// YouTube da cada resolución varias veces (H.264, VP9, AV1; 30 o 60 fps). Se ofrece una por resolución, solo con
+// códecs que este dispositivo reproduce, prefiriendo H.264 (lo decodifica el hardware de casi cualquier teléfono)
+function nivelesCalidad() {
+  const niveles = V.hls?.levels || [];
+  const soporta = l => !l.videoCodec || !window.MediaSource || MediaSource.isTypeSupported(`video/mp4; codecs="${l.videoCodec}"`);
+  const mejor = {};
+  niveles.forEach((l, i) => {
+    if (!soporta(l)) return;
+    const clave = l.height || Math.round(l.bitrate / 1000);
+    const puntos = (/^avc1/.test(l.videoCodec || '') ? 4 : /^(vp09|vp9)/.test(l.videoCodec || '') ? 2 : 0) + (l.bitrate || 0) / 1e9;
+    if (!(clave in mejor) || puntos > mejor[clave].puntos) mejor[clave] = { i, l, puntos };
+  });
+  return Object.values(mejor).sort((a, b) => (b.l.height || b.l.bitrate) - (a.l.height || a.l.bitrate));
+}
+
+// Celular: el menú se despliega junto a su botón (como en PC) pero no queda recortado por el video: va fijo en la
+// pantalla, encima del botón si cabe (si no, debajo), con filas grandes para tocar bien
+function colocarDesplegable(menu, b) {
+  const ancho = Math.min(250, innerWidth - 16);
+  menu.style.right = 'auto';
+  menu.style.width = `${ancho}px`;
+  menu.style.left = `${Math.max(8, Math.min(b.right - ancho, innerWidth - ancho - 8))}px`;
+  const arriba = b.top - 12, abajo = innerHeight - b.bottom - 12, alto = menu.scrollHeight;
+  if (arriba >= Math.min(alto, 360) || arriba >= abajo) {
+    menu.style.top = 'auto';
+    menu.style.bottom = `${innerHeight - b.top + 6}px`;
+    menu.style.maxHeight = `${Math.max(160, arriba)}px`;
+  } else {
+    menu.style.bottom = 'auto';
+    menu.style.top = `${b.bottom + 6}px`;
+    menu.style.maxHeight = `${Math.max(160, abajo)}px`;
+  }
+}
+
 function cerrarMenuVer() { const m = $('#rp-menu'); m.classList.remove('visible'); m.classList.add('oculto'); }
 
 function elegirOpcionVer(valor) {
@@ -301,8 +370,15 @@ function elegirOpcionVer(valor) {
   const v = video();
   if (tipo === 'velocidad') { V.velocidad = +valor; v.playbackRate = V.velocidad; }
   if (tipo === 'subs') activarSubtitulo(+valor).then(actualizarBotonesVer);
-  if (tipo === 'calidad') { if (+valor < 0) V.hls.currentLevel = -1; else V.hls.currentLevel = +valor; }
+  if (tipo === 'calidad' && V.hls) { V.hls.currentLevel = +valor < 0 ? -1 : +valor; if (+valor < 0) V.hls.nextLevel = -1; }
   if (tipo === 'audio' && V.hls) V.hls.audioTrack = +valor;
+  if (tipo === 'audio' && !V.hls && V.datos?.modo === 'remux' && +valor !== (V.audioRemux || 0)) {
+    // se vuelve a unir desde el segundo actual con la otra pista
+    const t = tiempoVer(), reproduciendo = !v.paused;
+    V.audioRemux = +valor; V.offset = t;
+    v.src = srcRemux(t);
+    if (reproduciendo) v.play().catch(() => {});
+  }
   cerrarMenuVer();
   actualizarBotonesVer();
 }
@@ -315,9 +391,17 @@ async function activarSubtitulo(n) {
   if (el && sub && !el.dataset.cargado) {
     el.dataset.cargado = '1';
     try {
-      const texto = await (await fetch(sub.src)).text();
+      const r = await fetch(sub.src);
+      const texto = r.ok ? await r.text() : '';
+      if (!/-->/.test(texto)) throw new Error(String(r.status));
       el.src = URL.createObjectURL(new Blob([texto], { type: 'text/vtt' }));
-    } catch { delete el.dataset.cargado; toast('No se pudieron cargar los subtítulos.', 'err'); }
+    } catch {
+      delete el.dataset.cargado;
+      toast(/traducción automática/.test(sub.nombre)
+        ? 'YouTube no dejó descargar esa traducción automática ahora (limita cuántas se piden). Prueba en un rato u otro idioma.'
+        : 'No se pudieron cargar los subtítulos.', 'err');
+      return;   // se queda la pista que había
+    }
   }
   const pistas = video().textTracks;
   for (let i = 0; i < pistas.length; i++) pistas[i].mode = i === n ? 'showing' : 'disabled';
@@ -413,7 +497,7 @@ async function verColeccion(id, indice = 0) {
 
 /* El stack de Descargar como lista de reproducción (las playlists del stack se despliegan en sus videos) */
 function elementosStack() {
-  return (S.stack?.items || []).filter(i => !(esAndroid() && i.tipo === 'torrent')).flatMap(i => {
+  return (S.stack?.items || []).flatMap(i => {
     const d = i.datos || {};
     if (i.tipo === 'playlist') return (d.entradas || i.entradas || []).map(e => ({ url: e.url, titulo: e.titulo, miniatura: e.miniatura, duracion: e.duracion, uid: i.uid }));
     return [{ url: i.url, titulo: d.titulo || i.titulo, miniatura: d.miniatura || i.miniatura, duracion: d.duracion ?? i.duracion, uid: i.uid }];
@@ -428,6 +512,28 @@ function verStack(uid = null) {
   if (S.vista !== 'ver') irA('ver');
   $('#ver-lista').classList.remove('oculto');
   abrirItemLista(Math.max(0, uid ? items.findIndex(e => e.uid === uid) : 0));
+}
+
+async function verUnoDeColeccion(id, n) {
+  const r = await API.coleccion(id);
+  if (!r.ok) return toast(esc(r.error), 'err');
+  const item = r.coleccion.items[n];
+  if (!item || !(item.url || item.existe)) return toast('Ese elemento no se puede ver (¿se movió o borró el archivo?).', 'err');
+  guardarProgresoVer();
+  V.lista = [item]; V.coleccion = r.coleccion.id; V.nombreLista = r.coleccion.nombre;
+  cerrarColecciones();
+  if (S.vista !== 'ver') irA('ver');
+  await abrirItemLista(0, true);   // con su progreso: «continúa donde lo dejaste»
+}
+
+function verUnoDelStack(uid) {
+  const items = elementosStack().filter(e => e.uid === uid);   // una playlist del stack trae sus videos
+  if (!items.length) return;
+  guardarProgresoVer();
+  V.lista = items; V.coleccion = null;
+  V.nombreLista = items.length > 1 ? (S.stack.items.find(i => i.uid === uid)?.datos?.titulo || 'Playlist') : '';
+  if (S.vista !== 'ver') irA('ver');
+  abrirItemLista(0);
 }
 
 async function abrirItemLista(n, preguntarContinuar = false) {

@@ -99,9 +99,12 @@ class Proxy:
     def local(self, ruta):
         return f"{self.base}/local/{self._nuevo(Fuente('local', ruta=ruta))}"
 
-    def remux(self, entradas, transcodificar=False, solo_audio=False):
-        """entradas: [(url_o_ruta, cabeceras)] (1 o 2: video y audio). Devuelve la URL base (añadir ?t=segundos)."""
-        id_ = self._nuevo(Fuente('remux', entradas=entradas, transcodificar=transcodificar, solo_audio=solo_audio))
+    def remux(self, entradas, transcodificar=False, solo_audio=False, audios=None):
+        """entradas: [(url_o_ruta, cabeceras)] (1 o 2: video y audio). Devuelve la URL base (añadir ?t=segundos).
+        audios: otras pistas de audio que se pueden elegir con &a=N: lista de entradas [(url, cabeceras)] que
+        reemplazan a la segunda (video y audio separados), o None para elegir la pista N del propio archivo."""
+        id_ = self._nuevo(Fuente('remux', entradas=entradas, transcodificar=transcodificar, solo_audio=solo_audio,
+                                 audios=audios))
         return f'{self.base}/remux/{id_}'
 
     def subtitulos(self, url=None, cabeceras=None, ruta=None, pista=None):
@@ -150,8 +153,11 @@ class Proxy:
             if tipo == 'local':
                 return self._archivo(h, fuente.datos['ruta'], solo_cabeceras)
             if tipo == 'remux':
-                t = urllib.parse.parse_qs(partes.query).get('t', ['0'])[0]
-                return self._remux(h, fuente, max(0.0, float(t) if re.fullmatch(r'\d+(\.\d+)?', t) else 0.0), solo_cabeceras)
+                q = urllib.parse.parse_qs(partes.query)
+                t = q.get('t', ['0'])[0]
+                a = q.get('a', ['0'])[0]
+                return self._remux(h, fuente, max(0.0, float(t) if re.fullmatch(r'\d+(\.\d+)?', t) else 0.0), solo_cabeceras,
+                                   int(a) if a.isdigit() and int(a) < 64 else 0)
             if tipo == 'subs':
                 return self._subs(h, fuente)
             if tipo == 'torrent':
@@ -273,12 +279,19 @@ class Proxy:
                 h.wfile.write(bloque)
                 restante -= len(bloque)
 
-    def _remux(self, h, fuente, t, solo_cabeceras):
+    def _remux(self, h, fuente, t, solo_cabeceras, audio=0):
         ffmpeg = self.ffmpeg() if self.ffmpeg else None
         if not ffmpeg:
             return self._error(h, 503)
         comando = [ffmpeg, '-hide_banner', '-loglevel', 'error', '-nostdin']
-        for entrada, cabeceras in fuente.datos['entradas']:
+        entradas = list(fuente.datos['entradas'])
+        alternativas = fuente.datos.get('audios')
+        pista = 0   # pista de audio dentro de la entrada que lleva el audio
+        if alternativas and len(entradas) > 1:
+            entradas[1] = alternativas[min(audio, len(alternativas) - 1)]
+        else:
+            pista = audio
+        for entrada, cabeceras in entradas:
             if entrada.startswith(('http://', 'https://')):
                 cab = ''.join(f'{k}: {v}\r\n' for k, v in (cabeceras or {}).items() if k.lower() != 'user-agent')
                 ua = (cabeceras or {}).get('User-Agent')
@@ -289,9 +302,9 @@ class Proxy:
                 comando += ['-reconnect', '1', '-reconnect_streamed', '1']
             comando += ['-ss', f'{t:.3f}', '-i', entrada]
         if fuente.datos['solo_audio']:
-            comando += ['-map', '0:a:0', '-c:a', 'aac', '-b:a', '192k', '-f', 'mp4']
+            comando += ['-map', f'0:a:{pista}', '-c:a', 'aac', '-b:a', '192k', '-f', 'mp4']
         else:
-            comando += ['-map', '0:v:0', '-map', '1:a:0' if len(fuente.datos['entradas']) > 1 else '0:a:0?']
+            comando += ['-map', '0:v:0', '-map', '1:a:0' if len(entradas) > 1 else f'0:a:{pista}?']
             if fuente.datos['transcodificar']:
                 comando += ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '21', '-pix_fmt', 'yuv420p']
             else:

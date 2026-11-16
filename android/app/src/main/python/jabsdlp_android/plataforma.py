@@ -153,6 +153,19 @@ def _ruta_libre(carpeta, nombre):
     return ruta
 
 
+def _escribible(carpeta):
+    """os.access no es fiable con el almacenamiento de Android (FUSE): se prueba a crear un archivo."""
+    prueba = os.path.join(carpeta, f'.jabsdlp-prueba-{os.getpid()}')
+    try:
+        os.makedirs(carpeta, exist_ok=True)
+        with open(prueba, 'w') as f:
+            f.write('x')
+        os.unlink(prueba)
+        return True
+    except OSError:
+        return False
+
+
 def adaptar_api(Api):
     """Sustituye en la clase Api del PC los métodos que dependen de la ventana de Windows."""
 
@@ -190,20 +203,25 @@ def adaptar_api(Api):
         return ('En Android todavía no se pueden descargar torrents: aria2, el programa que los descarga, '
                 'no está disponible para celular. Descárgalo desde la versión de PC.')
 
-    ver_pc = Api.ver
+    def elegir_carpeta(self):
+        """Carpeta de descargas. En la tarjeta SD Android solo deja escribir en la carpeta propia de la app
+        (Android/media/com.jabsdlp.app): si eliges otra de la SD, se usa esa y se avisa."""
+        ruta = self._dialogo('FOLDER', directory=self._ajustes.carpeta())
+        if not ruta:
+            return None
+        if not _escribible(ruta):
+            sd = str(_llamar('carpetaSdRuta', defecto='') or '')
+            volumen = '/'.join(ruta.split('/')[:3])
+            if sd and sd.startswith(volumen + '/'):
+                _llamar('aviso', f'En la tarjeta SD, Android solo deja guardar en la carpeta de JabsDLP: {sd}')
+                ruta = sd
+            else:
+                _llamar('aviso', 'No se puede guardar en esa carpeta: elige otra de la memoria interna.')
+                return None
+        return self.guardar_ajustes({'carpeta': ruta})
 
-    def ver(self, origen, referer=None):
-        from jabsdlp.utilidades import es_torrent
-        if es_torrent((origen or '').strip()):
-            try:
-                import libtorrent  # noqa: F401
-            except ImportError:
-                return {'ok': False, 'error': 'En Android todavía no se pueden ver torrents: libtorrent no está '
-                                              'disponible para celular. Puedes verlos en la versión de PC.'}
-        return ver_pc(self, origen, referer)
-
+    Api.elegir_carpeta = elegir_carpeta
     Api._sin_aria2 = _sin_aria2
-    Api.ver = ver
     Api._dialogo = _dialogo
     Api.reiniciar = reiniciar
     Api.alternar_pantalla_completa = alternar_pantalla_completa

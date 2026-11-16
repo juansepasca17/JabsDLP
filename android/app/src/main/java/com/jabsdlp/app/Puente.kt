@@ -50,6 +50,10 @@ class Puente(private val contexto: Context, private val web: WebView) {
     @JavascriptInterface
     fun compartirLog(): Boolean = (contexto as? MainActivity)?.compartirLog() ?: false
 
+    /** Guarda el log en Descargas/JabsDLP. Devuelve la ruta, o "" si no se pudo. */
+    @JavascriptInterface
+    fun guardarLog(): String = (contexto as? MainActivity)?.guardarLog() ?: ""
+
     // ---------- tarjeta SD ----------
     /** Carpeta propia de JabsDLP en la tarjeta SD (Android/media/com.jabsdlp.app), o "" si no hay SD. */
     @JavascriptInterface

@@ -26,6 +26,28 @@ y [ffmpeg](https://ffmpeg.org).
   - Puede buscar actualizaciones al abrir, como mucho una vez al día.
   - Solo guarda la última versión descargada. La que va dentro del `.exe` queda siempre como respaldo y la app vuelve a ella si la descargada falla.
 
+### Novedades de la 1.7.3
+
+- **Ver torrents en Android**: igual que en PC, se reproducen mientras se descargan, se puede saltar en la línea
+  de tiempo y al cerrar no se sigue compartiendo (con [libtorrent4j](https://github.com/aldenml/libtorrent4j)).
+- **Idioma del audio en todos los casos**: también en archivos con varias pistas de audio (un `.mkv` o `.mp4` con
+  español e inglés) y en videos cuyo audio llega aparte (doblajes por DASH). Al cambiar de pista sigue en el mismo
+  segundo.
+- **Todos los subtítulos**: antes solo salían los primeros 12; ahora salen todos los del video y todas las
+  traducciones automáticas de YouTube, con los nombres en tu idioma y un buscador en el menú. (YouTube a veces
+  limita las traducciones automáticas: si una no carga, la app lo avisa.)
+- **Calidad del video**: el menú muestra una opción por resolución (antes salían repetidas) y solo con formatos que
+  tu equipo reproduce bien, así elegir una calidad ya no deja el video trabado.
+- **Ver un solo video de una colección o del stack**: tocar un elemento lo reproduce solo; el botón *Ver* de la
+  colección (o *Stack* en *Listas*) reproduce la lista entera.
+- **Perfiles de descarga**: guarda tus preferencias de formato con un nombre («Solo audio MP3», «720p»…) y
+  elígelas en Descargar, junto a *Preferencias de formato*; *Actual* son las que tengas puestas.
+- **Biblioteca con subcarpetas**: el botón *Subcarpetas* muestra también los videos que hay dentro de las
+  subcarpetas (cada uno dice en cuál está).
+- **Comando personalizado**: tocar la plantilla elegida la quita.
+- **Tamaño de los subtítulos** (*Ajustes → Ventana, avisos y apariencia*): pequeño, normal o grande. Por defecto
+  son algo más grandes que antes, y más aún en pantalla completa.
+
 ### Novedades de la 1.7.2
 
 - **Pestaña Ver:**

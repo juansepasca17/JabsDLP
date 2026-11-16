@@ -43,8 +43,39 @@ def dentro_de(ruta, raices):
     return False
 
 
-def listar(raiz, sub='', raices=None):
-    """Carpetas y archivos multimedia de raiz/sub. Devuelve {'ruta', 'carpetas', 'archivos', 'recortado'}."""
+def _archivo(e, tipo, carpeta=''):
+    st = e.stat()
+    return {'nombre': e.name, 'ruta': e.path, 'tamano': st.st_size, 'fecha': st.st_mtime, 'tipo': tipo, 'carpeta': carpeta}
+
+
+def _recorrer(destino):
+    """Todos los archivos multimedia de destino y sus subcarpetas (sin las ocultas), como máximo MAX_ENTRADAS."""
+    archivos, pendientes = [], [(destino, '')]
+    while pendientes:
+        carpeta, relativa = pendientes.pop(0)
+        try:
+            entradas = sorted(os.scandir(carpeta), key=lambda e: e.name.lower())
+        except OSError:
+            continue
+        for e in entradas:
+            if len(archivos) >= MAX_ENTRADAS:
+                return archivos, True
+            try:
+                if e.is_dir(follow_symlinks=False):
+                    if not e.name.startswith('.'):
+                        pendientes.append((e.path, os.path.join(relativa, e.name) if relativa else e.name))
+                    continue
+                tipo = tipo_archivo(e.name)
+                if tipo and not e.name.endswith(('.part', '.ytdl', '.temp')):
+                    archivos.append(_archivo(e, tipo, relativa))
+            except OSError:
+                continue
+    return archivos, False
+
+
+def listar(raiz, sub='', raices=None, recursivo=False):
+    """Carpetas y archivos multimedia de raiz/sub. Devuelve {'ruta', 'carpetas', 'archivos', 'recortado'}.
+    Con recursivo, también los de todas las subcarpetas (cada archivo dice en qué subcarpeta está)."""
     raices = raices or [raiz]
     destino = os.path.normpath(os.path.join(raiz, sub or ''))
     if not dentro_de(destino, [raiz]) or not dentro_de(destino, raices):
@@ -52,6 +83,11 @@ def listar(raiz, sub='', raices=None):
     if not os.path.isdir(destino):
         raise RutaNoPermitida('La carpeta ya no existe.')
     carpetas, archivos, recortado = [], [], False
+    if recursivo:
+        archivos, recortado = _recorrer(destino)
+        archivos.sort(key=lambda a: a['fecha'], reverse=True)
+        return {'ruta': destino, 'sub': os.path.relpath(destino, raiz) if destino != os.path.normpath(raiz) else '',
+                'carpetas': [], 'archivos': archivos, 'recortado': recortado, 'recursivo': True}
     try:
         entradas = list(os.scandir(destino))
     except OSError as e:
@@ -68,8 +104,7 @@ def listar(raiz, sub='', raices=None):
             tipo = tipo_archivo(e.name)
             if not tipo or e.name.endswith(('.part', '.ytdl', '.temp')):
                 continue
-            st = e.stat()
-            archivos.append({'nombre': e.name, 'ruta': e.path, 'tamano': st.st_size, 'fecha': st.st_mtime, 'tipo': tipo})
+            archivos.append(_archivo(e, tipo))
         except OSError:
             continue
     carpetas.sort(key=lambda c: c['nombre'].lower())

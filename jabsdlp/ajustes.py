@@ -96,6 +96,9 @@ AJUSTES_POR_DEFECTO = {
     'pantalla_completa': False,         # abrir la app en pantalla completa
     'ver_gestos': True,                 # celular: un toque muestra los controles, doble toque a un lado = ±10 s
     'boton_colecciones': 'lateral',     # lateral (barra lateral) | flotante (píldora abajo a la derecha)
+    'ver_subs': 'normal',
+    'ver_menu': 'flotante',             # celular: menús del reproductor junto al botón (flotante) o desde abajo (panel)
+    'perfiles': [],                     # perfiles de descarga guardados: [{id, nombre, prefs}]               # tamaño de los subtítulos en Ver: pequeno | normal | grande
     'carpetas_biblioteca': [],          # carpetas extra que se ven en la Biblioteca
     'prefs': PREFS_POR_DEFECTO,
 }
@@ -121,6 +124,8 @@ OPCIONES = {
     'captura_tecla': ('ctrl+alt+x', 'ctrl+shift+x', 'ctrl+alt+d'),
     'captura_modo': ('sugerir', 'auto'),
     'boton_colecciones': ('lateral', 'flotante'),
+    'ver_subs': ('pequeno', 'normal', 'grande'),
+    'ver_menu': ('flotante', 'panel'),
 }
 CATEGORIAS_SPONSOR = ('sponsor', 'selfpromo', 'interaction', 'intro', 'outro', 'preview', 'music_offtopic', 'filler')
 PATRON_IDIOMA = re.compile(r'^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{1,8})*$')
@@ -155,6 +160,24 @@ def validar_plantillas(valor):
     return limpias
 
 
+MAX_PERFILES = 30
+
+
+def validar_perfiles(valor):
+    """Perfiles de descarga: un nombre y unas preferencias de formato (las mismas que Descargar)."""
+    if not isinstance(valor, list):
+        return NO_VALIDO
+    limpios, ids = [], set()
+    for p in valor[:MAX_PERFILES]:
+        if not isinstance(p, dict) or not isinstance(p.get('id'), str) or not PATRON_ID.match(p['id']) or p['id'] in ids:
+            continue
+        prefs = {k: v for k, v in normalizar({**PREFS_POR_DEFECTO, **validar_prefs(p.get('prefs') or {})}).items()
+                 if k in PREFS_POR_DEFECTO}
+        limpios.append({'id': p['id'], 'nombre': str(p.get('nombre') or '').strip()[:60] or 'Perfil', 'prefs': prefs})
+        ids.add(p['id'])
+    return limpios
+
+
 def validar(clave, valor):
     """Devuelve el valor saneado o NO_VALIDO. Protege la ruta de ffmpeg (se ejecuta) y la plantilla."""
     if clave in BOOLEANOS:
@@ -167,6 +190,8 @@ def validar(clave, valor):
             return NO_VALIDO
     if clave == 'plantillas_args':
         return validar_plantillas(valor)
+    if clave == 'perfiles':
+        return validar_perfiles(valor)
     if clave == 'plantilla_args_id':
         return valor if isinstance(valor, str) and PATRON_ID.match(valor or 'x') else NO_VALIDO
     if clave == 'carpetas_biblioteca':

@@ -270,10 +270,11 @@ class MainActivity : ComponentActivity() {
         val partes = id.split(":", limit = 2)
         if (uri.authority != "com.android.externalstorage.documents") return null
         if (!partes[0].equals("primary", true)) {
-            // Tarjeta SD: solo se puede escribir por ruta en la carpeta propia de la app (Android/media/com.jabsdlp.app)
-            val sd = Plataforma.carpetaSd() ?: return null
-            Toast.makeText(this, "En la tarjeta SD JabsDLP guarda en su propia carpeta: ${sd.absolutePath}", Toast.LENGTH_LONG).show()
-            return sd.absolutePath
+            // Tarjeta SD (/storage/XXXX-XXXX/…): se devuelve la carpeta real. Leer (Biblioteca) se puede con el permiso
+            // de videos y audio; si es la carpeta de descargas y no se puede escribir, Python usa la carpeta de la app
+            val volumen = File("/storage", partes[0])
+            if (!volumen.isDirectory) return null
+            return File(volumen, partes.getOrElse(1) { "" }).absolutePath
         }
         return File(raizAlmacenamiento, partes.getOrElse(1) { "" }).absolutePath
     }
@@ -340,14 +341,34 @@ class MainActivity : ComponentActivity() {
     }
 
     /** Log de la app (logcat de este proceso: Python, la interfaz y Android) a un archivo y «Compartir». */
-    fun compartirLog(): Boolean = try {
-        val texto = Runtime.getRuntime().exec(arrayOf("logcat", "-d", "-v", "time", "--pid=${android.os.Process.myPid()}"))
+    /** Texto del log: solo lo de la app (Python, la interfaz, avisos y errores), sin el ruido del sistema
+     *  (GPU, pantalla, sensores…), con los tokens de las URLs ocultos. */
+    private fun textoLog(): String {
+        val filtros = arrayOf("python.stdout:V", "python.stderr:V", "JabsDLP-ui:V", "JabsDLP:V", "AndroidRuntime:V",
+            "System.err:V", "libtorrent4j:V", "chromium:W", "cr_media:S", "*:S")
+        val texto = Runtime.getRuntime().exec(arrayOf("logcat", "-d", "-v", "time", "--pid=${android.os.Process.myPid()}", *filtros))
             .inputStream.bufferedReader().use { it.readText() }
         val version = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "?"
+        return "JabsDLP $version · Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · ${Build.MODEL}\n\n" +
+            ocultarTokens(texto.takeLast(2_000_000)).ifBlank { "(sin mensajes de la app todavía)" }
+    }
+
+    /** Guarda el log en Descargas/JabsDLP para poder mandarlo por WhatsApp, correo, etc. Devuelve la ruta o "". */
+    fun guardarLog(): String = try {
+        val carpeta = Plataforma.carpetaDescargas().apply { mkdirs() }
+        val fecha = java.text.SimpleDateFormat("yyyy-MM-dd_HH-mm", java.util.Locale.ROOT).format(java.util.Date())
+        val archivo = File(carpeta, "jabsdlp-log-$fecha.txt")
+        archivo.writeText(textoLog())
+        Plataforma.escanear(archivo.absolutePath)   // que aparezca en Archivos y en «Adjuntar» de otras apps
+        archivo.absolutePath
+    } catch (e: Exception) {
+        ""
+    }
+
+    fun compartirLog(): Boolean = try {
         val carpeta = File(cacheDir, "log").apply { mkdirs() }
         val archivo = File(carpeta, "jabsdlp-log.txt")
-        archivo.writeText("JabsDLP $version · Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · ${Build.MODEL}\n\n" +
-            ocultarTokens(texto.takeLast(2_000_000)))
+        archivo.writeText(textoLog())
         val uri = androidx.core.content.FileProvider.getUriForFile(this, "$packageName.archivos", archivo)
         val enviar = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_STREAM, uri)
             .putExtra(Intent.EXTRA_SUBJECT, "Log de JabsDLP").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)

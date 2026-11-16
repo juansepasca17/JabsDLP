@@ -372,7 +372,21 @@
     'Cerrar': 'Close', 'Quitar el video y volver al inicio': 'Remove the video and go back to the start',
     'Quitar y volver al inicio': 'Remove and go back to the start', 'Copiar log': 'Copy log', 'Log copiado.': 'Log copied.',
     'No se pudo copiar.': 'Could not copy.', 'Idioma del audio': 'Audio language', 'El stack está vacío.': 'The stack is empty.',
-    'Ver en la pestaña Ver': 'Watch in the Watch tab', 'No se pudieron cargar los subtítulos.': 'Could not load the subtitles.', 'Torrent · sin seed': 'Torrent · no seeding', 'Buscar en los ajustes': 'Search settings',
+    'Ver en la pestaña Ver': 'Watch in the Watch tab',
+    // 1.7.3
+    'Esta versión no trae aria2, así que no puede descargar torrents. Puedes verlos sin descargar con el botón de abajo.':
+      'This version doesn\'t include aria2, so it can\'t download torrents. You can watch them without downloading with the button below.',
+    'Tamaño de los subtítulos': 'Subtitle size', 'Buscar idioma': 'Search language', 'Menús del reproductor': 'Player menus', 'Junto al botón': 'Next to the button',
+    'Panel desde abajo': 'Panel from the bottom',
+    'Velocidad, audio, subtítulos y calidad: desplegados junto a su botón o en un panel que sube desde abajo.': 'Speed, audio, subtitles and quality: dropped down next to their button or in a panel that slides up from the bottom.', 'Subcarpetas': 'Subfolders', 'Mostrar también los archivos de todas las subcarpetas': 'Also show the files in all subfolders', 'Toca la plantilla elegida para dejar de usarla.': 'Tap the chosen template to stop using it.', 'Actual': 'Current', 'Guardar perfil': 'Save profile',
+    'Perfil de descarga': 'Download profile', 'Guardar estas preferencias como un perfil': 'Save these preferences as a profile',
+    'Nombre del perfil': 'Profile name', 'Mi perfil': 'My profile', 'Solo audio': 'Audio only', 'Borrar perfil': 'Delete profile',
+    'Perfiles de descarga': 'Download profiles',
+    'Preferencias de formato guardadas con un nombre (p. ej. «Solo audio MP3» o «720p para el celular»). Se eligen en Descargar, junto a «Preferencias de formato»: «Actual» son las que tengas puestas.':
+      'Format preferences saved with a name (e.g. "MP3 audio only" or "720p for my phone"). Pick them in Download, next to "Format preferences": "Current" are the ones you have set.',
+    'Aún no tienes perfiles. Guárdalos desde Descargar, junto a «Preferencias de formato».': 'No profiles yet. Save them from Download, next to "Format preferences".', 'Ver solo este': 'Watch only this one',
+    'Ese elemento no se puede ver (¿se movió o borró el archivo?).': 'That item can\'t be played (was the file moved or deleted?).',
+    'YouTube no dejó descargar esa traducción automática ahora (limita cuántas se piden). Prueba en un rato u otro idioma.': 'YouTube didn\'t allow downloading that auto-translation right now (it limits how many are requested). Try again later or another language.', 'En la pestaña Ver.': 'In the Watch tab.', 'Pequeño': 'Small', 'Grande': 'Large', 'No se pudieron cargar los subtítulos.': 'Could not load the subtitles.', 'Torrent · sin seed': 'Torrent · no seeding', 'Buscar en los ajustes': 'Search settings',
     'Plegar todo': 'Collapse all', 'Desplegar todo': 'Expand all', 'Gestos en el reproductor': 'Player gestures',
     'Un toque muestra los controles y dos toques a un lado adelantan o atrasan 10 s. Apagado: un toque pausa.':
       'One tap shows the controls and a double tap on a side skips 10 s forward or back. Off: one tap pauses.',

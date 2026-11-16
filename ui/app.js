@@ -469,8 +469,59 @@ function filaPrefsHTML() {
     }
     html += chipPref('anuncios', 'ban', 'Quitar anuncios', valor, S.quitarAnuncios);
   }
-  return `<div class="etiqueta-grupo" style="margin-top:14px">${ico('sliders', 'sm')}Preferencias de formato</div><div class="fila-prefs">${html}</div>`
+  return `<div class="etiqueta-grupo cabecera-prefs" style="margin-top:14px">${ico('sliders', 'sm')}Preferencias de formato${selectorPerfilHTML()}</div><div class="fila-prefs">${html}</div>`
     + anunciosHTML() + (S.calc?.aviso_idioma && !esLista() ? `<div class="aviso">${ico('alert', 'sm')}<span>${esc(S.calc.aviso_idioma)}</span></div>` : '');
+}
+
+/* ---------- perfiles de descarga: las preferencias de formato guardadas con un nombre ---------- */
+function perfilActivo() {
+  // el perfil cuyas preferencias coinciden con las actuales (si cambias algo, vuelve a «Actual»)
+  return (S.ajustes.perfiles || []).find(p => Object.keys(p.prefs).every(k => JSON.stringify(p.prefs[k]) === JSON.stringify(S.prefs[k]))) || null;
+}
+
+function selectorPerfilHTML() {
+  const perfiles = S.ajustes.perfiles || [];
+  const activo = perfilActivo();
+  return `<span class="perfil-sel">
+      ${perfiles.length ? `<select class="entrada chica" id="sel-perfil" title="Perfil de descarga">
+        <option value="">Actual</option>
+        ${perfiles.map(p => `<option value="${esc(p.id)}" ${activo?.id === p.id ? 'selected' : ''}>${esc(p.nombre)}</option>`).join('')}
+      </select>` : ''}
+      <button class="btn chico" data-accion="guardar-perfil" title="Guardar estas preferencias como un perfil">${ico('bookmark', 'sm')}${perfiles.length ? '' : 'Guardar perfil'}</button>
+    </span>`;
+}
+
+async function elegirPerfil(id) {
+  const perfil = (S.ajustes.perfiles || []).find(p => p.id === id);
+  if (!perfil) {   // «Actual»: las que tenías antes de elegir un perfil
+    if (S.prefsActual) S.prefs = { ...S.prefsActual };
+  } else {
+    if (!perfilActivo()) S.prefsActual = { ...S.prefs };
+    S.prefs = { ...S.prefs, ...perfil.prefs };
+  }
+  S.seleccion = null; S.verManual = false; S.audioId = null;
+  API.guardar_ajustes({ prefs: S.prefs }).then(a => { S.ajustes = a; });
+  return recalcular();
+}
+
+async function guardarPerfil() {
+  const nombre = (await pedirTexto('Nombre del perfil', perfilActivo()?.nombre || (S.prefs.tipo === 'audio' ? 'Solo audio' : 'Mi perfil')))?.trim();
+  if (!nombre) return;
+  const perfiles = (S.ajustes.perfiles || []).filter(p => p.nombre !== nombre);
+  perfiles.push({ id: Math.random().toString(36).slice(2, 10), nombre, prefs: { ...S.prefs } });
+  S.ajustes = await API.guardar_ajustes({ perfiles });
+  toast(`Perfil «${esc(nombre)}» guardado. Elígelo arriba de las preferencias para usarlo.`, 'ok');
+  renderOpciones();
+  pintarPerfilesAjustes();
+}
+
+function pintarPerfilesAjustes() {
+  const caja = $('#aj-perfiles');
+  if (!caja) return;
+  const perfiles = S.ajustes.perfiles || [];
+  caja.innerHTML = perfiles.length ? perfiles.map(p => `<span class="chip-perfil"><span class="no-traducir">${esc(p.nombre)}</span>
+      <button class="btn chico icono fantasma" data-accion="borrar-perfil" data-id="${esc(p.id)}" title="Borrar perfil">${ico('x', 'sm')}</button></span>`).join('')
+    : '<small class="dim">Aún no tienes perfiles. Guárdalos desde Descargar, junto a «Preferencias de formato».</small>';
 }
 
 const esYoutube = () => !!S.analisis && (S.analisis.sitio_clave === 'Youtube' || S.analisis.extractor === 'YouTube'
@@ -567,7 +618,7 @@ function renderOpciones() {
     cont.innerHTML = `<div class="etiqueta-grupo" style="margin-top:14px">${ico('download', 'sm')}Torrent</div>
       <div class="nota">Se descarga con aria2, con la subida limitada a ${esc(String(S.ajustes.subida_torrent_kb || 20))} KB/s y <b>sin seed</b>: al terminar deja de compartir.</div>
       ${a.aria2 ? '' : document.documentElement.classList.contains('android')
-        ? `<div class="aviso">${ico('alert', 'sm')}<span>En Android todavía no se pueden descargar ni ver torrents (aria2 y libtorrent no están disponibles para celular). Usa la versión de PC.</span></div>`
+        ? `<div class="aviso">${ico('alert', 'sm')}<span>Esta versión no trae aria2, así que no puede descargar torrents. Puedes verlos sin descargar con el botón de abajo.</span></div>`
         : `<div class="aviso">${ico('alert', 'sm')}<span>Los torrents necesitan aria2. Instálalo en <a data-vista="ajustes">Ajustes → Red y velocidad</a>.</span></div>`}
       <button class="btn chico" style="margin-top:12px" data-accion="torrent-ver">${ico('tv', 'sm')}Ver sin descargar</button>
       ${pieHTML('Descargar torrent', !!a.aria2)}`;
@@ -1093,7 +1144,8 @@ function pintarPlantillas() {
       <span class="radio"></span>
       <span class="txt"><b class="no-traducir">${esc(p.nombre)}</b><code class="no-traducir">${esc(p.args || '(vacía)')}</code></span>
       ${b('editar-plantilla', 'pencil', 'Editar', p.id)}${b('borrar-plantilla', 'trash', 'Borrar', p.id)}
-    </div>`).join('') : '<small class="dim">No hay plantillas. Crea una con «Nueva plantilla».</small>';
+    </div>`).join('') + (activa ? '<small class="dim">Toca la plantilla elegida para dejar de usarla.</small>' : '')
+    : '<small class="dim">No hay plantillas. Crea una con «Nueva plantilla».</small>';
 }
 
 function mostrarPruebaArgs(r, texto) {
@@ -1139,6 +1191,9 @@ async function borrarPlantilla(id) {
 }
 
 function pintarAjustes() {
+  document.documentElement.dataset.subs = S.ajustes.ver_subs || 'normal';   // tamaño de los subtítulos en Ver
+  document.documentElement.dataset.menuVer = S.ajustes.ver_menu || 'flotante';
+  pintarPerfilesAjustes();
   const a = S.ajustes;
   pintarPlantillas();
   aplicarBotonColecciones();
@@ -1480,8 +1535,17 @@ document.addEventListener('click', async e => {
     case 'guardar-plantilla': return guardarPlantilla();
     case 'borrar-plantilla': return borrarPlantilla(d.id);
     case 'elegir-plantilla': {
+      // tocar la plantilla elegida la quita (ninguna); tocar otra la elige
+      if (d.id === S.ajustes.plantilla_args_id) return guardarAjuste({ plantilla_args_id: '', args_extra: '' });
       const p = (S.ajustes.plantillas_args || []).find(x => x.id === d.id);
-      if (p) await guardarAjuste({ plantilla_args_id: p.id, args_extra: p.args });
+      if (p) await guardarAjuste({ plantilla_args_id: p.id, args_extra: p.args, args_extra_activo: true });
+      return;
+    }
+    case 'guardar-perfil': return guardarPerfil();
+    case 'borrar-perfil': {
+      S.ajustes = await API.guardar_ajustes({ perfiles: (S.ajustes.perfiles || []).filter(p => p.id !== d.id) });
+      pintarPerfilesAjustes();
+      if (S.analisis) renderOpciones();
       return;
     }
   }
@@ -1533,6 +1597,7 @@ document.addEventListener('change', e => {
     return guardarAjuste({ limite_velocidad: +e.target.value });
   }
   if (e.target.id === 'aj-velocidad-custom') return guardarAjuste({ limite_velocidad: Math.max(0, +e.target.value || 0) });
+  if (e.target.id === 'sel-perfil') return elegirPerfil(e.target.value);
   const pref = e.target.closest('[data-pref-ajuste]');
   if (pref) {
     S.prefs[pref.dataset.prefAjuste] = pref.value;

@@ -203,6 +203,9 @@ object Plataforma {
         .firstOrNull { Environment.isExternalStorageRemovable(it) && Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED }
         ?.also { it.mkdirs() }
 
+    @JvmStatic
+    fun carpetaSdRuta(): String = carpetaSd()?.absolutePath ?: ""
+
     fun carpetaDisponible(ruta: String): Boolean {
         if (!ruta.startsWith("/storage/") || ruta.startsWith("/storage/emulated/") || ruta.startsWith("/storage/self/")) return true
         val volumen = File(ruta.split("/").take(3).joinToString("/"))   // /storage/XXXX-XXXX

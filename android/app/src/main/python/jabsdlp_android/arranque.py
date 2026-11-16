@@ -105,6 +105,11 @@ def preparar(datos, cache, descargas, nativos, nativo=None):
     plataforma._miniatura_pc = biblioteca.miniatura
     biblioteca.miniatura = plataforma.miniatura
 
+    # Ver torrents: libtorrent4j (Kotlin) en lugar del libtorrent de Python, que no existe para Android
+    from jabsdlp import ver_torrent
+    from .torrents import TorrentsAndroid
+    ver_torrent.Torrents = TorrentsAndroid
+
     from jabsdlp.api import Api
     plataforma.adaptar_api(Api)
     _preparado = True

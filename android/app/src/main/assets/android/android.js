@@ -12,16 +12,16 @@
     es: { seguir: 'Seguir descargando al cerrar la app',
           seguirTxt: 'Si quitas JabsDLP de las apps recientes, las descargas continúan. Apagado: se detienen y la cola se guarda para retomarla al abrir.',
           notif: 'Notificaciones', compartir: 'En Android, comparte un enlace desde YouTube o el navegador: Compartir → «Descargar con JabsDLP» o «Ver en JabsDLP».',
-          log: 'Exportar el log de la app', logTxt: 'Guarda el registro de JabsDLP (Python y la interfaz) en un archivo de texto y lo comparte, para enviarlo si algo falla. Las URLs con tokens se ocultan.',
-          logBtn: 'Exportar log', logError: 'No se pudo exportar el log.',
+          log: 'Log de la app', logTxt: 'El registro de JabsDLP (Python y la interfaz) en un archivo de texto, para enviarlo si algo falla: guárdalo en Descargas (por ejemplo para mandarlo por WhatsApp) o compártelo directamente. Las URLs con tokens se ocultan.',
+          logBtn: 'Compartir', logGuardar: 'Guardar en Descargas', logGuardado: 'Log guardado en ', logError: 'No se pudo exportar el log.',
           sd: 'Usar la tarjeta SD', sdOk: 'Las descargas irán a la tarjeta SD: ',
           sdFalta: 'La tarjeta SD no está disponible', sdFaltaTxt: 'La carpeta de descargas está en una tarjeta SD que no se encuentra (¿la sacaste?). Hasta que la vuelvas a poner, las descargas fallarán. ¿Quieres guardar en la memoria interna (Descargas/JabsDLP)?',
           sdInterna: 'Usar la memoria interna' },
     en: { seguir: 'Keep downloading when the app is closed',
           seguirTxt: 'If you swipe JabsDLP away from recent apps, downloads continue. Off: they stop and the queue is saved to resume later.',
           notif: 'Notifications', compartir: 'On Android, share a link from YouTube or your browser: Share → «Descargar con JabsDLP» or «Ver en JabsDLP».',
-          log: 'Export the app log', logTxt: 'Saves the JabsDLP log (Python and the interface) to a text file and shares it, so you can send it if something fails. URLs with tokens are hidden.',
-          logBtn: 'Export log', logError: 'Could not export the log.',
+          log: 'App log', logTxt: 'The JabsDLP log (Python and the interface) as a text file, to send if something fails: save it to Downloads (e.g. to send it on WhatsApp) or share it directly. URLs with tokens are hidden.',
+          logBtn: 'Share', logGuardar: 'Save to Downloads', logGuardado: 'Log saved to ', logError: 'Could not export the log.',
           sd: 'Use the SD card', sdOk: 'Downloads will go to the SD card: ',
           sdFalta: 'The SD card is not available', sdFaltaTxt: 'The download folder is on an SD card that cannot be found (did you remove it?). Until you put it back, downloads will fail. Do you want to save to internal storage (Download/JabsDLP)?',
           sdInterna: 'Use internal storage' }
@@ -95,9 +95,14 @@
     if (filaLog && !document.getElementById('jabs-exportar-log')) {
       var fl = document.createElement('div');
       fl.className = 'ajuste ajuste-android';
-      fl.innerHTML = '<div class="txt"><b></b><small></small></div><button class="btn chico" id="jabs-exportar-log"></button>';
-      fl.querySelector('button').addEventListener('click', function () {
+      fl.innerHTML = '<div class="txt"><b></b><small></small></div>' +
+        '<div class="acciones-log"><button class="btn chico" id="jabs-guardar-log"></button><button class="btn chico" id="jabs-exportar-log"></button></div>';
+      fl.querySelector('#jabs-exportar-log').addEventListener('click', function () {
         if (!window.JabsAndroid.compartirLog() && window.toast) toast(T[idioma()].logError, 'err');
+      });
+      fl.querySelector('#jabs-guardar-log').addEventListener('click', function () {
+        var ruta = window.JabsAndroid.guardarLog();
+        if (window.toast) toast(ruta ? T[idioma()].logGuardado + ruta : T[idioma()].logError, ruta ? 'ok' : 'err');
       });
       filaLog.parentNode.insertBefore(fl, filaLog.nextSibling);
     }
@@ -107,6 +112,7 @@
       filaL.querySelector('b').textContent = t.log;
       filaL.querySelector('small').textContent = t.logTxt;
       bl.textContent = t.logBtn;
+      document.getElementById('jabs-guardar-log').textContent = t.logGuardar;
     }
 
     // Tarjeta SD: botón junto a «Carpeta de destino» si hay una SD puesta

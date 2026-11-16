@@ -759,12 +759,12 @@ class Api:
         return [{'ruta': r, 'nombre': os.path.basename(r.rstrip('\\/')) or r,
                  'principal': os.path.normcase(r) == principal} for r in self._raices()]
 
-    def biblioteca_listar(self, raiz, sub=''):
+    def biblioteca_listar(self, raiz, sub='', recursivo=False):
         raices = self._raices()
         if not any(os.path.normcase(os.path.abspath(raiz or '')) == os.path.normcase(r) for r in raices):
             return {'ok': False, 'error': 'Esa carpeta no está en la Biblioteca.'}
         try:
-            datos = biblioteca.listar(raiz, sub, raices)
+            datos = biblioteca.listar(raiz, sub, raices, recursivo=bool(recursivo))
         except biblioteca.RutaNoPermitida as e:
             return {'ok': False, 'error': str(e)}
         favoritos = self._colecciones.favoritos_rutas()

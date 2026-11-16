@@ -32,42 +32,53 @@ def _compatible(codec, lista):
 
 # ---------- archivos locales ----------
 def sondear(ruta, ffprobe, espera=None):
-    """(códec de video o None, códec de audio o None, duración, pistas de subtítulos [(índice, idioma, título)])."""
+    """(códec de video o None, códec de audio o None, duración, pistas de subtítulos [(índice, idioma, título)],
+    pistas de audio [(índice, idioma, título)])."""
     if not ffprobe:
-        return None, None, None, []
+        return None, None, None, [], []
     try:
         r = subprocess.run([ffprobe, '-v', 'error', '-show_entries', 'stream=codec_type,codec_name:stream_tags=language,title'
                             ':format=duration', '-of', 'json', ruta], capture_output=True,
                            timeout=espera or 20, creationflags=SIN_VENTANA)
         datos = json.loads(r.stdout or b'{}')
     except (OSError, subprocess.SubprocessError, ValueError):
-        return None, None, None, []
+        return None, None, None, [], []
     video = next((s['codec_name'] for s in datos.get('streams', []) if s.get('codec_type') == 'video'
                   and s.get('codec_name') not in ('mjpeg', 'png')), None)
     audio = next((s['codec_name'] for s in datos.get('streams', []) if s.get('codec_type') == 'audio'), None)
     subs = [(n, (s.get('tags') or {}).get('language'), (s.get('tags') or {}).get('title'))
             for n, s in enumerate([s for s in datos.get('streams', []) if s.get('codec_type') == 'subtitle'])]
+    audios = [(n, (s.get('tags') or {}).get('language'), (s.get('tags') or {}).get('title'))
+              for n, s in enumerate([s for s in datos.get('streams', []) if s.get('codec_type') == 'audio'])]
     try:
         duracion = float((datos.get('format') or {}).get('duration'))
     except (TypeError, ValueError):
         duracion = None
-    return video, audio, duracion, subs
+    return video, audio, duracion, subs, audios
+
+
+def _nombres_audio(pistas):
+    return [{'idioma': (idioma or '').lower(), 'nombre': titulo or idioma or f'Pista {n + 1}', 'original': False}
+            for n, idioma, titulo in pistas]
 
 
 def resolver_local(ruta, proxy, ffprobe):
     if not os.path.isfile(ruta):
         raise NoReproducible('No se encontró el archivo (¿lo moviste o borraste?).')
-    video, audio, duracion, pistas = sondear(ruta, ffprobe)
+    video, audio, duracion, pistas, audios = sondear(ruta, ffprobe)
     ext = os.path.splitext(ruta)[1].lower()
     titulo = os.path.splitext(os.path.basename(ruta))[0]
     base = {'titulo': titulo, 'duracion': duracion, 'canal': None, 'miniatura': None, 'origen': ruta,
             'solo_audio': not video, 'subtitulos': []}
-    if (ext in EXT_DIRECTAS and (not video or _compatible(video, VIDEO_COMPATIBLE))
+    # con varias pistas de audio se une al vuelo: el navegador no deja elegir el audio de un archivo directo
+    if (len(audios) < 2 and ext in EXT_DIRECTAS and (not video or _compatible(video, VIDEO_COMPATIBLE))
             and (not audio or _compatible(audio, AUDIO_COMPATIBLE))):
         base.update(modo='directo', src=proxy.local(ruta))
     else:
         transcodificar = bool(video) and not _compatible(video, VIDEO_COMPATIBLE)
         base.update(modo='remux', src=proxy.remux([(ruta, None)], transcodificar=transcodificar, solo_audio=not video))
+        if len(audios) > 1:
+            base['audios'] = _nombres_audio(audios[:16])
     # subtítulos: archivos .vtt/.srt junto al video y pistas incrustadas
     carpeta, raiz = os.path.dirname(ruta), os.path.splitext(os.path.basename(ruta))[0]
     try:
@@ -99,7 +110,7 @@ def resolver_torrent(origen, torrents, proxy, ffprobe):
     if ext in ('.mp4', '.m4v', '.webm', '.mp3', '.m4a', '.ogg', '.opus', '.flac', '.wav'):
         video, audio, duracion = ext not in ('.mp3', '.m4a', '.ogg', '.opus', '.flac', '.wav') and 'avc1', None, None
     else:   # mkv, avi…: hay que saber el códec para copiarlo o convertirlo (lee la cabecera a través del proxy)
-        video, audio, duracion, _ = sondear(url, ffprobe, espera=25)
+        video, audio, duracion, _, _ = sondear(url, ffprobe, espera=25)
         video = video or 'h264'   # si no responde a tiempo, se intenta copiar
     datos = {'titulo': os.path.splitext(t['nombre'])[0], 'canal': t['titulo'] if t['titulo'] != t['nombre'] else None,
              'duracion': duracion, 'miniatura': None, 'origen': origen, 'solo_audio': not video, 'torrent': clave,
@@ -114,28 +125,40 @@ def resolver_torrent(origen, torrents, proxy, ffprobe):
 
 
 # ---------- enlaces ----------
-def _subtitulos_de(info, proxy):
+def _pista_vtt(formatos):
+    """YouTube da dos «vtt» para los automáticos: uno es una lista HLS por trozos (m3u8_native) y el otro el archivo
+    entero. Se prefiere el entero (el proxy también sabe juntar los trozos si solo hay ese)."""
+    vtts = [f for f in formatos or [] if f.get('ext') == 'vtt' and f.get('url')]
+    return next((f for f in vtts if 'm3u8' not in str(f.get('protocol') or '')), vtts[0] if vtts else None)
+
+
+def _subtitulos_de(info, proxy, maximo=160):
+    """Subtítulos para el menú de Ver, en este orden: los del autor del video, los automáticos en el idioma original
+    y las traducciones automáticas de YouTube (español e inglés primero, luego el resto por nombre).
+    El VTT de cada uno solo se descarga al elegirlo."""
     lista, vistos = [], set()
-    for clave, auto in (('subtitles', False), ('automatic_captions', True)):
-        fuentes = info.get(clave) or {}
-        idiomas = sorted(fuentes, key=lambda c: (not c.split('-')[0] in IDIOMAS_PREFERIDOS, c))
-        for codigo in idiomas:
-            if codigo == 'live_chat' or codigo.split('-')[0] in vistos or (auto and len(lista) >= 6):
-                continue
-            # YouTube da dos «vtt» para los automáticos: uno es una lista HLS por trozos (m3u8_native) y el otro el
-            # archivo entero. Se prefiere el entero: el troceado se ve a saltos.
-            vtts = [f for f in fuentes[codigo] if f.get('ext') == 'vtt' and f.get('url')]
-            pista = next((f for f in vtts if 'm3u8' not in str(f.get('protocol') or '')), vtts[0] if vtts else None)
-            if not pista:
-                continue
-            if auto and not (codigo.endswith('-orig') or codigo.split('-')[0] in IDIOMAS_PREFERIDOS):
-                continue
-            vistos.add(codigo.split('-')[0])
-            nombre = pista.get('name') or codigo
-            lista.append({'idioma': codigo, 'nombre': nombre + (' (automáticos)' if auto else ''),
-                          'src': proxy.subtitulos(url=pista['url'], cabeceras=pista.get('http_headers'))})
-            if len(lista) >= 12:
-                return lista
+    preferencia = lambda codigo, f: (codigo.split('-')[0] not in IDIOMAS_PREFERIDOS,
+                                     str((_pista_vtt(f) or {}).get('name') or codigo).lower())
+
+    def agregar(codigo, formatos, sufijo):
+        base = codigo.split('-')[0]
+        pista = _pista_vtt(formatos)
+        if codigo == 'live_chat' or base in vistos or not pista or len(lista) >= maximo:
+            return
+        vistos.add(base)
+        lista.append({'idioma': codigo, 'nombre': (pista.get('name') or codigo) + sufijo,
+                      'src': proxy.subtitulos(url=pista['url'], cabeceras=pista.get('http_headers'))})
+
+    manuales = info.get('subtitles') or {}
+    for codigo in sorted(manuales, key=lambda c: preferencia(c, manuales[c])):
+        agregar(codigo, manuales[codigo], '')
+    automaticos = info.get('automatic_captions') or {}
+    originales = [c for c in automaticos if c.endswith('-orig')]
+    for codigo in originales:
+        agregar(codigo, automaticos[codigo], ' (automáticos)')
+    resto = [c for c in automaticos if not c.endswith('-orig')]
+    for codigo in sorted(resto, key=lambda c: preferencia(c, automaticos[c])):
+        agregar(codigo, automaticos[codigo], ' (traducción automática)' if originales else ' (automáticos)')
     return lista
 
 
@@ -172,8 +195,22 @@ def elegir_fuente(info, url, referer=None):
     if videos and audios:
         v = max(videos, key=lambda f: ((f.get('height') or 0) <= 1080, f.get('vcodec', '').startswith('avc1'),
                                        f.get('height') or 0, f.get('tbr') or 0))
-        a = max(audios, key=lambda f: (_audio_original(f), f.get('acodec', '').startswith('mp4a'), f.get('abr') or f.get('tbr') or 0))
-        return 'remux', {'entradas': [(v['url'], v.get('http_headers')), (a['url'], a.get('http_headers'))]}
+        orden = lambda f: (_audio_original(f), f.get('acodec', '').startswith('mp4a'), f.get('abr') or f.get('tbr') or 0)
+        # la mejor de cada idioma (doblajes); la original primero
+        por_idioma = {}
+        for f in audios:
+            clave = (f.get('language') or '').lower()
+            if clave not in por_idioma or orden(f) > orden(por_idioma[clave]):
+                por_idioma[clave] = f
+        elegidas = sorted(por_idioma.values(), key=orden, reverse=True)[:24]
+        a = elegidas[0]
+        datos = {'entradas': [(v['url'], v.get('http_headers')), (a['url'], a.get('http_headers'))]}
+        if len(elegidas) > 1:
+            datos['audios'] = [(f['url'], f.get('http_headers')) for f in elegidas]
+            datos['nombres_audio'] = [{'idioma': (f.get('language') or '').lower(), 'original': _audio_original(f) > 0,
+                                       'nombre': f.get('format_note') or f.get('language') or f'Pista {n + 1}'}
+                                      for n, f in enumerate(elegidas)]
+        return 'remux', datos
     solos = [f for f in formatos if f.get('url') and _compatible(f.get('acodec'), AUDIO_COMPATIBLE)
              and f.get('vcodec') in (None, 'none') and f.get('protocol') in ('https', 'http')]
     if solos:
@@ -203,13 +240,14 @@ def resolver_enlace(url, proxy, opciones_ytdlp, referer=None):
     elif modo in ('directo', 'directo-audio'):
         src = proxy.directo(datos['url'], datos['cabeceras'])
     else:
-        src = proxy.remux(datos['entradas'])
+        src = proxy.remux(datos['entradas'], audios=datos.get('audios'))
     return {
         'modo': 'directo' if modo == 'directo-audio' else modo, 'src': src, 'solo_audio': modo == 'directo-audio',
         'titulo': info.get('title') or url, 'canal': info.get('channel') or info.get('uploader'),
         'duracion': info.get('duration'), 'miniatura': info.get('thumbnail'), 'origen': url,
         'en_vivo': bool(info.get('is_live')), 'subtitulos': _subtitulos_de(info, proxy),
         'audio_original': idioma_original(info),
+        'audios': datos.get('nombres_audio'),   # pistas para elegir cuando el audio va aparte (remux)
     }
 
 

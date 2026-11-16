@@ -81,9 +81,17 @@ def test_remux_prefiere_audio_original():
     assert datos['entradas'][1][0] == 'https://a/en'
 
 
-def test_stack_acepta_torrents_y_enlaces_directos(tmp_path, monkeypatch):
+def _entorno(tmp_path, monkeypatch):
+    """Carpetas de prueba y sin la actualización automática de yt-dlp (que corre en segundo plano)."""
+    import json
     monkeypatch.setenv('APPDATA', str(tmp_path))
     monkeypatch.setenv('LOCALAPPDATA', str(tmp_path / 'local'))
+    (tmp_path / 'JabsDLP').mkdir(exist_ok=True)
+    (tmp_path / 'JabsDLP' / 'settings.json').write_text(json.dumps({'ytdlp_auto': False}), encoding='utf-8')
+
+
+def test_stack_acepta_torrents_y_enlaces_directos(tmp_path, monkeypatch):
+    _entorno(tmp_path, monkeypatch)
     from jabsdlp import aria2
     from jabsdlp.api import Api
     api = Api()
@@ -105,8 +113,7 @@ def test_stack_acepta_torrents_y_enlaces_directos(tmp_path, monkeypatch):
 
 
 def test_ver_con_log_completo_devuelve_detalle(tmp_path, monkeypatch):
-    monkeypatch.setenv('APPDATA', str(tmp_path))
-    monkeypatch.setenv('LOCALAPPDATA', str(tmp_path / 'local'))
+    _entorno(tmp_path, monkeypatch)
     from jabsdlp import ver as ver_mod
     from jabsdlp.api import Api
     api = Api()

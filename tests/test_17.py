@@ -116,10 +116,10 @@ def test_progresivo_y_remux():
 def test_hevc_local_se_transcodifica(proxy, tmp_path, monkeypatch):
     archivo = tmp_path / 'x.mkv'
     archivo.write_bytes(b'x')
-    monkeypatch.setattr(ver, 'sondear', lambda ruta, ffprobe: ('hevc', 'aac', 10.0, []))
+    monkeypatch.setattr(ver, 'sondear', lambda ruta, ffprobe: ('hevc', 'aac', 10.0, [], []))
     d = ver.resolver_local(str(archivo), proxy, 'ffprobe')
     assert d['modo'] == 'remux' and proxy.fuentes[d['src'].rsplit('/', 1)[1]].datos['transcodificar'] is True
-    monkeypatch.setattr(ver, 'sondear', lambda ruta, ffprobe: ('h264', 'aac', 10.0, []))
+    monkeypatch.setattr(ver, 'sondear', lambda ruta, ffprobe: ('h264', 'aac', 10.0, [], []))
     (tmp_path / 'y.mp4').write_bytes(b'x')
     assert ver.resolver_local(str(tmp_path / 'y.mp4'), proxy, 'ffprobe')['modo'] == 'directo'
 

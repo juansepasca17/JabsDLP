@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src http://127.0.0.1:*; media-src 'self' http://127.0.0.1:* blob:; worker-src blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src http://127.0.0.1:*; media-src 'self' http://127.0.0.1:* blob: data:; worker-src blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
   <title>JabsDLP</title>
   <link rel="stylesheet" href="estilos.css">
 </head>
@@ -164,6 +164,7 @@
               <option value="fecha">Más recientes</option><option value="nombre">Nombre</option><option value="tamano">Tamaño</option>
             </select>
             <button class="btn chico" id="bib-favs" data-accion="bib-favs" title="Solo favoritos"><i data-ico="star" class="sm"></i>Favoritos</button>
+            <button class="btn chico" id="bib-subcarpetas" data-accion="bib-subcarpetas" title="Mostrar también los archivos de todas las subcarpetas"><i data-ico="folder" class="sm"></i>Subcarpetas</button>
             <button class="btn chico icono" data-accion="bib-recargar" title="Actualizar"><i data-ico="refresh" class="sm"></i></button>
           </div>
         </div>
@@ -178,6 +179,10 @@
             <div class="ajuste">
               <div class="txt"><b>Carpeta de destino</b><div class="ruta" id="aj-carpeta">—</div></div>
               <button class="btn chico" data-accion="elegir-carpeta">Cambiar</button>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Perfiles de descarga</b><small>Preferencias de formato guardadas con un nombre (p. ej. «Solo audio MP3» o «720p para el celular»). Se eligen en Descargar, junto a «Preferencias de formato»: «Actual» son las que tengas puestas.</small>
+                <div class="perfiles" id="aj-perfiles"></div></div>
             </div>
             <div class="ajuste">
               <div class="txt"><b>Opción recomendada automática</b><small>Muestra siempre una opción recomendada (Auto). Si la apagas, eliges a mano de la lista.</small></div>
@@ -410,11 +415,26 @@
               <div class="txt"><b>Gestos en el reproductor</b><small>Un toque muestra los controles y dos toques a un lado adelantan o atrasan 10 s. Apagado: un toque pausa.</small></div>
               <label class="switch"><input type="checkbox" data-ajuste="ver_gestos"><span></span></label>
             </div>
+            <div class="ajuste solo-tactil">
+              <div class="txt"><b>Menús del reproductor</b><small>Velocidad, audio, subtítulos y calidad: desplegados junto a su botón o en un panel que sube desde abajo.</small></div>
+              <select class="entrada chica" data-ajuste="ver_menu">
+                <option value="flotante">Junto al botón</option>
+                <option value="panel">Panel desde abajo</option>
+              </select>
+            </div>
             <div class="ajuste">
               <div class="txt"><b>Botón de Colecciones</b><small>En la barra lateral o flotando abajo a la derecha.</small></div>
               <select class="entrada chica" data-ajuste="boton_colecciones">
                 <option value="lateral">En la barra lateral</option>
                 <option value="flotante">Flotante (abajo a la derecha)</option>
+              </select>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Tamaño de los subtítulos</b><small>En la pestaña Ver.</small></div>
+              <select class="entrada chica" data-ajuste="ver_subs">
+                <option value="pequeno">Pequeño</option>
+                <option value="normal">Normal</option>
+                <option value="grande">Grande</option>
               </select>
             </div>
           </div>
