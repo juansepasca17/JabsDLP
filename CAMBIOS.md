@@ -2,6 +2,14 @@
 
 Lo nuevo de cada versión, de la más reciente a la más antigua. Los `.exe` y los APK están en [Releases](https://github.com/juansepasca17/JabsDLP/releases).
 
+## 1.7.7
+
+- **Portadas en la lista de Ver**: al reproducir desde la Biblioteca, cada archivo muestra su portada en la lista (se
+  cargan a medida que bajas) y, si es música, la portada de la que suena queda de fondo del reproductor.
+- **Los controles del reproductor se esconden solos** a los pocos segundos también con música, como en YouTube: un
+  toque los vuelve a mostrar y no se esconden mientras usas un botón.
+- En inglés, el nombre de la lista ("170 files from the Library") ya sale traducido.
+
 ## 1.7.6
 
 - **Biblioteca**:

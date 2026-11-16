@@ -136,7 +136,9 @@ function cargarFuente(datos, desde) {
   const v = video();
   v.playbackRate = V.velocidad;
   $('#reproductor').classList.toggle('solo-audio', !!datos.solo_audio);
-  $('#reproductor').style.setProperty('--fondo-audio', datos.miniatura ? `url("${datos.miniatura.replace(/"/g, '')}")` : 'none');
+  const portada = datos.miniatura || V.lista[V.actual]?.miniatura;
+  $('#reproductor').style.setProperty('--fondo-audio', portada ? `url("${portada.replace(/"/g, '')}")` : 'none');
+  if (!portada && V.lista[V.actual]?.ruta) miniaturaLocal(V.lista[V.actual]);
   V.audioElegido = false;
   V.audioRemux = 0;
   try { v.currentTime = 0; } catch { /* sin medio */ }   // el siguiente empieza en 0:00, no donde iba el anterior
@@ -259,8 +261,7 @@ function mostrarControles() {
   const rp = $('#reproductor');
   rp.classList.add('controles-visibles');
   clearTimeout(V.ocultarTimer);
-  // con solo audio (música) no hay nada que tapar: los controles se quedan a la vista
-  if (!video().paused && !V.datos?.solo_audio) V.ocultarTimer = setTimeout(() => { if (!$('#rp-menu').classList.contains('visible')) rp.classList.remove('controles-visibles'); }, 2600);
+  if (!video().paused) V.ocultarTimer = setTimeout(() => { if (!$('#rp-menu').classList.contains('visible')) rp.classList.remove('controles-visibles'); }, 2600);
 }
 
 function alternarPlay() {
@@ -579,6 +580,42 @@ function guardarProgresoVer(final = false) {
   V.guardado = Date.now();
 }
 
+// Los archivos de la Biblioteca no traen miniatura: se pide (la misma caché que la Biblioteca) solo para lo que se ve
+const minisPedidas = new Map();
+function miniaturaLocal(item) {
+  const ruta = item.ruta;
+  if (!ruta || item.miniatura) return;
+  if (typeof B !== 'undefined' && B.minis[ruta]) { item.miniatura = B.minis[ruta]; return ponerMiniLocal(item); }
+  if (!minisPedidas.has(ruta)) minisPedidas.set(ruta, Promise.resolve(API.biblioteca_miniatura(ruta)).catch(() => null));
+  minisPedidas.get(ruta).then(src => {
+    if (!src) return;
+    if (typeof B !== 'undefined') B.minis[ruta] = src;
+    item.miniatura = src;
+    ponerMiniLocal(item);
+  });
+}
+function ponerMiniLocal(item) {
+  const n = V.lista.indexOf(item);
+  const el = n >= 0 && document.querySelector(`#ver-lista [data-ver-item="${n}"] .vl-mini`);
+  if (el && !el.querySelector('img')) { el.querySelector('svg')?.remove(); el.insertAdjacentHTML('afterbegin', `<img src="${item.miniatura}" alt="">`); }
+  if (n === V.actual && V.datos && !V.datos.miniatura) $('#reproductor').style.setProperty('--fondo-audio', `url("${item.miniatura}")`);
+}
+let observadorMinisVer = null;
+function observarMinisVer() {
+  observadorMinisVer?.disconnect();
+  const items = $$('#ver-lista [data-ver-item]').filter(el => { const i = V.lista[+el.dataset.verItem]; return i?.ruta && !i.miniatura; });
+  if (!items.length) return;
+  observadorMinisVer = new IntersectionObserver(entradas => {
+    for (const en of entradas) {
+      if (!en.isIntersecting) continue;
+      observadorMinisVer.unobserve(en.target);
+      const i = V.lista[+en.target.dataset.verItem];
+      if (i) miniaturaLocal(i);
+    }
+  }, { rootMargin: '300px' });
+  items.forEach(el => observadorMinisVer.observe(el));
+}
+
 function pintarListaVer() {
   const panel = $('#ver-lista');
   if (panel.classList.contains('oculto')) return;
@@ -610,6 +647,7 @@ function pintarListaVer() {
           ${ico('play', 'sm')}</div>`).join('') || '<small class="dim">Aún no tienes colecciones.</small>'}
     </div>`;
   panel.querySelector('.vl-item.activo')?.scrollIntoView({ block: 'nearest' });
+  observarMinisVer();
 }
 
 async function pintarInicioVer() {
@@ -660,6 +698,10 @@ function iniciarVer() {
   v.addEventListener('loadedmetadata', () => { actualizarBotonesVer(); pintarTiempo(); });
   const rp = $('#reproductor');
   rp.addEventListener('mousemove', () => { if (!gestosActivos()) mostrarControles(); });
+  rp.addEventListener('pointerdown', e => {
+    if (e.target === v || e.target.closest('#rp-centro') || e.target.closest('#rp-estado') || e.target.closest('.rp-salto')) return;
+    if (rp.classList.contains('controles-visibles')) mostrarControles();
+  });
   rp.addEventListener('click', e => {
     if (!(e.target === v || e.target.closest('#rp-centro') || e.target.closest('#rp-estado') || e.target.closest('.rp-salto'))) return;
     if ($('#rp-estado').classList.contains('error')) return;

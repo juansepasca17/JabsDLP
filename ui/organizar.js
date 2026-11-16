@@ -880,7 +880,7 @@ function reproducirSeleccion(aleatorio) {
   const orden = filtrarBib().filter(a => B.sel.has(a.ruta));
   if (!orden.length) return;
   guardarProgresoVer();
-  V.lista = orden.map(a => ({ ruta: a.ruta, titulo: a.nombre.replace(/\.[^.]+$/, ''), existe: true }));
+  V.lista = orden.map(a => ({ ruta: a.ruta, titulo: a.nombre.replace(/\.[^.]+$/, ''), miniatura: B.minis[a.ruta] || undefined, existe: true }));
   V.coleccion = null;
   V.nombreLista = `${orden.length} ${orden.length === 1 ? 'archivo' : 'archivos'} de la Biblioteca`;
   V.aleatorio = aleatorio;

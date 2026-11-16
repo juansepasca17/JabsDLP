@@ -444,6 +444,7 @@
     [/^No se pudo descargar aria2: (.+)$/, m => `Couldn't download aria2: ${m[1]}`],
     [/^en (\d+) h (\d+) min$/, m => `in ${m[1]} h ${m[2]} min`], [/^en (\d+) min (\d+) s$/, m => `in ${m[1]} min ${m[2]} s`],
     [/^en (\d+) s$/, m => `in ${m[1]} s`],
+    [/^(\d+) archivos? de la Biblioteca$/, m => `${m[1]} file${m[1] === '1' ? '' : 's'} from the Library`],
     [/^aria2 de JabsDLP desinstalado\. Sigue habiendo otro aria2 en tu equipo: (.+)$/, m => `JabsDLP's aria2 uninstalled. There's still another aria2 on your computer: ${m[1]}`],
     [/^No se pudo borrar aria2: (.+)$/, m => `Couldn't delete aria2: ${m[1]}`],
     [/^Enlace directo \.(m3u8|mpd)$/, m => `Direct .${m[1]} link`],
