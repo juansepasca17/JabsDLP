@@ -2,278 +2,37 @@
 
 # JabsDLP
 
-Descargador de videos para Windows: rápido, en paralelo y sin opciones de más. Pegas un enlace y te propone
-**una opción recomendada**. Si quieres, eliges a mano de la lista. Por dentro usa [yt-dlp](https://github.com/yt-dlp/yt-dlp)
-y [ffmpeg](https://ffmpeg.org).
+Descargador y reproductor de videos para **Windows** y **Android**. Pegas un enlace y te propone la mejor opción;
+también puedes verlo sin descargarlo. Por dentro usa [yt-dlp](https://github.com/yt-dlp/yt-dlp) y [ffmpeg](https://ffmpeg.org).
+
+## Descargar
+
+**[Última versión](https://github.com/juansepasca17/JabsDLP/releases/latest)**:
+- **PC:** `JabsDLP.exe`, un solo archivo, sin instalador.
+- **Android:** `JabsDLP-<versión>-android.apk`, para celulares de 64 bits con Android 7 o superior.
 
 ## Qué hace
 
-- **Videos, playlists y canales** de YouTube y de cientos de sitios más. También acepta varias URLs a la vez o un `.txt` con una URL por línea.
-- **Miniatura y metadatos** antes de descargar: duración, vistas, likes, fecha, resolución, bitrate y fps.
-- **Opción recomendada (Auto)** con tres criterios:
-  - *Menor tamaño sin perder calidad*: máxima resolución con el códec más eficiente (AV1 › VP9 › H.264).
-  - *Menor tamaño (sacrifica calidad)*: hasta 720p, menos fps y audio medio.
-  - *Mejor calidad*: el mayor bitrate disponible.
-- **Personalizado**: la lista completa de formatos para elegir a mano.
-- **Preferencias**: códec (Auto, H.264, H.265, AV1, VP9), resolución y contenedor (MP4, MKV, WEBM).
-  - Audio: con audio, sin audio, o personalizado (eliges la pista o la calidad).
-  - Solo audio: MP3, M4A, OPUS o FLAC, con o sin metadatos y portada.
-- **Conversión a H.265/H.264 con la GPU** (AMD AMF, NVIDIA NVENC o Intel Quick Sync), con decodificación por GPU. Se puede dejar en Auto o desactivar para usar la CPU.
-- **Descargas en paralelo sin límite**: se pueden desactivar o limitar, y hay un límite aparte de conversiones simultáneas para no saturar la GPU.
-- **Cookies** desde un archivo `cookies.txt` o desde el navegador, para videos privados, con restricción de edad o cuando YouTube pide iniciar sesión.
-- **yt-dlp se actualiza sin reinstalar la app**, desde *Ajustes → Herramientas*. Puedes elegir el canal **Estable** o **Nightly**, que trae antes los arreglos para YouTube.
-  - Baja la versión de PyPI junto con el yt-dlp-ejs que le corresponde y verifica el SHA-256 de ambos.
-  - Puede buscar actualizaciones al abrir, como mucho una vez al día.
-  - Solo guarda la última versión descargada. La que va dentro del `.exe` queda siempre como respaldo y la app vuelve a ella si la descargada falla.
+- **Descarga** videos, playlists y canales de YouTube y de cientos de sitios, en paralelo, con una opción recomendada
+  o eligiendo el formato a mano. También audio (MP3, M4A, OPUS, FLAC) con portada, torrents y enlaces `.m3u8`/`.mpd`.
+- **Ver sin descargar**: reproductor propio con subtítulos, idioma del audio, calidad y torrents mientras se descargan.
+- **Organiza**: Biblioteca de lo descargado, colecciones (también para guardar enlaces y torrents), stack para juntar
+  enlaces y perfiles de descarga.
+- **Rápido de usar**: atajos para mandar un enlace desde cualquier programa (PC) o *Compartir → JabsDLP* (Android).
+- **Conversión con la GPU** (AMD, NVIDIA o Intel) en PC, y yt-dlp se actualiza desde la app.
 
-### Novedades de la 1.7.6
-
-- **Biblioteca**:
-  - **Iconos muy pequeños** (5 por fila en el celular) para ver muchos de un vistazo. En Android también se cambia
-    el tamaño **pellizcando con dos dedos**, como en la Galería.
-  - **Seleccionar todo** y, con lo seleccionado, **Reproducir** o **Aleatorio** (por ejemplo, escuchar una carpeta
-    de música al azar), además de agruparlo en una playlist o añadirlo a una colección.
-  - Los audios muestran su **portada** (la carátula incrustada) en lugar del icono de nota.
-- **Portada y metadatos por separado**: en *Extras* puedes incrustar la portada (o la miniatura en los videos) sin los
-  metadatos, o al revés. En audio, la portada es la miniatura del video y se ve en la Biblioteca y en tu
-  reproductor de música.
-
-### Novedades de la 1.7.5
-
-- **Burbuja del portapapeles** (PC): además de *Descargar* (y *Al stack*), un botón **Ver** que abre el enlace en la
-  pestaña Ver. También recuerda los atajos de Captura rápida, que funcionan con el enlace que acabas de copiar sin
-  seleccionar nada: Ctrl + Alt + X para descargarlo y Ctrl + Alt + V para verlo.
-- **El stack no se esconde**: si apagas el modo stack y tiene enlaces, su pestaña sigue en el borde derecho (más
-  tenue) para que no se te olvide. Al tocarla (o con Ctrl + J) vuelve el modo stack con el panel abierto.
-
-### Novedades de la 1.7.4
-
-- **Log de la app** (*Ajustes → Avanzado → Guardar log de la app*, activado por defecto): anota lo que pasa (videos
-  que abres en Ver y cuánto tardan en empezar, torrents, descargas y errores) para enviarlo si algo falla. Empieza uno
-  nuevo cada vez que abres la app y guarda solo la sesión anterior; se puede apagar o borrar. En PC, *Abrir log*.
-- **Guardar enlaces en colecciones sin analizarlos**: dentro de una colección, pega un enlace, magnet o `.torrent`
-  (o usa el botón del portapapeles) y se añade al instante; el título, la miniatura y la duración se completan solos.
-  En Descargar, el botón de colección junto a *Analizar* guarda el enlace que pegaste. Cada elemento dice qué es
-  (video, playlist, torrent, enlace directo o archivo descargado). Los torrents se pueden guardar para verlos más tarde.
-- **Carpetas de destino guardadas**: abajo en Descargar, el selector de la carpeta cambia a dónde va la descarga en un
-  toque; con *＋ Añadir carpeta…* se guarda una nueva.
-- **Atajo para ver un enlace** (PC, *Ajustes → Captura rápida*): selecciona un enlace en cualquier programa y pulsa
-  Ctrl + Alt + V: se abre directo en la pestaña Ver. Se puede cambiar o apagar.
-- **Atajos dentro de la app**: Ctrl + K abre o cierra Colecciones y Ctrl + J el stack. La lista completa está en
-  *Ajustes → Ventana, avisos y apariencia → Atajos de teclado*.
-- **Biblioteca**: mantén pulsado un archivo (con el dedo o el ratón) y desliza para seleccionar varios; tamaño de los
-  iconos pequeño, mediano o grande (con iconos pequeños, tocar un archivo lo abre en Ver).
-- **Ajustes**: botón propio y más grande para plegar cada sección; funciona aunque haya algo en el buscador, que
-  tiene una X para borrarlo.
-- Arreglado: en Android, entrar en una subcarpeta dentro de otra en la Biblioteca decía que la carpeta no existía.
-
-### Novedades de la 1.7.3
-
-- **Ver torrents en Android**: igual que en PC, se reproducen mientras se descargan, se puede saltar en la línea
-  de tiempo y al cerrar no se sigue compartiendo (con [libtorrent4j](https://github.com/aldenml/libtorrent4j)).
-- **Idioma del audio en todos los casos**: también en archivos con varias pistas de audio (un `.mkv` o `.mp4` con
-  español e inglés) y en videos cuyo audio llega aparte (doblajes por DASH). Al cambiar de pista sigue en el mismo
-  segundo.
-- **Todos los subtítulos**: antes solo salían los primeros 12; ahora salen todos los del video y todas las
-  traducciones automáticas de YouTube, con los nombres en tu idioma y un buscador en el menú. (YouTube a veces
-  limita las traducciones automáticas: si una no carga, la app lo avisa.)
-- **Calidad del video**: el menú muestra una opción por resolución (antes salían repetidas) y solo con formatos que
-  tu equipo reproduce bien, así elegir una calidad ya no deja el video trabado.
-- **Ver un solo video de una colección o del stack**: tocar un elemento lo reproduce solo; el botón *Ver* de la
-  colección (o *Stack* en *Listas*) reproduce la lista entera.
-- **Perfiles de descarga**: guarda tus preferencias de formato con un nombre («Solo audio MP3», «720p»…) y
-  elígelas en Descargar, junto a *Preferencias de formato*; *Actual* son las que tengas puestas.
-- **Biblioteca con subcarpetas**: el botón *Subcarpetas* muestra también los videos que hay dentro de las
-  subcarpetas (cada uno dice en cuál está).
-- **Comando personalizado**: tocar la plantilla elegida la quita.
-- **Tamaño de los subtítulos** (*Ajustes → Ventana, avisos y apariencia*): pequeño, normal o grande. Por defecto
-  son algo más grandes que antes, y más aún en pantalla completa.
-
-### Novedades de la 1.7.2
-
-- **Pestaña Ver:**
-  - **Idioma del audio**: en videos con doblajes (YouTube) se elige sola la pista original, o si no la de tu idioma,
-    y puedes cambiarla con el botón nuevo del reproductor.
-  - Los **subtítulos automáticos** de YouTube ya no van a saltos (YouTube los manda por trozos y ahora se juntan).
-  - Botón **X** para quitar el video y volver a la pantalla inicial.
-  - Al cambiar de video, el nuevo empieza en 0:00 y el anterior deja de descargarse.
-  - En pausa deja de pedir el video al rato, así que no gasta datos de más.
-  - El **stack** se puede ver como lista de reproducción (en *Listas* o con el botón de cada elemento del stack).
-  - Con *Mostrar log completo* activado, los errores de Ver muestran el detalle con **Copiar log**, como en la Cola.
-- **Stack**: acepta también magnets, archivos `.torrent` y enlaces directos `.m3u8`/`.mpd`.
-- **Biblioteca**: al marcar un archivo entras en modo selección: tocar cualquier otro lo marca, y
-  *Quitar selección* lo desactiva.
-- **Ajustes**: buscador arriba y secciones que se pliegan y despliegan (se recuerda cuáles dejaste plegadas).
-
-### Novedades de la 1.7.1
-
-- **Torrents en la pestaña Ver**: pega un magnet o un enlace `.torrent` (o pulsa **Ver sin descargar** en el panel
-  de torrents de Descargar) y se reproduce mientras se descarga.
-  - Solo se baja el video (el archivo más grande) y lo que estás viendo va primero, así que puedes saltar en la
-    línea de tiempo.
-  - Se ve en vivo cuántos pares hay, la velocidad y cuánto lleva descargado.
-  - **Sin compartir al cerrar**: al cerrar el reproductor o salir de la pestaña, el torrent se quita y lo descargado
-    se borra. Mientras se ve, la subida queda limitada (*Ajustes → Red → subida máxima en torrents*).
-  - Antes de empezar se avisa de los riesgos del P2P.
-  - Usa [libtorrent](https://www.libtorrent.org) 2.1.1 (BSD).
-
-### Novedades de la 1.7.0
-
-- **Pestaña Ver**: reproduce enlaces sin descargarlos, dentro de la app. Funciona con YouTube, enlaces `.m3u8` y cientos
-  de sitios más, y con archivos de tu equipo.
-  - Reproductor propio: línea de tiempo con lo ya cargado, volumen, velocidad (0,5×–2×), subtítulos, calidad
-    (automática o fija) y pantalla completa.
-  - Atajos: espacio/K, ←/→ (5 s), J/L (10 s), ↑/↓ (volumen), M, C (subtítulos), F, N/P (siguiente/anterior).
-  - **Listas de reproducción con tus colecciones**: botón **Ver** en una colección. Incluye siguiente/anterior,
-    reproducción automática, aleatorio y repetir.
-  - **Continuar donde lo dejaste**: guarda el segundo exacto de cada video de una colección y marca los vistos con ✓.
-  - **Vistos recientemente** y botón **Ver aquí** en la Cola y en la Biblioteca.
-  - Archivos locales con códecs que el navegador no reproduce (por ejemplo, HEVC en `.mkv`) se convierten al vuelo.
-- **Cómo funciona**: un pequeño servidor local (solo en `127.0.0.1` y con un token aleatorio) pide el video con las
-  cabeceras correctas y se lo pasa al reproductor. Los streams HLS se reproducen con [hls.js](https://github.com/video-dev/hls.js)
-  (Apache-2.0), incluido en la app con su SHA-256 verificado.
-
-### Novedades de la 1.6.0
-
-- **Modo stack**, activable con el chip **Stack** junto a Video/Playlist (apagado por defecto). Los enlaces que
-  pegas se van sumando a una lista en vez de reemplazar el análisis:
-  - cada video puede ir "como el resto", solo audio o con resolución máxima;
-  - todo se descarga junto en una carpeta con el nombre que elijas;
-  - el stack se guarda aunque cierres la app;
-  - opcional: que cada enlace empiece a descargarse al momento.
-- **Captura rápida** (*Ajustes → Captura rápida*, todo apagado por defecto):
-  - **Atajo global** (Ctrl+Alt+X, Ctrl+Shift+X o Ctrl+Alt+D): selecciona un enlace en cualquier programa, pulsa el
-    atajo y llega a JabsDLP (al stack, si está activo) sin copiar, pegar ni cambiar de ventana;
-  - **Vigilar el portapapeles**: al copiar un enlace de un sitio que yt-dlp reconoce aparece una burbuja abajo a la
-    derecha con **Al stack** / **Descargar**, sin quitarte el foco; o se añade sin preguntar, si lo prefieres. No
-    aparece mientras juegas o ves algo a pantalla completa.
-- **Colecciones**: grupos de enlaces y archivos para más tarde.
-  - Se abren desde un botón en la barra lateral o, si lo eliges en Ajustes, uno flotante rojo abajo a la derecha.
-  - Se reordenan arrastrando y se descargan enteras con un clic.
-  - Se comparten exportándolas como archivo **.jabs** (o .txt); quien lo importa recibe los mismos enlaces.
-  - **★ Favoritos** es una colección fija.
-- **Biblioteca**: lo descargado, sin abrir el Explorador.
-  - Miniaturas, búsqueda por nombre, filtros por tipo y fecha, y orden.
-  - **★ favoritos**, selección múltiple y **Agrupar en playlist**.
-  - Enviar a la **Papelera de reciclaje**.
-  - Puedes añadir más carpetas.
-- **Barra de título clara** en el tema claro, y opción **Abrir en pantalla completa** (apagada; **F11** en cualquier
-  momento).
-- La ventana se abre con un tamaño que cabe sobre la barra de tareas (pantallas al 125 %, portátiles).
-
-### Novedades de la 1.5.0
-
-- **Enlaces directos `.m3u8` / `.mpd`** (por ejemplo, los de Platzi cuando su extractor falla). Al pegar uno sale un
-  panel propio, como el de torrents:
-  - **Página de origen (Referer)**: se deduce del dominio (`mediastream.platzi.com` → `https://platzi.com/`) y la
-    puedes cambiar.
-  - **Nombre del archivo**: si ya existe, se añade `-2`, `-3`…
-  - **Comprobación previa sin descargar**: dice si el enlace responde, con fragmentos, duración y calidad, o el
-    motivo del fallo (403, 404, 410/token caducado, red). También avisa si está cifrado (AES-128 o DRM).
-  - Si la comprobación falla, puedes **descargar de todos modos**.
-  - Se descarga con la configuración predeterminada de yt-dlp, como
-    `yt-dlp --referer REF -o "NOMBRE.%(ext)s" URL`.
-  - Los **tokens** de la URL (`cP`, `pid`, `sid`, `token`, `signature`…) no se guardan en disco ni salen en el log.
-- **Mostrar log completo (debug)**, en *Ajustes → Avanzado*:
-  - ejecuta yt-dlp con `-v`;
-  - en la Cola, **Ver detalle** muestra el error completo (por ejemplo `caused by SSLError('[SSL: UNEXPECTED_EOF_WHILE_READING]…')`)
-    para buscarlo, y el log, con un botón **Copiar log**.
-- **Plantillas de comando personalizado**, como en Seal: guarda varias, elige una, edítalas o bórralas.
-- **Filtro del comando personalizado más estricto**:
-  - solo se aceptan opciones de una lista de permitidas;
-  - si se bloquea una, se dice cuál y por qué (`--exec`, `--use-postprocessor`, `--plugin-dirs`…);
-  - una comilla sin cerrar indica dónde está.
-- **Una sola instancia**: volver a abrir JabsDLP muestra la ventana que ya estaba abierta (antes se duplicaba al
-  minimizarla a la bandeja). **Minimizar a la bandeja** viene ahora desactivado por defecto.
-- **Actualizador de yt-dlp más seguro**:
-  - valida el nombre y el origen (files.pythonhosted.org) de cada archivo;
-  - vuelve a comprobar el SHA-256 antes de cargarlo;
-  - una versión descargada con la 1.4.0 o anterior se vuelve a descargar una vez.
-
-### Novedades de la 1.4.0
-
-- **Una versión de yt-dlp que falla al cargar ya no se reintenta en bucle**: si la descargada no se puede importar,
-  la app sigue usando la incluida y espera a que PyPI publique una más nueva antes de volver a descargarla.
-  - Antes, cada búsqueda volvía a descargar la misma versión rota y borraba la marca de fallo.
-- **El fallo de carga deja rastro**: el motivo del error y la versión que falló se guardan en el `estado.json` y se
-  muestran en *Ajustes → Herramientas*; el traceback completo queda en
-  `%LOCALAPPDATA%\JabsDLP\yt-dlp\error-carga.txt`.
-
-### Novedades de la 1.3.0
-
-- **Suplantar navegador (impersonation)**, nuevo ajuste en *Ajustes → Avanzado*: hace que las peticiones de
-  yt-dlp parezcan venir de Chrome. Ayuda con sitios que bloquean la descarga con errores 403/410. Va
-  **desactivado por defecto** y usa [curl_cffi](https://github.com/lexiforest/curl_cffi), incluido en el `.exe`.
-  - Si el componente no está disponible, el switch aparece deshabilitado y se ve el motivo.
-  - Si en el **comando personalizado** ya has escrito `--impersonate`, manda ese valor y el ajuste no lo pisa.
-  - Con el motor **aria2**, la descarga en sí no usa impersonation (aria2 no lo soporta); solo el análisis y las peticiones de yt-dlp.
-
-### Novedades de la 1.2.0
-
-- **Idioma de la pista de audio**, ideal para los videos doblados de YouTube, e **idioma de los subtítulos**, manuales o automáticos.
-- **Quitar anuncios** con [SponsorBlock](https://sponsor.ajay.app). Quita patrocinios, autopromoción, intros… Solo actúa si lo activas, y te enseña antes los tramos que va a quitar.
-- **Recortar**: descarga solo el tramo que te interesa, por ejemplo de 1:20 a 3:45. El recorte se hace en tu equipo.
-- **Reintentos automáticos** ante fallos de red o del servidor, configurables.
-- **Retomar descargas** al volver a abrir la app, continuando los `.part`.
-- **Límite de velocidad** total, repartido entre todas las descargas. Por defecto 5 MB/s; puedes ponerlo sin límite o personalizarlo.
-- **Arrastrar y soltar** enlaces, o pulsar **Ctrl+V** en cualquier parte.
-- **Notificaciones de Windows** al terminar, con botón para abrir la carpeta, e **icono en la bandeja** al minimizar.
-- **Tema claro** e **inglés**.
-- **Numerar** los archivos de una playlist (`01 - título.mp4`) y **no repetir descargas**.
-- **aria2** como motor alternativo (opcional) y **torrents/magnet** sin seed.
-- **Comando personalizado**: argumentos extra de yt-dlp.
-
-## Seguridad
-
-- **aria2 nunca recibe streams HLS/DASH**: solo descargas directas (http/ftp). Así se evita [CVE-2026-50574](https://github.com/advisories/GHSA-vx4q-3cr2-7cg2), una inyección de opciones en aria2c desde manifiestos DASH. Además, el yt-dlp incluido (2026.8.19 o posterior) ya trae la corrección, y aria2 se desactiva si alguna vez se cargara un yt-dlp anterior a 2026.6.9.
-- aria2 se ejecuta sin leer configuraciones externas (`--no-conf`) y sin seguir enlaces `.torrent` ni metalink que devuelva un servidor. Se copia a una carpeta propia para no meter otros ejecutables en el PATH.
-- **Torrents**: se descargan con `--seed-time=0`, así que no se comparten al terminar. Mientras se descargan se sube un poco, limitado en Ajustes. Antes de empezar se avisa de los riesgos.
-- **Avisos de fuente de riesgo**: torrents, enlaces `http://` sin cifrar, sitios no reconocidos (extractor genérico) y ejecutables o comprimidos. Puedes seguir o cancelar, y marcar "No volver a mostrar".
-- JabsDLP **nunca ejecuta** un archivo descargado que no sea multimedia: lo muestra en su carpeta.
-- Las notificaciones escapan el título del video, de modo que un título malicioso no puede ejecutar código en PowerShell. El comando personalizado solo acepta opciones de una lista de permitidas y bloquea, diciendo por qué, `--exec`, `--use-postprocessor`, `--plugin-dirs`, `--downloader` y otras que ejecutan programas o cargan código.
-- Los tokens de los enlaces directos (.m3u8/.mpd) se ocultan en el log, la interfaz y el historial.
-- El yt-dlp descargado solo se carga si su nombre, origen y SHA-256 son los esperados.
-- ffmpeg, aria2 y el resto de procesos hijos se cierran con la app aunque esta termine de golpe (*Job Object* de Windows).
+Lo nuevo de cada versión: [CAMBIOS.md](CAMBIOS.md).
 
 ## Requisitos
 
-- Windows 10 u 11 con **Microsoft Edge WebView2**, que ya viene en Windows 11.
-- **ffmpeg**: la app usa el que tengas instalado. Si no lo encuentra, lo descarga desde *Ajustes → Herramientas*, del build oficial de [BtbN](https://github.com/BtbN/FFmpeg-Builds), y verifica su SHA-256.
-- Para YouTube, **Node.js** o **Deno** instalado: yt-dlp lo necesita para ver todos los formatos.
+- **PC:** Windows 10 u 11. ffmpeg lo descarga la propia app si no lo tienes. Para YouTube, Node.js o Deno instalado.
+- **Android:** 7.0 o superior, 64 bits. ffmpeg y lo demás ya vienen dentro.
 
 ## Privacidad
 
-- No hay telemetría ni cuentas. La app solo se conecta a los sitios de los que descargas, a PyPI para buscar actualizaciones de yt-dlp y, si lo pides, a GitHub para bajar ffmpeg.
-- **curl_cffi** va dentro del `.exe` y solo se usa para las peticiones que ya hace yt-dlp (suplantando a Chrome si activas ese ajuste); no abre conexiones propias ni añade seguimiento.
-- Los ajustes y el historial se guardan solo en tu equipo, en `%APPDATA%\JabsDLP`. Las versiones de yt-dlp descargadas van a `%LOCALAPPDATA%\JabsDLP\yt-dlp`.
-- De las cookies solo se guarda la **ruta** del archivo, nunca su contenido. Para cada descarga se usa una copia temporal normalizada que se borra al terminar. Si la app se cierra de golpe, esa copia se borra al volver a abrirla.
-
-## Compilar el .exe
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\build.ps1
-```
-
-Crea el entorno, instala las dependencias, genera el logo, ejecuta las pruebas, compila `dist\JabsDLP.exe` con
-PyInstaller y pasa la revisión de privacidad (`scripts\revisar_privacidad.py`).
-
-Para ejecutarla desde el código: `python main.py` (con `--debug` se abren las herramientas de desarrollo).
-
-## Estructura
-
-| Ruta | Contenido |
-| --- | --- |
-| `main.py` | Ventana (pywebview) y arranque |
-| `jabsdlp/formatos.py` | Opción recomendada, criterios y selectores de formato |
-| `jabsdlp/gestor.py` | Cola: paralelo ilimitado o limitado, cancelar y reintentar |
-| `jabsdlp/trabajo.py` | Cada descarga con yt-dlp, su progreso y la conversión por GPU |
-| `jabsdlp/ffmpeg_tools.py` | Localizar o descargar ffmpeg, detectar la GPU y recodificar |
-| `jabsdlp/cookies.py` | Normalización de cookies Netscape |
-| `jabsdlp/actualizador.py` | Actualización de yt-dlp (estable o nightly) sin recompilar |
-| `ui/` | Interfaz (HTML, CSS y JS sin dependencias externas) |
+Sin cuentas ni telemetría: todo se guarda en tu equipo. Detalles de seguridad y privacidad en
+[docs/SEGURIDAD.md](docs/SEGURIDAD.md). Para compilarla: [docs/DESARROLLO.md](docs/DESARROLLO.md).
 
 ## Aviso
 
-Usa JabsDLP solo con contenido que tengas derecho a descargar y respeta los términos de cada sitio.
-
-Licencia MIT.
+Usa JabsDLP solo con contenido que tengas derecho a descargar y respeta los términos de cada sitio. Licencia MIT.
