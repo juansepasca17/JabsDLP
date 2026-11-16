@@ -138,6 +138,7 @@ function cargarFuente(datos, desde) {
   $('#reproductor').classList.toggle('solo-audio', !!datos.solo_audio);
   const portada = datos.miniatura || V.lista[V.actual]?.miniatura;
   $('#reproductor').style.setProperty('--fondo-audio', portada ? `url("${portada.replace(/"/g, '')}")` : 'none');
+  $('#reproductor').classList.toggle('con-portada', !!portada);
   if (!portada && V.lista[V.actual]?.ruta) miniaturaLocal(V.lista[V.actual]);
   V.audioElegido = false;
   V.audioRemux = 0;
@@ -598,7 +599,10 @@ function ponerMiniLocal(item) {
   const n = V.lista.indexOf(item);
   const el = n >= 0 && document.querySelector(`#ver-lista [data-ver-item="${n}"] .vl-mini`);
   if (el && !el.querySelector('img')) { el.querySelector('svg')?.remove(); el.insertAdjacentHTML('afterbegin', `<img src="${item.miniatura}" alt="">`); }
-  if (n === V.actual && V.datos && !V.datos.miniatura) $('#reproductor').style.setProperty('--fondo-audio', `url("${item.miniatura}")`);
+  if (n === V.actual && V.datos && !V.datos.miniatura) {
+    $('#reproductor').style.setProperty('--fondo-audio', `url("${item.miniatura}")`);
+    $('#reproductor').classList.add('con-portada');
+  }
 }
 let observadorMinisVer = null;
 function observarMinisVer() {
@@ -685,7 +689,10 @@ function iniciarVer() {
     }
   });
   v.addEventListener('canplay', () => pintarEstadoVer(''));
-  v.addEventListener('ended', () => { guardarProgresoVer(true); siguienteVer(); });
+  v.addEventListener('ended', () => {
+    guardarProgresoVer(true);
+    if (S.ajustes?.ver_siguiente !== false || V.repetir === 'uno') siguienteVer();
+  });
   v.addEventListener('error', () => {
     if (V.datos && v.getAttribute('src') && !V.hls) errorVer('No se pudo reproducir este video aquí. Prueba a descargarlo.',
       `Error del reproductor: ${v.error?.code || '?'} ${v.error?.message || ''}\nModo: ${V.datos.modo}\nOrigen: ${V.datos.origen}`);

@@ -402,7 +402,11 @@
     'Anota lo que pasa (videos que abres en Ver, torrents, descargas y errores) en un archivo, para enviarlo si algo falla. Empieza uno nuevo cada vez que abres la app y guarda solo la sesión anterior. Las URLs con tokens se ocultan.':
       'Writes what happens (videos you open in Watch, torrents, downloads and errors) to a file, to send it if something fails. A new one starts every time you open the app and only the previous session is kept. URLs with tokens are hidden.',
     '¿Borrar el log de la app (esta sesión y la anterior)?': 'Delete the app log (this session and the previous one)?', 'Log borrado.': 'Log deleted.', 'Log apagado': 'Log turned off', 'Ya no se anota nada. ¿Borrar también el log que estaba guardado?': 'Nothing is logged anymore. Also delete the log that was saved?', 'Menús del reproductor': 'Player menus', 'Junto al botón': 'Next to the button',
-    'Panel desde abajo': 'Panel from the bottom',
+    'Panel desde abajo': 'Panel from the bottom', 'Portada de la música': 'Music cover',
+    'Lo que se ve en el reproductor mientras suena un audio con portada.': 'What the player shows while audio with a cover is playing.',
+    'Nítida sobre fondo borroso': 'Sharp over a blurred background', 'Nítida sobre negro': 'Sharp over black',
+    'Solo fondo borroso': 'Blurred background only', 'Pasar al siguiente': 'Play next automatically',
+    'Al terminar un video o canción de una lista, empieza solo el siguiente. Apagado: se pausa al terminar.': 'When a video or song in a list ends, the next one starts. Off: it pauses at the end.',
     'Velocidad, audio, subtítulos y calidad: desplegados junto a su botón o en un panel que sube desde abajo.': 'Speed, audio, subtitles and quality: dropped down next to their button or in a panel that slides up from the bottom.', 'Subcarpetas': 'Subfolders', 'Mostrar también los archivos de todas las subcarpetas': 'Also show the files in all subfolders', 'Toca la plantilla elegida para dejar de usarla.': 'Tap the chosen template to stop using it.', 'Actual': 'Current', 'Guardar perfil': 'Save profile',
     'Perfil de descarga': 'Download profile', 'Guardar estas preferencias como un perfil': 'Save these preferences as a profile',
     'Nombre del perfil': 'Profile name', 'Mi perfil': 'My profile', 'Solo audio': 'Audio only', 'Borrar perfil': 'Delete profile',

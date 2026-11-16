@@ -2,6 +2,14 @@
 
 Lo nuevo de cada versión, de la más reciente a la más antigua. Los `.exe` y los APK están en [Releases](https://github.com/juansepasca17/JabsDLP/releases).
 
+## 1.7.8
+
+- **Portada de la música en el reproductor**: mientras suena un audio con portada, se ve nítida y centrada (como en
+  las apps de música) sobre el fondo borroso. En *Ajustes* puedes elegir *Nítida sobre negro* o dejar *Solo fondo
+  borroso* como antes.
+- **Pasar al siguiente** (*Ajustes*, activado por defecto): al terminar un video o canción de una lista empieza el
+  siguiente; apagado, se pausa al terminar.
+
 ## 1.7.7
 
 - **Portadas en la lista de Ver**: al reproducir desde la Biblioteca, cada archivo muestra su portada en la lista (se

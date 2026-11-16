@@ -822,3 +822,9 @@ body.arrastrando-sel #bib-rejilla { cursor: crosshair; }
 .bib-rejilla[data-tamano="diminuto"] .bib-info { padding: 4px 6px 5px; }
 .bib-rejilla[data-tamano="diminuto"] .bib-info b { font-size: 10.5px; }
 .bib-rejilla[data-tamano="diminuto"] .bib-archivo { border-radius: 8px; }
+/* Música en Ver: la portada nítida y cuadrada en el centro (como en las apps de música), sobre el fondo borroso o sobre negro */
+.reproductor.solo-audio.con-portada::after { content: ""; inset: 12% auto auto 50%; transform: translateX(-50%); aspect-ratio: 1; height: 76%; width: auto;
+  background: var(--fondo-audio) center / cover no-repeat; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, .45); }
+:root[data-portada-ver="negro"] .reproductor.solo-audio.con-portada::before { display: none; }
+:root[data-portada-ver="borrosa"] .reproductor.solo-audio.con-portada::after { content: "♪"; inset: 0; transform: none; height: auto; aspect-ratio: auto;
+  background: none; box-shadow: none; border-radius: 0; }

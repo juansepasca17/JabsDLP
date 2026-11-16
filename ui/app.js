@@ -1239,6 +1239,7 @@ async function borrarPlantilla(id) {
 function pintarAjustes() {
   document.documentElement.dataset.subs = S.ajustes.ver_subs || 'normal';   // tamaño de los subtítulos en Ver
   document.documentElement.dataset.menuVer = S.ajustes.ver_menu || 'flotante';
+  document.documentElement.dataset.portadaVer = S.ajustes.ver_portada || 'nitida';   // cómo se ve la portada de la música
   pintarPerfilesAjustes();
   pintarDestinosAjustes();
   const a = S.ajustes;
