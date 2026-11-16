@@ -2,6 +2,18 @@
 
 Lo nuevo de cada versión, de la más reciente a la más antigua. Los `.exe` y los APK están en [Releases](https://github.com/juansepasca17/JabsDLP/releases).
 
+## 1.7.9
+
+- **Controles en la notificación** (Android, *Ajustes*, activado por defecto): lo que suena en Ver aparece en la
+  notificación, en el panel de controles multimedia y en la pantalla de bloqueo, con su portada, la barra de tiempo y
+  los botones anterior, pausa y siguiente (también responde a los botones de los auriculares). Sirve para música y
+  para videos (con su miniatura).
+- **Botón X** en la notificación, como en Spotify: pausa y la quita, y no vuelve a salir hasta que le des play en la
+  app. En pausa también se puede quitar deslizándola.
+- **Videos en segundo plano** (*Ajustes*): si sales de la app o apagas la pantalla, los videos **siguen sonando** (por
+  defecto; antes Android los pausaba) y la lista pasa sola al siguiente, o **se pausan** si lo prefieres para ahorrar
+  batería. La música siempre sigue sonando.
+
 ## 1.7.8
 
 - **Portada de la música en el reproductor**: mientras suena un audio con portada, se ve nítida y centrada (como en

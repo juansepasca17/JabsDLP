@@ -106,6 +106,7 @@ function cerrarVer() {
   limpiarReproductor();
   V.datos = null; V.lista = []; V.actual = -1; V.coleccion = null; V.nombreLista = '';
   clearInterval(temporizadorTorrent);
+  avisarMusica();   // quita la notificación de lo que sonaba
   API.detener_ver();
   if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   if (V.completaCss) completaCss(false);
@@ -837,3 +838,62 @@ window.verCompartido = url => { guardarProgresoVer(); V.lista = []; V.coleccion 
 function verLocal(ruta) { guardarProgresoVer(); V.lista = []; V.coleccion = null; return verOrigen(ruta); }
 
 iniciarVer();
+
+/* ---------- lo que suena, fuera de la app: notificación de Android y controles multimedia (Media Session) ---------- */
+function infoMusica() {
+  const v = video(), d = V.datos, item = V.lista[V.actual];
+  if (!d) return null;
+  let portada = d.miniatura || item?.miniatura || '';
+  if (portada && !/^(data:image\/|https:\/\/)/.test(portada)) portada = '';
+  const titulo = d.titulo || item?.titulo || '';
+  const artista = d.canal || item?.canal || (V.lista.length > 1 ? V.nombreLista || '' : '');
+  return {
+    titulo, artista, portada, sonando: !v.paused || !!V.cargando, posicion: tiempoVer() || 0, velocidad: v.playbackRate || 1,
+    duracion: (d.duracion || (isFinite(v.duration) ? v.duration : 0)) || 0,
+    mantener: !!d.solo_audio || S.ajustes?.ver_video_fondo !== 'pausa',
+    anterior: true, siguiente: V.lista.length > 1 && (V.aleatorio || V.repetir === 'lista' || V.actual < V.lista.length - 1),
+  };
+}
+let musicaClave = '', musicaTimer = null;
+// Al pasar de una canción a otra hay una pausa de un instante: se espera un poco antes de avisar de una pausa
+// para que la notificación no parpadee (y Android no deje de tratar la app como «reproduciendo»)
+function avisarMusica() {
+  clearTimeout(musicaTimer);
+  const info = infoMusica();
+  if (info && !info.sonando && musicaClave.includes('"sonando":true')) { musicaTimer = setTimeout(enviarMusica, 1500); return; }
+  enviarMusica();
+}
+function enviarMusica() {
+  const activo = S.ajustes?.ver_notificacion !== false;
+  const info = activo ? infoMusica() : null;
+  const clave = info ? JSON.stringify({ ...info, posicion: Math.round(info.posicion / 5) }) : '';
+  if (clave === musicaClave) return;
+  musicaClave = clave;
+  try { window.JabsAndroid?.musica?.(info ? JSON.stringify(info) : ''); } catch { /* fuera de Android */ }
+  const ms = navigator.mediaSession;
+  if (!ms) return;
+  try {
+    if (!info) { ms.metadata = null; ms.playbackState = 'none'; return; }
+    ms.metadata = new MediaMetadata({ title: info.titulo, artist: info.artista, artwork: info.portada ? [{ src: info.portada }] : [] });
+    ms.playbackState = info.sonando ? 'playing' : 'paused';
+  } catch { /* sin Media Session */ }
+}
+window.controlMusica = (orden, valor) => {
+  const v = video();
+  if (!V.datos) return;
+  if (orden === 'play') v.play().catch(() => {});
+  else if (orden === 'pausa') v.pause();
+  else if (orden === 'siguiente') siguienteVer(true);
+  else if (orden === 'anterior') anteriorVer();
+  else if (orden === 'ir' && valor != null) saltarA(+valor);
+};
+(() => {
+  const v = video();
+  ['play', 'pause', 'loadedmetadata', 'seeked', 'ratechange', 'emptied'].forEach(ev => v.addEventListener(ev, () => setTimeout(avisarMusica, 0)));
+  const ms = navigator.mediaSession;
+  if (ms) {
+    const acciones = { play: 'play', pause: 'pausa', nexttrack: 'siguiente', previoustrack: 'anterior' };
+    for (const [a, o] of Object.entries(acciones)) { try { ms.setActionHandler(a, () => window.controlMusica(o)); } catch { /* no soportada */ } }
+    try { ms.setActionHandler('seekto', e => window.controlMusica('ir', e.seekTime)); } catch { /* no soportada */ }
+  }
+})();

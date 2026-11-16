@@ -454,6 +454,17 @@
                 <option value="borrosa">Solo fondo borroso</option>
               </select>
             </div>
+            <div class="ajuste solo-tactil">
+              <div class="txt"><b>Controles en la notificación</b><small>Lo que suena en Ver, con su portada, anterior, pausa y siguiente, en la notificación y en la pantalla de bloqueo.</small></div>
+              <label class="switch"><input type="checkbox" data-ajuste="ver_notificacion"><span></span></label>
+            </div>
+            <div class="ajuste solo-tactil">
+              <div class="txt"><b>Videos en segundo plano</b><small>Si sales de la app o apagas la pantalla con un video sonando. La música siempre sigue sonando. Seguir sonando gasta un poco más de batería que solo el audio.</small></div>
+              <select class="entrada chica" data-ajuste="ver_video_fondo">
+                <option value="sonido">Siguen sonando</option>
+                <option value="pausa">Se pausan</option>
+              </select>
+            </div>
             <div class="ajuste">
               <div class="txt"><b>Pasar al siguiente</b><small>Al terminar un video o canción de una lista, empieza solo el siguiente. Apagado: se pausa al terminar.</small></div>
               <label class="switch"><input type="checkbox" data-ajuste="ver_siguiente"><span></span></label>

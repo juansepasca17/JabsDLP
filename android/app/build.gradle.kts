@@ -38,9 +38,9 @@ android {
         applicationId = "com.jabsdlp.app"
         minSdk = 24
         targetSdk = 35
-        // Mismo número que la versión de PC. versionCode: 1.7.8 -> 10708
-        versionName = "1.7.8"
-        versionCode = 10708
+        // Mismo número que la versión de PC. versionCode: 1.7.9 -> 10709
+        versionName = "1.7.9"
+        versionCode = 10709
         // Python 3.12+ en Android solo existe para 64 bits. El APK publicado es arm64-v8a;
         // JABSDLP_ABIS=x86_64 compila uno para el emulador del PC (ver PORTAR.md).
         ndk { abiFilters += (System.getenv("JABSDLP_ABIS") ?: "arm64-v8a").split(",").map { it.trim() } }
@@ -105,6 +105,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.activity:activity-ktx:1.9.3")
     implementation("androidx.webkit:webkit:1.12.1")
+    implementation("androidx.media:media:1.7.0")
     // Ver torrents en la pestaña Ver (libtorrent con bindings para Java; las .so se filtran por abiFilters)
     implementation("org.libtorrent4j:libtorrent4j:2.1.0-39")
     implementation("org.libtorrent4j:libtorrent4j-android-arm64:2.1.0-39")

@@ -11,6 +11,7 @@ import com.chaquo.python.android.AndroidPlatform
 object Canales {
     const val PROGRESO = "progreso"
     const val TERMINADAS = "terminadas"
+    const val MUSICA = "musica"
 }
 
 class App : Application() {
@@ -35,6 +36,8 @@ class App : Application() {
             NotificationManager.IMPORTANCE_LOW).apply { setShowBadge(false) })
         nm.createNotificationChannel(NotificationChannel(Canales.TERMINADAS, "Descargas terminadas",
             NotificationManager.IMPORTANCE_DEFAULT))
+        nm.createNotificationChannel(NotificationChannel(Canales.MUSICA, "Reproducción",
+            NotificationManager.IMPORTANCE_LOW).apply { setShowBadge(false) })
     }
 
     companion object {

@@ -66,6 +66,10 @@ class Puente(private val contexto: Context, private val web: WebView) {
     @JavascriptInterface
     fun carpetaDisponible(ruta: String): Boolean = Plataforma.carpetaDisponible(ruta)
 
+    /** Lo que suena en Ver, para la notificación con anterior / pausa / siguiente ("" la quita). */
+    @JavascriptInterface
+    fun musica(json: String) = ServicioMusica.actualizar(contexto, json.ifBlank { null })
+
     private fun leerAsset(ruta: String) = contexto.assets.open(ruta).bufferedReader().use { it.readText() }
 }
 

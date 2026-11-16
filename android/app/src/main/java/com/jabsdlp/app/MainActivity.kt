@@ -77,10 +77,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         Plataforma.actividad(this)
+        actual = java.lang.ref.WeakReference(this)
 
         if (0 != applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) WebView.setWebContentsDebuggingEnabled(true)
         raiz = FrameLayout(this).apply { setBackgroundColor(Color.parseColor("#09090b")) }
-        web = WebView(this).apply { setBackgroundColor(Color.parseColor("#09090b")) }
+        web = WebViewJabs(this).apply { setBackgroundColor(Color.parseColor("#09090b")) }
         raiz.addView(web, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         setContentView(raiz)
         // Android 15 dibuja la app bajo las barras del sistema: se deja su espacio (y el del teclado)
@@ -161,15 +162,18 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        visible = true
         principal.post(vigilar)
     }
 
     override fun onPause() {
+        visible = false
         principal.removeCallbacks(vigilar)
         super.onPause()
     }
 
     override fun onDestroy() {
+        if (actual?.get() === this) { actual = null; ServicioMusica.actualizar(this, null) }
         Plataforma.actividad(null)
         futuroArchivo?.complete(null)
         web.destroy()
@@ -400,4 +404,38 @@ class MainActivity : ComponentActivity() {
         cerrarVideo = null
         barrasOcultas(completa || videoCompleto)
     }
+
+    companion object {
+        @Volatile private var actual: java.lang.ref.WeakReference<MainActivity>? = null
+        /** La app está delante: solo entonces Android deja crear un servicio en primer plano. */
+        @Volatile var visible = false
+
+        /** La app está en segundo plano y ya no suena nada: la página pasa a oculta, como siempre. */
+        fun ocultarPagina() {
+            val a = actual?.get() ?: return
+            a.runOnUiThread { if (!visible) a.web.dispatchWindowVisibilityChanged(View.INVISIBLE) }
+        }
+
+        /** Botones de la notificación de música (y de los auriculares): se los pasa a la pestaña Ver. */
+        fun controlMusica(orden: String, valor: Double? = null) {
+            val a = actual?.get() ?: return
+            a.runOnUiThread {
+                // con la app en segundo plano, que la página siga «visible» para que Android deje sonar el video
+                if (!visible && orden != "pausa") a.web.dispatchWindowVisibilityChanged(View.VISIBLE)
+                a.web.evaluateJavascript("window.controlMusica && controlMusica(${JSONObject.quote(orden)}, ${valor ?: "null"})", null)
+            }
+        }
+    }
 }
+
+/**
+ * Android pausa los videos de una página que no se ve (app en segundo plano). Mientras suena algo con la
+ * notificación de música, la página sigue creyéndose visible: el video sigue sonando (y pasa al siguiente)
+ * con la pantalla apagada o en otra app. En pausa, o sin la notificación, se comporta como siempre.
+ */
+class WebViewJabs(contexto: android.content.Context) : WebView(contexto) {
+    override fun onWindowVisibilityChanged(visibility: Int) {
+        super.onWindowVisibilityChanged(if (ServicioMusica.mantener) View.VISIBLE else visibility)
+    }
+}
+
