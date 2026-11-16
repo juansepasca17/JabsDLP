@@ -96,6 +96,7 @@ class Api:
         self._burbuja = None            # ventana pequeña para sugerir enlaces copiados (la crea main.py)
         self._colecciones = Colecciones()
         self._atajo = None
+        self._atajo_ver = None
         self._vigia = None
         self._sugerida = None           # URL mostrada en la burbuja
         self._proxy = None              # proxy local de la pestaña Ver (se crea al usarla)
@@ -492,7 +493,7 @@ class Api:
         self._gestor.notificar()
         if any(k.startswith('captura_') for k in (cambios or {})):
             self.configurar_captura()
-            todo = dict(todo, captura_error=self._error_captura())
+            todo = dict(todo, captura_error=self._error_captura(), captura_error_ver=self._error_captura_ver())
         if 'retomar_cola' in (cambios or {}):
             self._gestor._guardar_cola()
         if 'ffmpeg_ruta' in (cambios or {}):
@@ -528,6 +529,28 @@ class Api:
     def elegir_carpeta(self):
         ruta = self._dialogo('FOLDER', directory=self._ajustes.carpeta())
         return self.guardar_ajustes({'carpeta': ruta}) if ruta else None
+
+    # ---------- carpetas de destino guardadas (cambiar rápido en Descargar) ----------
+    def agregar_carpeta_destino(self):
+        """Elige una carpeta (como «Cambiar»), la pone de destino y la guarda en la lista junto con la anterior."""
+        anterior = self._ajustes.carpeta()
+        todo = self.elegir_carpeta()
+        if not todo:
+            return None
+        nueva = todo.get('carpeta_efectiva') or self._ajustes.carpeta()
+        lista = [nueva, anterior, *(self._ajustes.get('carpetas_destino') or [])]
+        vistas, unicas = set(), []
+        for c in lista:
+            clave = os.path.normcase(os.path.abspath(c))
+            if c and clave not in vistas:
+                vistas.add(clave)
+                unicas.append(c)
+        return self.guardar_ajustes({'carpetas_destino': unicas[:20]})
+
+    def quitar_carpeta_destino(self, ruta):
+        lista = [c for c in self._ajustes.get('carpetas_destino') or []
+                 if os.path.normcase(os.path.abspath(c)) != os.path.normcase(os.path.abspath(str(ruta or '')))]
+        return self.guardar_ajustes({'carpetas_destino': lista})
 
     def elegir_cookies(self):
         ruta = self._dialogo('OPEN', file_types=('Cookies (*.txt)', 'Todos los archivos (*.*)'))
@@ -948,12 +971,17 @@ class Api:
     def _error_captura(self):
         return self._atajo.error if self._atajo and self._atajo.error else None
 
+    def _error_captura_ver(self):
+        return self._atajo_ver.error if self._atajo_ver and self._atajo_ver.error else None
+
     def _detener_captura(self):
         if self._atajo:
             self._atajo.detener()
+        if self._atajo_ver:
+            self._atajo_ver.detener()
         if self._vigia:
             self._vigia.detener()
-        self._atajo = self._vigia = None
+        self._atajo = self._atajo_ver = self._vigia = None
 
     def configurar_captura(self):
         """Arranca o para el atajo y el vigía según los ajustes. Devuelve el error del atajo, si lo hay."""
@@ -967,10 +995,28 @@ class Api:
             except ValueError as e:
                 self._atajo = None
                 return str(e)
+        if self._ajustes.get('captura_atajo_ver'):
+            try:   # el de Ver: el enlace seleccionado se abre directo en la pestaña Ver
+                self._atajo_ver = captura.Atajo(self._ajustes.get('captura_tecla_ver'), self._recibir_para_ver)
+                self._atajo_ver.iniciar()
+            except ValueError:
+                self._atajo_ver = None
         if self._ajustes.get('captura_portapapeles'):
             self._vigia = captura.VigiaPortapapeles(self._recibir_captura, captura.sitio_reconocido)
             self._vigia.iniciar()
         return self._error_captura()
+
+    def _recibir_para_ver(self, urls, desde_atajo=True):
+        """Atajo de Ver: muestra la ventana y abre el primer enlace en la pestaña Ver."""
+        if self._ventana is None or not urls:
+            return
+        registro_app.info('Atajo de Ver: %s', urls[0][:300])
+        try:
+            self._ventana.show()
+            self._ventana.restore()
+            self._ventana.evaluate_js(f'verCompartido({json.dumps(urls[0])})')
+        except Exception:  # noqa: BLE001 - la ventana pudo cerrarse
+            pass
 
     def estado_captura(self):
         return {'error': self._error_captura(), 'atajo': bool(self._atajo and not self._atajo.error),

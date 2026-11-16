@@ -91,6 +91,8 @@ AJUSTES_POR_DEFECTO = {
     'stack_auto': False,                # cada enlace del stack se descarga al momento
     'captura_atajo': False,             # atajo global para enviar el enlace seleccionado a JabsDLP
     'captura_tecla': 'ctrl+alt+x',
+    'captura_atajo_ver': True,          # PC: atajo para mandar el enlace seleccionado directo a la pestaña Ver
+    'captura_tecla_ver': 'ctrl+alt+v',
     'captura_portapapeles': False,      # vigilar el portapapeles (enlaces de video copiados)
     'captura_modo': 'sugerir',          # sugerir (burbuja con botones) | auto (sin preguntar)
     'pantalla_completa': False,         # abrir la app en pantalla completa
@@ -100,7 +102,8 @@ AJUSTES_POR_DEFECTO = {
     'ver_menu': 'flotante',
     'log_app': True,                    # guardar el log propio de la app (Ajustes → Avanzado)             # celular: menús del reproductor junto al botón (flotante) o desde abajo (panel)
     'perfiles': [],                     # perfiles de descarga guardados: [{id, nombre, prefs}]               # tamaño de los subtítulos en Ver: pequeno | normal | grande
-    'carpetas_biblioteca': [],          # carpetas extra que se ven en la Biblioteca
+    'carpetas_biblioteca': [],
+    'carpetas_destino': [],             # carpetas de descarga guardadas para cambiar rápido en Descargar          # carpetas extra que se ven en la Biblioteca
     'prefs': PREFS_POR_DEFECTO,
 }
 
@@ -108,7 +111,7 @@ AJUSTES_POR_DEFECTO = {
 BOOLEANOS = ('subcarpeta_playlist', 'paralelo', 'decodificar_gpu', 'recomendacion', 'ytdlp_auto', 'retomar_cola',
              'notificaciones', 'bandeja_al_minimizar', 'numerar_playlist', 'no_repetir', 'corte_exacto',
              'impersonar', 'args_extra_activo', 'log_completo', 'modo_stack', 'stack_auto', 'captura_atajo',
-             'captura_portapapeles', 'pantalla_completa', 'ver_gestos', 'log_app')
+             'captura_portapapeles', 'pantalla_completa', 'ver_gestos', 'log_app', 'captura_atajo_ver')
 ENTEROS = {'max_paralelo': (0, 999), 'fragmentos': (1, 32), 'max_conversiones': (1, 16), 'calidad': (10, 45),
            'reintentos': (0, 10), 'subida_torrent_kb': (1, 100000)}
 AVISOS = ('torrent', 'torrent_ver', 'http', 'generico', 'ejecutable', 'aria2')
@@ -123,6 +126,7 @@ OPCIONES = {
     'idioma': ('auto', 'es', 'en'),
     'motor': ('ytdlp', 'aria2', 'auto'),
     'captura_tecla': ('ctrl+alt+x', 'ctrl+shift+x', 'ctrl+alt+d'),
+    'captura_tecla_ver': ('ctrl+alt+v', 'ctrl+alt+w', 'ctrl+shift+z'),
     'captura_modo': ('sugerir', 'auto'),
     'boton_colecciones': ('lateral', 'flotante'),
     'ver_subs': ('pequeno', 'normal', 'grande'),
@@ -195,7 +199,7 @@ def validar(clave, valor):
         return validar_perfiles(valor)
     if clave == 'plantilla_args_id':
         return valor if isinstance(valor, str) and PATRON_ID.match(valor or 'x') else NO_VALIDO
-    if clave == 'carpetas_biblioteca':
+    if clave in ('carpetas_biblioteca', 'carpetas_destino'):
         if not isinstance(valor, list):
             return NO_VALIDO
         vistas, limpias = set(), []

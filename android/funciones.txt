@@ -68,3 +68,5 @@ log_texto
 borrar_log
 log_ui
 coleccion_completar
+agregar_carpeta_destino
+quitar_carpeta_destino

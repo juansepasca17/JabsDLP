@@ -37,3 +37,4 @@ ffprobe.exe
 .claude/
 .vs/
 .vscode/
+dist-*/

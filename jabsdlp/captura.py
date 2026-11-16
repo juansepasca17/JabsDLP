@@ -14,7 +14,7 @@ from ctypes import wintypes
 from .utilidades import extraer_urls, leer_portapapeles
 
 MODIFICADORES = {'ctrl': 0x2, 'alt': 0x1, 'shift': 0x4}
-TECLAS = {'x': 0x58, 'd': 0x44}
+TECLAS = {'x': 0x58, 'd': 0x44, 'v': 0x56, 'w': 0x57, 'z': 0x5A}
 MOD_NOREPEAT = 0x4000
 WM_HOTKEY, WM_QUIT = 0x0312, 0x0012
 VK_CONTROL, VK_MENU, VK_SHIFT, VK_C = 0x11, 0x12, 0x10, 0x43

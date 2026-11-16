@@ -9,6 +9,7 @@ html.android .ajuste:has([data-ajuste="decodificar_gpu"]),
 html.android .ajuste:has([data-accion="detectar-gpu"]),
 html.android .ajuste:has([data-ajuste="bandeja_al_minimizar"]),
 html.android .ajuste:has([data-ajuste="captura_atajo"]),
+html.android .ajuste:has([data-ajuste="captura_atajo_ver"]),
 html.android .ajuste:has([data-ajuste="captura_portapapeles"]),
 html.android .ajuste:has([data-ajuste="boton_colecciones"]),
 html.android #aj-fila-navegador,
@@ -153,3 +154,5 @@ html.android .rp-opcion { padding: 13px 12px; font-size: 15px; }
 html.android .rejilla-ajustes > .card > .titulo-seccion { min-height: 48px; margin: -6px 0 8px; }
 html.android .btn-plegar { width: 44px; height: 44px; }
 html.android .buscar-ajustes .campo-buscar-ajustes { flex: 1 1 100%; }
+/* Controles ocultos: el primer toque solo los muestra (antes se podía mover la línea de tiempo sin verla) */
+html.android .reproductor:not(.controles-visibles) .rp-controles { pointer-events: none; }

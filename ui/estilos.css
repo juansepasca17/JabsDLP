@@ -802,3 +802,14 @@ html.android .solo-pc { display: none !important; }
 .bib-archivo { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .bib-archivo img { -webkit-user-drag: none; pointer-events: none; }
 body.arrastrando-sel #bib-rejilla { cursor: crosshair; }
+/* Selector de la carpeta de destino */
+.destino-sel { position: relative; cursor: pointer; }
+.destino-sel select { appearance: none; -webkit-appearance: none; border: 0; background: transparent; color: inherit; font: inherit;
+  min-width: 0; max-width: 100%; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; padding-right: 18px; }
+.destino-sel::after { content: ""; position: absolute; right: 4px; top: 50%; width: 6px; height: 6px; margin-top: -5px;
+  border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); pointer-events: none; }
+.destino-sel select option { background: var(--card); color: var(--text); }
+.atajos { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 10px 0 0; font-size: 12.5px; }
+.atajos dt { font-family: ui-monospace, Consolas, monospace; color: var(--text); white-space: nowrap; }
+.atajos dd { margin: 0; color: var(--muted); }
+.pie-opciones .destino-sel { flex: 0 1 220px; min-width: 150px; }

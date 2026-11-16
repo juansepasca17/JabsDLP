@@ -376,7 +376,20 @@
     // 1.7.3
     'Esta versión no trae aria2, así que no puede descargar torrents. Puedes verlos sin descargar con el botón de abajo.':
       'This version doesn\'t include aria2, so it can\'t download torrents. You can watch them without downloading with the button below.',
-    'Tamaño de los subtítulos': 'Subtitle size', 'Buscar idioma': 'Search language', 'Plegar o desplegar': 'Collapse or expand', 'Borrar la búsqueda': 'Clear search', 'Iconos pequeños': 'Small icons', 'Iconos medianos': 'Medium icons', 'Iconos grandes': 'Large icons',
+    'Tamaño de los subtítulos': 'Subtitle size', 'Buscar idioma': 'Search language', 'Colecciones (Ctrl + K)': 'Collections (Ctrl + K)', 'Atajos de teclado': 'Keyboard shortcuts',
+    'Funcionan con JabsDLP abierto y en primer plano.': 'They work while JabsDLP is open and in front.',
+    'Abrir o cerrar Colecciones': 'Open or close Collections', 'Abrir o cerrar el stack (en Descargar, con el modo stack)': 'Open or close the stack (in Download, with stack mode)',
+    'Pantalla completa': 'Full screen', 'Ver: reproducir o pausar': 'Watch: play or pause', 'Ver: 5 o 10 s atrás o adelante': 'Watch: 5 or 10 s back or forward',
+    'Ver: volumen y silencio': 'Watch: volume and mute', 'Ver: subtítulos y pantalla completa': 'Watch: subtitles and full screen',
+    'Ver: siguiente y anterior de la lista': 'Watch: next and previous in the list',
+    'Desde cualquier programa: enviar el enlace seleccionado a Descargar o a Ver (Captura rápida)': 'From any program: send the selected link to Download or Watch (Quick capture)',
+    'El stack está vacío (actívalo con el botón «Stack» de Descargar).': 'The stack is empty (turn it on with the «Stack» button in Download).', 'Atajo para ver un enlace': 'Shortcut to watch a link',
+    'Igual que el anterior, pero el enlace se abre directo en la pestaña Ver (sin descargarlo). Apágalo si no lo usas o si choca con otro programa.':
+      'Like the one above, but the link opens straight in the Watch tab (without downloading it). Turn it off if you don\'t use it or if it clashes with another program.', '＋ Añadir carpeta…': '＋ Add folder…', 'Carpeta de destino': 'Destination folder',
+    'Carpetas de destino guardadas': 'Saved destination folders', 'Quitar de la lista': 'Remove from the list',
+    'Para cambiar rápido a dónde va cada descarga: elígelas en Descargar, abajo, en el selector de la carpeta (con «＋ Añadir carpeta…» se guardan aquí).':
+      'To quickly change where each download goes: pick them in Download, at the bottom, in the folder selector ("＋ Add folder…" saves them here).',
+    'Añádelas desde Descargar, en el selector de la carpeta de destino («＋ Añadir carpeta…»).': 'Add them from Download, in the destination folder selector ("＋ Add folder…").', 'Plegar o desplegar': 'Collapse or expand', 'Borrar la búsqueda': 'Clear search', 'Iconos pequeños': 'Small icons', 'Iconos medianos': 'Medium icons', 'Iconos grandes': 'Large icons',
     'Tamaño de los iconos': 'Icon size', 'Pega un enlace, magnet o .torrent': 'Paste a link, magnet or .torrent',
     'Pegar desde el portapapeles y añadir': 'Paste from the clipboard and add', 'Añadir': 'Add', 'Video descargado': 'Downloaded video',
     'Audio descargado': 'Downloaded audio', 'Obteniendo datos…': 'Getting info…', 'Enlace directo': 'Direct link',

@@ -20,7 +20,7 @@
     <button class="nav" data-vista="biblioteca"><i data-ico="library"></i>Biblioteca</button>
     <button class="nav" data-vista="cola"><i data-ico="list"></i>Cola<span class="contador" id="contador-cola">0</span></button>
     <button class="nav" data-vista="ajustes"><i data-ico="settings"></i>Ajustes</button>
-    <button class="nav nav-colecciones" data-accion="abrir-colecciones"><i data-ico="bookmark"></i>Colecciones<span class="contador" id="contador-colecciones">0</span></button>
+    <button class="nav nav-colecciones" data-accion="abrir-colecciones" title="Colecciones (Ctrl + K)"><i data-ico="bookmark"></i>Colecciones<span class="contador" id="contador-colecciones">0</span></button>
     <div class="pie">
       <div class="estado-linea"><span class="punto" id="punto-ffmpeg"></span><span id="txt-ffmpeg">ffmpeg…</span></div>
       <div class="estado-linea"><span class="punto" id="punto-gpu"></span><span id="txt-gpu">Detectando GPU…</span></div>
@@ -183,6 +183,10 @@
             <div class="ajuste">
               <div class="txt"><b>Carpeta de destino</b><div class="ruta" id="aj-carpeta">—</div></div>
               <button class="btn chico" data-accion="elegir-carpeta">Cambiar</button>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Carpetas de destino guardadas</b><small>Para cambiar rápido a dónde va cada descarga: elígelas en Descargar, abajo, en el selector de la carpeta (con «＋ Añadir carpeta…» se guardan aquí).</small>
+                <div class="perfiles" id="aj-destinos"></div></div>
             </div>
             <div class="ajuste">
               <div class="txt"><b>Perfiles de descarga</b><small>Preferencias de formato guardadas con un nombre (p. ej. «Solo audio MP3» o «720p para el celular»). Se eligen en Descargar, junto a «Preferencias de formato»: «Actual» son las que tengas puestas.</small>
@@ -415,6 +419,20 @@
               <div class="txt"><b>Abrir en pantalla completa</b><small>También puedes entrar o salir en cualquier momento con F11.</small></div>
               <label class="switch"><input type="checkbox" data-ajuste="pantalla_completa"><span></span></label>
             </div>
+            <div class="ajuste solo-pc">
+              <div class="txt"><b>Atajos de teclado</b><small>Funcionan con JabsDLP abierto y en primer plano.</small>
+                <dl class="atajos">
+                  <dt>Ctrl + K</dt><dd>Abrir o cerrar Colecciones</dd>
+                  <dt>Ctrl + J</dt><dd>Abrir o cerrar el stack (en Descargar, con el modo stack)</dd>
+                  <dt>F11</dt><dd>Pantalla completa</dd>
+                  <dt>Espacio · K</dt><dd>Ver: reproducir o pausar</dd>
+                  <dt>← → · J L</dt><dd>Ver: 5 o 10 s atrás o adelante</dd>
+                  <dt>↑ ↓ · M</dt><dd>Ver: volumen y silencio</dd>
+                  <dt>C · F</dt><dd>Ver: subtítulos y pantalla completa</dd>
+                  <dt>N · P</dt><dd>Ver: siguiente y anterior de la lista</dd>
+                  <dt>Ctrl + Alt + X / V</dt><dd>Desde cualquier programa: enviar el enlace seleccionado a Descargar o a Ver (Captura rápida)</dd>
+                </dl></div>
+            </div>
             <div class="ajuste solo-tactil">
               <div class="txt"><b>Gestos en el reproductor</b><small>Un toque muestra los controles y dos toques a un lado adelantan o atrasan 10 s. Apagado: un toque pausa.</small></div>
               <label class="switch"><input type="checkbox" data-ajuste="ver_gestos"><span></span></label>
@@ -453,6 +471,15 @@
                 <option value="ctrl+alt+d">Ctrl + Alt + D</option>
               </select>
               <label class="switch"><input type="checkbox" data-ajuste="captura_atajo"><span></span></label>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Atajo para ver un enlace</b><small>Igual que el anterior, pero el enlace se abre directo en la pestaña Ver (sin descargarlo). Apágalo si no lo usas o si choca con otro programa.<span class="err-texto" id="aj-captura-error-ver"></span></small></div>
+              <select class="entrada chica" data-ajuste="captura_tecla_ver">
+                <option value="ctrl+alt+v">Ctrl + Alt + V</option>
+                <option value="ctrl+alt+w">Ctrl + Alt + W</option>
+                <option value="ctrl+shift+z">Ctrl + Shift + Z</option>
+              </select>
+              <label class="switch"><input type="checkbox" data-ajuste="captura_atajo_ver"><span></span></label>
             </div>
             <div class="ajuste">
               <div class="txt"><b>Vigilar el portapapeles</b><small>Al copiar un enlace de video (por ejemplo, Compartir → Copiar enlace), JabsDLP lo detecta. Solo sitios que yt-dlp reconoce.</small></div>
@@ -512,7 +539,7 @@
     </div>
   </div>
 </div>
-<button class="fab oculto" id="fab-colecciones" data-accion="abrir-colecciones"><i data-ico="bookmark"></i><span>Colecciones</span><b class="contador" id="contador-fab">0</b></button>
+<button class="fab oculto" id="fab-colecciones" data-accion="abrir-colecciones" title="Colecciones (Ctrl + K)"><i data-ico="bookmark"></i><span>Colecciones</span><b class="contador" id="contador-fab">0</b></button>
 <div class="velo oculto" id="velo-colecciones" data-accion="cerrar-colecciones"></div>
 <aside class="panel-colecciones" id="panel-colecciones" aria-hidden="true"></aside>
 <div class="toasts" id="toasts"></div>

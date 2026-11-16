@@ -102,7 +102,8 @@ def test_carpetas_de_biblioteca_validadas(tmp_path):
 # ---------- captura ----------
 def test_teclas_del_atajo():
     assert captura.interpretar_tecla('ctrl+alt+x') == (0x3, 0x58)
-    for malo in ('x', 'ctrl+alt+z', 'win+x', ''):
+    assert captura.interpretar_tecla('ctrl+alt+v') == (0x3, 0x56)
+    for malo in ('x', 'ctrl+alt+q', 'win+x', ''):
         with pytest.raises(ValueError):
             captura.interpretar_tecla(malo)
 

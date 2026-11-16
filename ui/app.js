@@ -571,11 +571,46 @@ function audioPersonalizadoHTML() {
     <div class="lista-formatos compacta">${pistas.map(pistaHTML).join('')}</div>`;
 }
 
+/* Carpeta de destino: selector con las carpetas guardadas (cambiar rápido sin ir a Ajustes) */
+function nombreCarpeta(ruta) { return String(ruta || '').replace(/[\\/]+$/, '').split(/[\\/]/).pop() || ruta; }
+
+function selectorDestinoHTML(destino) {
+  const actual = S.ajustes.carpeta_efectiva || '';
+  const guardadas = (S.ajustes.carpetas_destino || []).filter(c => c.toLowerCase() !== actual.toLowerCase());
+  return `<label class="destino destino-sel" title="${esc(destino)}">${ico('folder', 'sm')}
+      <select id="sel-destino" aria-label="Carpeta de destino">
+        <option value="${esc(actual)}" selected title="${esc(destino)}">${esc(nombreCarpeta(destino))}</option>
+        ${guardadas.map(c => `<option value="${esc(c)}" title="${esc(c)}">${esc(nombreCarpeta(c))}</option>`).join('')}
+        <option value="__nueva__">＋ Añadir carpeta…</option>
+      </select></label>`;
+}
+
+async function cambiarDestino(valor) {
+  if (valor === '__nueva__') {
+    const r = await API.agregar_carpeta_destino();
+    if (r) { S.ajustes = r; toast(`Las descargas irán a «${esc(nombreCarpeta(r.carpeta_efectiva))}». Queda guardada para elegirla aquí.`, 'ok'); }
+  } else if (valor) {
+    S.ajustes = await API.guardar_ajustes({ carpeta: valor });
+    toast(`Las descargas irán a «${esc(nombreCarpeta(valor))}».`, 'ok');
+  }
+  renderOpciones();
+  pintarAjustes();
+}
+
+function pintarDestinosAjustes() {
+  const caja = $('#aj-destinos');
+  if (!caja) return;
+  const lista = S.ajustes.carpetas_destino || [];
+  caja.innerHTML = lista.length ? lista.map(c => `<span class="chip-perfil" title="${esc(c)}"><span class="no-traducir">${esc(nombreCarpeta(c))}</span>
+      <button class="btn chico icono fantasma" data-accion="quitar-destino" data-id="${esc(c)}" title="Quitar de la lista">${ico('x', 'sm')}</button></span>`).join('')
+    : '<small class="dim">Añádelas desde Descargar, en el selector de la carpeta de destino («＋ Añadir carpeta…»).</small>';
+}
+
 function pieHTML(texto, habilitado) {
   let destino = S.ajustes.carpeta_efectiva || '';
   if (S.analisis?.tipo === 'playlist' && S.ajustes.subcarpeta_playlist) destino += `\\${S.analisis.titulo}`;
   return `<div class="pie-opciones">
-      <div class="destino" title="${esc(destino)}">${ico('folder', 'sm')}<span>${esc(destino)}</span></div>
+      ${selectorDestinoHTML(destino)}
       <div class="acciones">
         ${['video', 'playlist', 'lote'].includes(S.analisis?.tipo) ? `<button class="btn pildora" data-accion="guardar-en-coleccion" title="Guardar para más tarde o para compartir">${ico('bookmark')}Guardar</button>` : ''}
         ${S.ajustes.modo_stack && S.stack.sel ? `<button class="btn pildora" data-accion="stack-quitar-actual">${ico('x')}Quitar del stack</button>`
@@ -1201,10 +1236,12 @@ function pintarAjustes() {
   document.documentElement.dataset.subs = S.ajustes.ver_subs || 'normal';   // tamaño de los subtítulos en Ver
   document.documentElement.dataset.menuVer = S.ajustes.ver_menu || 'flotante';
   pintarPerfilesAjustes();
+  pintarDestinosAjustes();
   const a = S.ajustes;
   pintarPlantillas();
   aplicarBotonColecciones();
   $('#aj-captura-error').textContent = a.captura_error ? ` ${a.captura_error}` : '';
+  if ($('#aj-captura-error-ver')) $('#aj-captura-error-ver').textContent = a.captura_error_ver ? ` ${a.captura_error_ver}` : '';
   $('#url').placeholder = a.modo_stack ? 'Pega enlaces: se irán sumando al stack'
     : 'Pega la URL de un video, playlist o canal (o varias URLs a la vez)';
   $$('[data-ajuste]').forEach(el => {
@@ -1550,6 +1587,7 @@ document.addEventListener('click', async e => {
     }
     case 'guardar-perfil': return guardarPerfil();
     case 'abrir-log': return API.abrir_log();
+    case 'quitar-destino': S.ajustes = await API.quitar_carpeta_destino(d.id); pintarDestinosAjustes(); if (S.analisis) renderOpciones(); return;
     case 'borrar-log':
       if (await confirmar('Borrar log', '¿Borrar el log de la app (esta sesión y la anterior)?', 'Borrar')) {
         await API.borrar_log(); toast('Log borrado.', 'ok');
@@ -1611,6 +1649,7 @@ document.addEventListener('change', e => {
   }
   if (e.target.id === 'aj-velocidad-custom') return guardarAjuste({ limite_velocidad: Math.max(0, +e.target.value || 0) });
   if (e.target.id === 'sel-perfil') return elegirPerfil(e.target.value);
+  if (e.target.id === 'sel-destino') return cambiarDestino(e.target.value);
   const pref = e.target.closest('[data-pref-ajuste]');
   if (pref) {
     S.prefs[pref.dataset.prefAjuste] = pref.value;

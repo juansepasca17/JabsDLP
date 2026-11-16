@@ -789,7 +789,7 @@ function pintarBiblioteca() {
   if (!d) return;
   const partes = d.sub ? d.sub.split(/[\\/]/) : [];
   $('#bib-migas').innerHTML = `<a data-bib-sub="">${esc(B.carpetas.find(c => c.ruta === B.raiz)?.nombre || 'Carpeta')}</a>`
-    + partes.map((p, i) => ` <span class="dim">›</span> <a data-bib-sub="${esc(partes.slice(0, i + 1).join('\\'))}">${esc(p)}</a>`).join('');
+    + partes.map((p, i) => ` <span class="dim">›</span> <a data-bib-sub="${esc(partes.slice(0, i + 1).join('/'))}">${esc(p)}</a>`).join('');
   $('#bib-favs').classList.toggle('primario', B.soloFavs);
   $('#bib-subcarpetas')?.classList.toggle('primario', B.recursivo);
   const archivos = filtrarBib();
@@ -803,7 +803,7 @@ function pintarBiblioteca() {
     return;
   }
   $('#bib-rejilla').innerHTML = (carpetas.length ? `<div class="bib-subcarpetas">${carpetas.map(c => `
-      <div class="bib-carpeta" data-bib-sub="${esc(d.sub ? d.sub + '\\' + c.nombre : c.nombre)}">${ico('folder', 'sm')}<span class="no-traducir">${esc(c.nombre)}</span></div>`).join('')}</div>` : '')
+      <div class="bib-carpeta" data-bib-sub="${esc(d.sub ? d.sub.replace(/\\/g, '/') + '/' + c.nombre : c.nombre)}">${ico('folder', 'sm')}<span class="no-traducir">${esc(c.nombre)}</span></div>`).join('')}</div>` : '')
     + archivos.map(a => `
       <div class="bib-archivo ${B.sel.has(a.ruta) ? 'sel' : ''}" data-bib-ruta="${esc(a.ruta)}" title="${esc(a.nombre)}">
         <div class="bib-mini" data-mini="${esc(a.ruta)}">${B.minis[a.ruta] ? `<img src="${B.minis[a.ruta]}" alt="">` : ico(a.tipo === 'audio' ? 'music' : 'video', 'lg')}
@@ -1128,3 +1128,19 @@ document.addEventListener('touchmove', e => {
   finArrastre();
 }));
 document.addEventListener('contextmenu', e => { if (e.target.closest('#bib-rejilla .bib-archivo')) e.preventDefault(); });
+
+/* ================= Atajos dentro de la app (1.7.4) ================= */
+document.addEventListener('keydown', e => {
+  if (!e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
+  const tecla = e.key.toLowerCase();
+  if (tecla === 'k') {   // Colecciones
+    e.preventDefault();
+    if ($('#panel-colecciones')?.classList.contains('abierto')) cerrarColecciones(); else abrirColecciones();
+  } else if (tecla === 'j') {   // stack
+    e.preventDefault();
+    if (!S.ajustes.modo_stack || !S.stack.items.length) return toast('El stack está vacío (actívalo con el botón «Stack» de Descargar).');
+    if (S.vista !== 'descargar') irA('descargar');
+    S.stackAbierto = !S.stackAbierto;
+    pintarPanelStack();
+  }
+});

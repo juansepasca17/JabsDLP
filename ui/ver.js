@@ -259,7 +259,8 @@ function mostrarControles() {
   const rp = $('#reproductor');
   rp.classList.add('controles-visibles');
   clearTimeout(V.ocultarTimer);
-  if (!video().paused) V.ocultarTimer = setTimeout(() => { if (!$('#rp-menu').classList.contains('visible')) rp.classList.remove('controles-visibles'); }, 2600);
+  // con solo audio (música) no hay nada que tapar: los controles se quedan a la vista
+  if (!video().paused && !V.datos?.solo_audio) V.ocultarTimer = setTimeout(() => { if (!$('#rp-menu').classList.contains('visible')) rp.classList.remove('controles-visibles'); }, 2600);
 }
 
 function alternarPlay() {

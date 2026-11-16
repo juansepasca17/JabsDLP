@@ -26,6 +26,27 @@ y [ffmpeg](https://ffmpeg.org).
   - Puede buscar actualizaciones al abrir, como mucho una vez al día.
   - Solo guarda la última versión descargada. La que va dentro del `.exe` queda siempre como respaldo y la app vuelve a ella si la descargada falla.
 
+### Novedades de la 1.7.4
+
+- **Log de la app** (*Ajustes → Avanzado → Guardar log de la app*, activado por defecto): anota lo que pasa (videos
+  que abres en Ver y cuánto tardan en empezar, torrents, descargas y errores) para enviarlo si algo falla. Empieza uno
+  nuevo cada vez que abres la app y guarda solo la sesión anterior; se puede apagar o borrar. En PC, *Abrir log*.
+- **Guardar enlaces en colecciones sin analizarlos**: dentro de una colección, pega un enlace, magnet o `.torrent`
+  (o usa el botón del portapapeles) y se añade al instante; el título, la miniatura y la duración se completan solos.
+  En Descargar, el botón de colección junto a *Analizar* guarda el enlace que pegaste. Cada elemento dice qué es
+  (video, playlist, torrent, enlace directo o archivo descargado). Los torrents se pueden guardar para verlos más tarde.
+- **Carpetas de destino guardadas**: abajo en Descargar, el selector de la carpeta cambia a dónde va la descarga en un
+  toque; con *＋ Añadir carpeta…* se guarda una nueva.
+- **Atajo para ver un enlace** (PC, *Ajustes → Captura rápida*): selecciona un enlace en cualquier programa y pulsa
+  Ctrl + Alt + V: se abre directo en la pestaña Ver. Se puede cambiar o apagar.
+- **Atajos dentro de la app**: Ctrl + K abre o cierra Colecciones y Ctrl + J el stack. La lista completa está en
+  *Ajustes → Ventana, avisos y apariencia → Atajos de teclado*.
+- **Biblioteca**: mantén pulsado un archivo (con el dedo o el ratón) y desliza para seleccionar varios; tamaño de los
+  iconos pequeño, mediano o grande (con iconos pequeños, tocar un archivo lo abre en Ver).
+- **Ajustes**: botón propio y más grande para plegar cada sección; funciona aunque haya algo en el buscador, que
+  tiene una X para borrarlo.
+- Arreglado: en Android, entrar en una subcarpeta dentro de otra en la Biblioteca decía que la carpeta no existía.
+
 ### Novedades de la 1.7.3
 
 - **Ver torrents en Android**: igual que en PC, se reproducen mientras se descargan, se puede saltar en la línea
