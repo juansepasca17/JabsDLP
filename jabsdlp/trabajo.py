@@ -589,7 +589,8 @@ def ejecutar(trabajo, ajustes, herramientas, cubeta=None, limite_aria2=0):
         corte_exacto = bool(ajustes.get('corte_exacto'))
 
         con_metadatos = prefs.get('metadatos', True) and not manifiesto
-        con_miniatura = con_metadatos and prefs.get('miniatura', True) and \
+        # la portada es independiente de los metadatos: se puede incrustar una sin la otra
+        con_miniatura = not manifiesto and prefs.get('miniatura', True) and \
             (audio or _contenedor_merge(trabajo).split('/')[0] != 'webm')
         con_subtitulos = not audio and prefs.get('subtitulos') and not manifiesto
         if con_miniatura:

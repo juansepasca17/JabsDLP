@@ -121,6 +121,16 @@ object Plataforma {
         val r = android.media.MediaMetadataRetriever()
         return try {
             r.setDataSource(ruta)
+            // Audio con carátula (la miniatura del video que se incrusta al descargar): esa es su miniatura
+            r.embeddedPicture?.let { bytes ->
+                val portada = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                if (portada != null) {
+                    val alto = (portada.height * 320f / portada.width).toInt().coerceAtLeast(1)
+                    val final = android.graphics.Bitmap.createScaledBitmap(portada, 320, alto, true)
+                    File(destino).outputStream().use { final.compress(android.graphics.Bitmap.CompressFormat.JPEG, 78, it) }
+                    if (File(destino).length() > 0) return true
+                }
+            }
             val duracion = r.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
             val instante = if (duracion > 16_000) 8_000_000L else duracion * 500L   // microsegundos
             val opcion = android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC

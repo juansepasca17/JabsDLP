@@ -815,3 +815,10 @@ body.arrastrando-sel #bib-rejilla { cursor: crosshair; }
 .pie-opciones .destino-sel { flex: 0 1 220px; min-width: 150px; }
 .tab-stack.apagado { opacity: .55; }
 .tab-stack.apagado:hover { opacity: 1; }
+/* Iconos muy pequeños: como una galería, para ver muchos de un vistazo */
+.bib-rejilla[data-tamano="diminuto"] { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 6px; }
+.bib-rejilla[data-tamano="diminuto"] .bib-acciones, .bib-rejilla[data-tamano="diminuto"] .bib-info small,
+.bib-rejilla[data-tamano="diminuto"] .estrella { display: none; }
+.bib-rejilla[data-tamano="diminuto"] .bib-info { padding: 4px 6px 5px; }
+.bib-rejilla[data-tamano="diminuto"] .bib-info b { font-size: 10.5px; }
+.bib-rejilla[data-tamano="diminuto"] .bib-archivo { border-radius: 8px; }

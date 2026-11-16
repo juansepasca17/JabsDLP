@@ -26,6 +26,18 @@ y [ffmpeg](https://ffmpeg.org).
   - Puede buscar actualizaciones al abrir, como mucho una vez al día.
   - Solo guarda la última versión descargada. La que va dentro del `.exe` queda siempre como respaldo y la app vuelve a ella si la descargada falla.
 
+### Novedades de la 1.7.6
+
+- **Biblioteca**:
+  - **Iconos muy pequeños** (5 por fila en el celular) para ver muchos de un vistazo. En Android también se cambia
+    el tamaño **pellizcando con dos dedos**, como en la Galería.
+  - **Seleccionar todo** y, con lo seleccionado, **Reproducir** o **Aleatorio** (por ejemplo, escuchar una carpeta
+    de música al azar), además de agruparlo en una playlist o añadirlo a una colección.
+  - Los audios muestran su **portada** (la carátula incrustada) en lugar del icono de nota.
+- **Portada y metadatos por separado**: en *Extras* puedes incrustar la portada (o la miniatura en los videos) sin los
+  metadatos, o al revés. En audio, la portada es la miniatura del video y se ve en la Biblioteca y en tu
+  reproductor de música.
+
 ### Novedades de la 1.7.5
 
 - **Burbuja del portapapeles** (PC): además de *Descargar* (y *Al stack*), un botón **Ver** que abre el enlace en la

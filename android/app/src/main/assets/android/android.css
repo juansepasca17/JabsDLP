@@ -156,3 +156,7 @@ html.android .btn-plegar { width: 44px; height: 44px; }
 html.android .buscar-ajustes .campo-buscar-ajustes { flex: 1 1 100%; }
 /* Controles ocultos: el primer toque solo los muestra (antes se podía mover la línea de tiempo sin verla) */
 html.android .reproductor:not(.controles-visibles) .rp-controles { pointer-events: none; }
+@media (max-width: 999px) {
+  html.android .bib-rejilla[data-tamano="diminuto"] { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+  html.android .bib-rejilla[data-tamano="diminuto"] .bib-mini .casilla { top: 3px; left: 3px; transform: scale(.8); }
+}

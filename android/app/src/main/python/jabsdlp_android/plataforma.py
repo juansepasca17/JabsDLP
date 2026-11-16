@@ -84,7 +84,7 @@ def miniatura(ruta, ffmpeg=None):
 
     from jabsdlp import biblioteca
     from jabsdlp.ajustes import carpeta_local
-    if biblioteca.tipo_archivo(ruta) != 'video' or not os.path.isfile(ruta):
+    if biblioteca.tipo_archivo(ruta) not in ('video', 'audio') or not os.path.isfile(ruta):
         return None
     st = os.stat(ruta)
     clave = hashlib.sha1(f'{os.path.normcase(ruta)}|{st.st_mtime}|{st.st_size}'.encode('utf-8')).hexdigest()

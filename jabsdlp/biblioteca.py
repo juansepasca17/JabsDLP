@@ -114,8 +114,9 @@ def listar(raiz, sub='', raices=None, recursivo=False):
 
 
 def miniatura(ruta, ffmpeg):
-    """data:image/jpeg;base64,… de un fotograma (cacheado), o None si no se puede."""
-    if not ffmpeg or tipo_archivo(ruta) != 'video' or not os.path.isfile(ruta):
+    """data:image/jpeg;base64,… de un fotograma, o de la carátula de un audio (cacheado), o None si no se puede."""
+    tipo = tipo_archivo(ruta)
+    if not ffmpeg or tipo not in ('video', 'audio') or not os.path.isfile(ruta):
         return None
     st = os.stat(ruta)
     clave = hashlib.sha1(f'{os.path.normcase(ruta)}|{st.st_mtime}|{st.st_size}'.encode('utf-8')).hexdigest()
@@ -124,7 +125,14 @@ def miniatura(ruta, ffmpeg):
     cache = os.path.join(carpeta, clave + '.jpg')
     if not os.path.isfile(cache):
         with _semaforo:
-            for segundo in ('8', '1', '0'):
+            if tipo == 'audio':   # la portada incrustada (mp3, m4a, flac…) es una «pista de video» con una sola imagen
+                try:
+                    subprocess.run([ffmpeg, '-hide_banner', '-loglevel', 'error', '-nostdin', '-y', '-i', ruta, '-an',
+                                    '-map', '0:v:0', '-frames:v', '1', '-vf', 'scale=320:-2', '-q:v', '6', cache],
+                                   capture_output=True, timeout=20, creationflags=SIN_VENTANA)
+                except (OSError, subprocess.SubprocessError):
+                    return None
+            for segundo in (() if tipo == 'audio' else ('8', '1', '0')):
                 try:
                     subprocess.run([ffmpeg, '-hide_banner', '-loglevel', 'error', '-nostdin', '-y', '-ss', segundo,
                                     '-i', ruta, '-frames:v', '1', '-vf', 'scale=320:-2', '-q:v', '6', cache],

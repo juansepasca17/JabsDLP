@@ -863,12 +863,30 @@ function pintarSeleccionBib() {
   if ($('#bib-tamano')) $('#bib-tamano').value = B.tamano;
   barra.classList.toggle('oculto', !n);
   if (!n) return;
+  const todos = filtrarBib().length;
   barra.innerHTML = `<span><b>${n}</b> ${n === 1 ? 'seleccionado' : 'seleccionados'}</span>
-    <button class="btn chico primario" data-accion="bib-playlist">${ico('playlist', 'sm')}Agrupar en playlist</button>
+    ${n < todos ? `<button class="btn chico" data-accion="bib-sel-todo">${ico('check', 'sm')}Seleccionar todo (${todos})</button>` : ''}
+    <button class="btn chico primario" data-accion="bib-reproducir">${ico('play', 'sm')}Reproducir</button>
+    <button class="btn chico" data-accion="bib-aleatorio">${ico('aleatorio', 'sm')}Aleatorio</button>
+    <button class="btn chico" data-accion="bib-playlist">${ico('playlist', 'sm')}Agrupar en playlist</button>
     <button class="btn chico" data-accion="bib-a-coleccion">${ico('bookmark', 'sm')}Añadir a colección…</button>
     <button class="btn chico" data-accion="bib-fav-sel">${ico('star', 'sm')}Favoritos</button>
     <button class="btn chico peligro" data-accion="bib-papelera-sel">${ico('trash', 'sm')}Papelera</button>
     <button class="btn chico fantasma" data-accion="bib-sel-nada">Quitar selección</button>`;
+}
+
+// Lo seleccionado se escucha o se ve como lista en Ver (en el orden de la Biblioteca, o al azar)
+function reproducirSeleccion(aleatorio) {
+  const orden = filtrarBib().filter(a => B.sel.has(a.ruta));
+  if (!orden.length) return;
+  guardarProgresoVer();
+  V.lista = orden.map(a => ({ ruta: a.ruta, titulo: a.nombre.replace(/\.[^.]+$/, ''), existe: true }));
+  V.coleccion = null;
+  V.nombreLista = `${orden.length} ${orden.length === 1 ? 'archivo' : 'archivos'} de la Biblioteca`;
+  V.aleatorio = aleatorio;
+  irA('ver');
+  $('#ver-lista').classList.remove('oculto');
+  abrirItemLista(aleatorio ? Math.floor(Math.random() * V.lista.length) : 0);
 }
 
 function itemsBib(rutas) {
@@ -911,7 +929,7 @@ document.addEventListener('click', async e => {
     B.ultimo = ruta;
     return pintarBiblioteca();
   }
-  if (tarjeta && B.tamano === 'pequeno' && !t.closest('button, .casilla')) return verLocal(tarjeta.dataset.bibRuta);
+  if (tarjeta && ['pequeno', 'diminuto'].includes(B.tamano) && !t.closest('button, .casilla')) return verLocal(tarjeta.dataset.bibRuta);
   const fav = t.closest('[data-bib-fav]');
   if (fav) {
     const r = await API.alternar_favorito({ ruta: fav.dataset.bibFav, titulo: fav.dataset.bibFav.split(/[\\/]/).pop() });
@@ -953,6 +971,8 @@ document.addEventListener('click', async e => {
       try { localStorage.setItem('jabsdlp.bib.subcarpetas', B.recursivo ? '1' : '0'); } catch { /* sin almacenamiento */ }
       return cargarBiblioteca();
     case 'bib-sel-nada': B.sel.clear(); return pintarBiblioteca();
+    case 'bib-sel-todo': filtrarBib().forEach(a => B.sel.add(a.ruta)); return pintarBiblioteca();
+    case 'bib-reproducir': case 'bib-aleatorio': return reproducirSeleccion(accion === 'bib-aleatorio');
     case 'bib-playlist': return abrirColecciones({ agregar: itemsBib([...B.sel]), nombre: 'Mi playlist' }).then(() => $('[data-accion="col-nueva"]')?.click());
     case 'bib-a-coleccion': return abrirColecciones({ agregar: itemsBib([...B.sel]) });
     case 'bib-fav-sel': {
@@ -1154,3 +1174,35 @@ document.addEventListener('keydown', e => {
     pintarPanelStack();
   }
 });
+
+// Pellizcar con dos dedos sobre la Biblioteca: juntar = iconos más pequeños, separar = más grandes (como la Galería)
+const TAMANOS_BIB = ['diminuto', 'pequeno', 'mediano', 'grande'];
+const NOMBRE_TAMANO = { diminuto: 'Iconos muy pequeños', pequeno: 'Iconos pequeños', mediano: 'Iconos medianos', grande: 'Iconos grandes' };
+const PELLIZCO = { base: 0 };
+const distanciaDedos = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+
+function cambiarTamanoBib(paso) {
+  const i = TAMANOS_BIB.indexOf(B.tamano) + paso;
+  if (i < 0 || i >= TAMANOS_BIB.length) return false;
+  B.tamano = TAMANOS_BIB[i];
+  try { localStorage.setItem('jabsdlp.bib.tamano', B.tamano); } catch { /* sin almacenamiento */ }
+  $('#bib-rejilla').setAttribute('data-tamano', B.tamano);
+  if ($('#bib-tamano')) $('#bib-tamano').value = B.tamano;
+  toast(NOMBRE_TAMANO[B.tamano]);
+  return true;
+}
+
+document.addEventListener('touchstart', e => {
+  if (e.touches.length === 2 && e.target.closest('#bib-rejilla')) {
+    clearTimeout(ARRASTRE.timer);   // dos dedos: no es «mantener pulsado para seleccionar»
+    PELLIZCO.base = distanciaDedos(e.touches);
+  }
+}, { passive: true });
+document.addEventListener('touchmove', e => {
+  if (e.touches.length !== 2 || !PELLIZCO.base) return;
+  e.preventDefault();
+  const razon = distanciaDedos(e.touches) / PELLIZCO.base;
+  if (razon < 0.72 && cambiarTamanoBib(-1)) PELLIZCO.base = distanciaDedos(e.touches);
+  else if (razon > 1.38 && cambiarTamanoBib(1)) PELLIZCO.base = distanciaDedos(e.touches);
+}, { passive: false });
+document.addEventListener('touchend', e => { if (e.touches.length < 2) PELLIZCO.base = 0; });

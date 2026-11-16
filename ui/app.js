@@ -465,7 +465,9 @@ function filaPrefsHTML() {
     const subs = (p.idioma_subs || 'es').split(',').filter(Boolean);
     html += chipPref('subs', 'captions', 'Subtítulos', p.subtitulos ? subs.join(', ') + (p.subs_auto ? ' +auto' : '') : 'No', p.subtitulos);
   }
-  html += chipPref('extras', 'tag', 'Extras', p.metadatos ? `Metadatos${p.miniatura ? ' +1' : ''}` : 'Ninguno', !p.metadatos);
+  const portada = p.tipo === 'audio' ? 'Portada' : 'Miniatura';
+  html += chipPref('extras', 'tag', 'Extras', p.metadatos ? `Metadatos${p.miniatura ? ` + ${portada.toLowerCase()}` : ''}` : p.miniatura ? portada : 'Ninguno',
+    !p.metadatos && !p.miniatura);
   if (S.analisis?.tipo === 'video') {
     html += chipPref('recortar', 'scissors', 'Recortar', S.recorte ? `${S.recorte[0]}–${S.recorte[1]}` : 'Entero', !!S.recorte);
   }
@@ -758,9 +760,11 @@ function filaCasilla(atributos, on, texto, desc, habilitado = true) {
 
 function casillasExtras() {
   const p = S.prefs;
-  return filaCasilla('data-menu-casilla="metadatos"', p.metadatos, 'Metadatos', 'Título, autor, fecha y capítulos dentro del archivo')
-    + filaCasilla('data-menu-casilla="miniatura"', p.metadatos && p.miniatura, p.tipo === 'audio' ? 'Portada incrustada' : 'Miniatura incrustada',
-      'Necesita los metadatos activados', p.metadatos);
+  const audio = p.tipo === 'audio';
+  return filaCasilla('data-menu-casilla="metadatos"', p.metadatos, 'Metadatos',
+      audio ? 'Título, artista, fecha y descripción dentro de la canción' : 'Título, autor, fecha y capítulos dentro del archivo')
+    + filaCasilla('data-menu-casilla="miniatura"', p.miniatura, audio ? 'Portada incrustada' : 'Miniatura incrustada',
+      audio ? 'La miniatura del video como carátula: se ve en la Biblioteca y en tu reproductor de música' : 'La miniatura del video dentro del archivo');
 }
 
 function casillasSubs() {
