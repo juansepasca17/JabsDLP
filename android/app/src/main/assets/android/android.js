@@ -90,27 +90,25 @@
       propia.querySelector('small').textContent = t.seguirTxt;
     }
 
-    // Exportar el log de la app (junto a «Mostrar log completo»)
-    var filaLog = document.querySelector('.ajuste:has([data-ajuste="log_completo"])');
-    if (filaLog && !document.getElementById('jabs-exportar-log')) {
-      var fl = document.createElement('div');
-      fl.className = 'ajuste ajuste-android';
-      fl.innerHTML = '<div class="txt"><b></b><small></small></div>' +
-        '<div class="acciones-log"><button class="btn chico" id="jabs-guardar-log"></button><button class="btn chico" id="jabs-exportar-log"></button></div>';
-      fl.querySelector('#jabs-exportar-log').addEventListener('click', function () {
-        if (!window.JabsAndroid.compartirLog() && window.toast) toast(T[idioma()].logError, 'err');
-      });
-      fl.querySelector('#jabs-guardar-log').addEventListener('click', function () {
+    // Log de la app: «Guardar en Descargas» y «Compartir» junto al interruptor «Guardar log de la app»
+    var accionesLog = document.getElementById('aj-acciones-log');
+    if (accionesLog && !document.getElementById('jabs-exportar-log')) {
+      var guardar = document.createElement('button');
+      guardar.className = 'btn chico'; guardar.id = 'jabs-guardar-log';
+      guardar.addEventListener('click', function () {
         var ruta = window.JabsAndroid.guardarLog();
         if (window.toast) toast(ruta ? T[idioma()].logGuardado + ruta : T[idioma()].logError, ruta ? 'ok' : 'err');
       });
-      filaLog.parentNode.insertBefore(fl, filaLog.nextSibling);
+      var compartir = document.createElement('button');
+      compartir.className = 'btn chico'; compartir.id = 'jabs-exportar-log';
+      compartir.addEventListener('click', function () {
+        if (!window.JabsAndroid.compartirLog() && window.toast) toast(T[idioma()].logError, 'err');
+      });
+      accionesLog.insertBefore(compartir, accionesLog.firstChild);
+      accionesLog.insertBefore(guardar, accionesLog.firstChild);
     }
     var bl = document.getElementById('jabs-exportar-log');
     if (bl) {
-      var filaL = bl.closest('.ajuste');
-      filaL.querySelector('b').textContent = t.log;
-      filaL.querySelector('small').textContent = t.logTxt;
       bl.textContent = t.logBtn;
       document.getElementById('jabs-guardar-log').textContent = t.logGuardar;
     }

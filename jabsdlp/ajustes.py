@@ -97,7 +97,8 @@ AJUSTES_POR_DEFECTO = {
     'ver_gestos': True,                 # celular: un toque muestra los controles, doble toque a un lado = ±10 s
     'boton_colecciones': 'lateral',     # lateral (barra lateral) | flotante (píldora abajo a la derecha)
     'ver_subs': 'normal',
-    'ver_menu': 'flotante',             # celular: menús del reproductor junto al botón (flotante) o desde abajo (panel)
+    'ver_menu': 'flotante',
+    'log_app': True,                    # guardar el log propio de la app (Ajustes → Avanzado)             # celular: menús del reproductor junto al botón (flotante) o desde abajo (panel)
     'perfiles': [],                     # perfiles de descarga guardados: [{id, nombre, prefs}]               # tamaño de los subtítulos en Ver: pequeno | normal | grande
     'carpetas_biblioteca': [],          # carpetas extra que se ven en la Biblioteca
     'prefs': PREFS_POR_DEFECTO,
@@ -107,7 +108,7 @@ AJUSTES_POR_DEFECTO = {
 BOOLEANOS = ('subcarpeta_playlist', 'paralelo', 'decodificar_gpu', 'recomendacion', 'ytdlp_auto', 'retomar_cola',
              'notificaciones', 'bandeja_al_minimizar', 'numerar_playlist', 'no_repetir', 'corte_exacto',
              'impersonar', 'args_extra_activo', 'log_completo', 'modo_stack', 'stack_auto', 'captura_atajo',
-             'captura_portapapeles', 'pantalla_completa', 'ver_gestos')
+             'captura_portapapeles', 'pantalla_completa', 'ver_gestos', 'log_app')
 ENTEROS = {'max_paralelo': (0, 999), 'fragmentos': (1, 32), 'max_conversiones': (1, 16), 'calidad': (10, 45),
            'reintentos': (0, 10), 'subida_torrent_kb': (1, 100000)}
 AVISOS = ('torrent', 'torrent_ver', 'http', 'generico', 'ejecutable', 'aria2')

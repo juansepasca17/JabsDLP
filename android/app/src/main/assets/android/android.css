@@ -143,3 +143,13 @@ html.android body.ver-completa-css .reproductor video { object-fit: contain; }
 html.android .ajuste-android .txt small { display: block; }
 html.android .acciones-log { display: flex; gap: 8px; flex-wrap: wrap; }
 html.android .rp-opcion { padding: 13px 12px; font-size: 15px; }
+@media (max-width: 999px) {
+  html.android .bib-rejilla[data-tamano="pequeno"] { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  html.android .bib-rejilla[data-tamano="pequeno"] .bib-info b { font-size: 11px; }
+  html.android .bib-rejilla[data-tamano="mediano"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html.android .bib-rejilla[data-tamano="grande"] { grid-template-columns: minmax(0, 1fr); }
+}
+/* Ajustes: cabecera de cada sección más alta y botón de plegar grande para el dedo */
+html.android .rejilla-ajustes > .card > .titulo-seccion { min-height: 48px; margin: -6px 0 8px; }
+html.android .btn-plegar { width: 44px; height: 44px; }
+html.android .buscar-ajustes .campo-buscar-ajustes { flex: 1 1 100%; }

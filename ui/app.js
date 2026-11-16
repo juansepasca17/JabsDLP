@@ -231,6 +231,13 @@ function toast(html, tipo = '') {
 
 /* ================= estado ================= */
 let API = null;
+let erroresUiAnotados = 0;
+function anotarErrorUi(texto, nivel = 'error') {
+  if (erroresUiAnotados++ > 60) return;
+  try { API?.log_ui?.(String(texto).slice(0, 2000), nivel); } catch { /* sin API todavía */ }
+}
+window.addEventListener('error', e => anotarErrorUi(`${e.message} (${String(e.filename || '').split('/').pop()}:${e.lineno})`));
+window.addEventListener('unhandledrejection', e => anotarErrorUi(`Promesa sin atender: ${e.reason?.message || e.reason}`));
 const S = {
   vista: 'descargar',
   modo: 'video',
@@ -1542,6 +1549,12 @@ document.addEventListener('click', async e => {
       return;
     }
     case 'guardar-perfil': return guardarPerfil();
+    case 'abrir-log': return API.abrir_log();
+    case 'borrar-log':
+      if (await confirmar('Borrar log', '¿Borrar el log de la app (esta sesión y la anterior)?', 'Borrar')) {
+        await API.borrar_log(); toast('Log borrado.', 'ok');
+      }
+      return;
     case 'borrar-perfil': {
       S.ajustes = await API.guardar_ajustes({ perfiles: (S.ajustes.perfiles || []).filter(p => p.id !== d.id) });
       pintarPerfilesAjustes();
@@ -1607,6 +1620,14 @@ document.addEventListener('change', e => {
   }
   const el = e.target.closest('[data-ajuste]');
   if (!el) return;
+  if (el.dataset.ajuste === 'log_app' && !el.checked) {
+    // al apagarlo se ofrece borrar lo que ya estaba guardado
+    return guardarAjuste({ log_app: false }).then(async () => {
+      if (await confirmar('Log apagado', 'Ya no se anota nada. ¿Borrar también el log que estaba guardado?', 'Borrar')) {
+        await API.borrar_log(); toast('Log borrado.', 'ok');
+      }
+    });
+  }
   if (el.dataset.ajuste === 'motor' && el.value !== 'ytdlp') {
     const anterior = S.ajustes.motor;
     return confirmarAviso(['aria2']).then(ok => {

@@ -63,3 +63,8 @@ alternar_pantalla_completa
 portapapeles
 # Solo existe en Android (la añade jabsdlp_android/plataforma.py)
 plataforma
+# Log propio de la app (1.7.4)
+log_texto
+borrar_log
+log_ui
+coleccion_completar

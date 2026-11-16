@@ -376,7 +376,16 @@
     // 1.7.3
     'Esta versión no trae aria2, así que no puede descargar torrents. Puedes verlos sin descargar con el botón de abajo.':
       'This version doesn\'t include aria2, so it can\'t download torrents. You can watch them without downloading with the button below.',
-    'Tamaño de los subtítulos': 'Subtitle size', 'Buscar idioma': 'Search language', 'Menús del reproductor': 'Player menus', 'Junto al botón': 'Next to the button',
+    'Tamaño de los subtítulos': 'Subtitle size', 'Buscar idioma': 'Search language', 'Plegar o desplegar': 'Collapse or expand', 'Borrar la búsqueda': 'Clear search', 'Iconos pequeños': 'Small icons', 'Iconos medianos': 'Medium icons', 'Iconos grandes': 'Large icons',
+    'Tamaño de los iconos': 'Icon size', 'Pega un enlace, magnet o .torrent': 'Paste a link, magnet or .torrent',
+    'Pegar desde el portapapeles y añadir': 'Paste from the clipboard and add', 'Añadir': 'Add', 'Video descargado': 'Downloaded video',
+    'Audio descargado': 'Downloaded audio', 'Obteniendo datos…': 'Getting info…', 'Enlace directo': 'Direct link',
+    'Pega un enlace (http, magnet o .torrent).': 'Paste a link (http, magnet or .torrent).', 'Ya estaba en la colección.': 'It was already in the collection.',
+    'Guardar el enlace en una colección (sin analizarlo)': 'Save the link to a collection (without analyzing it)',
+    'Pega primero un enlace en el campo de búsqueda.': 'Paste a link in the search field first.', 'Guardar log de la app': 'Save the app log', 'Abrir log': 'Open log', 'Borrar log': 'Delete log',
+    'Anota lo que pasa (videos que abres en Ver, torrents, descargas y errores) en un archivo, para enviarlo si algo falla. Empieza uno nuevo cada vez que abres la app y guarda solo la sesión anterior. Las URLs con tokens se ocultan.':
+      'Writes what happens (videos you open in Watch, torrents, downloads and errors) to a file, to send it if something fails. A new one starts every time you open the app and only the previous session is kept. URLs with tokens are hidden.',
+    '¿Borrar el log de la app (esta sesión y la anterior)?': 'Delete the app log (this session and the previous one)?', 'Log borrado.': 'Log deleted.', 'Log apagado': 'Log turned off', 'Ya no se anota nada. ¿Borrar también el log que estaba guardado?': 'Nothing is logged anymore. Also delete the log that was saved?', 'Menús del reproductor': 'Player menus', 'Junto al botón': 'Next to the button',
     'Panel desde abajo': 'Panel from the bottom',
     'Velocidad, audio, subtítulos y calidad: desplegados junto a su botón o en un panel que sube desde abajo.': 'Speed, audio, subtitles and quality: dropped down next to their button or in a panel that slides up from the bottom.', 'Subcarpetas': 'Subfolders', 'Mostrar también los archivos de todas las subcarpetas': 'Also show the files in all subfolders', 'Toca la plantilla elegida para dejar de usarla.': 'Tap the chosen template to stop using it.', 'Actual': 'Current', 'Guardar perfil': 'Save profile',
     'Perfil de descarga': 'Download profile', 'Guardar estas preferencias como un perfil': 'Save these preferences as a profile',

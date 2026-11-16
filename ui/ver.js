@@ -42,6 +42,7 @@ async function verOrigen(origen, opciones = {}) {
   if (esTorrent && !(await confirmarAviso(['torrent_ver']))) return false;
   if (S.vista !== 'ver') irA('ver');
   V.cargando = true;
+  V.inicioCarga = Date.now(); V.inicioAnotado = false;
   limpiarReproductor();   // el anterior deja de sonar y de descargar mientras se prepara este
   $('#ver-detalle')?.remove();
   pintarEstadoVer(esTorrent ? 'Conectando con el torrent…' : 'Preparando…', true);
@@ -65,6 +66,8 @@ async function verOrigen(origen, opciones = {}) {
 /* Error en el reproductor; con «Mostrar log completo» también el detalle y «Copiar log», como en la Cola */
 function errorVer(texto, detalle = null) {
   pintarEstadoVer(texto, false, true);
+  // los errores al preparar el video ya los anota Python; aquí, los del reproductor (con el video cargado)
+  if (V.datos) anotarErrorUi(`Reproductor (${V.datos.modo}): ${texto}${detalle ? ' · ' + detalle : ''}`);
   $('#ver-detalle')?.remove();
   if (!S.ajustes.log_completo) return;
   const info = detalle || `${texto}\nOrigen: ${V.datos?.origen || $('#ver-url').value || ''}\nModo: ${V.datos?.modo || '-'}`;
@@ -397,6 +400,7 @@ async function activarSubtitulo(n) {
       el.src = URL.createObjectURL(new Blob([texto], { type: 'text/vtt' }));
     } catch {
       delete el.dataset.cargado;
+      anotarErrorUi(`Subtítulos «${sub.nombre}» no se pudieron cargar`, 'info');
       toast(/traducción automática/.test(sub.nombre)
         ? 'YouTube no dejó descargar esa traducción automática ahora (limita cuántas se piden). Prueba en un rato u otro idioma.'
         : 'No se pudieron cargar los subtítulos.', 'err');
@@ -634,7 +638,13 @@ function iniciarVer() {
   });
   v.addEventListener('progress', pintarTiempo);
   v.addEventListener('waiting', () => pintarEstadoVer('Cargando…', true));
-  v.addEventListener('playing', () => pintarEstadoVer(''));
+  v.addEventListener('playing', () => {
+    pintarEstadoVer('');
+    if (V.datos && !V.inicioAnotado && V.inicioCarga) {   // al log: cuánto tardó en empezar de verdad
+      V.inicioAnotado = true;
+      anotarErrorUi(`Ver: empieza a reproducirse en ${((Date.now() - V.inicioCarga) / 1000).toFixed(1)} s (${V.datos.torrent ? 'torrent' : V.datos.modo})`, 'info');
+    }
+  });
   v.addEventListener('canplay', () => pintarEstadoVer(''));
   v.addEventListener('ended', () => { guardarProgresoVer(true); siguienteVer(); });
   v.addEventListener('error', () => {
@@ -718,7 +728,7 @@ document.addEventListener('click', async e => {
     case 'ver-guardar': {
       const d = V.datos;
       if (!d) return;
-      const local = !/^https?:\/\//i.test(d.origen);
+      const local = !/^(https?:\/\/|magnet:\?)/i.test(d.origen);
       return abrirColecciones({ agregar: [local ? { ruta: d.origen, titulo: d.titulo } : { url: d.origen, titulo: d.titulo, miniatura: d.miniatura, duracion: d.duracion, canal: d.canal }], nombre: d.titulo });
     }
     case 'ver-descargar':

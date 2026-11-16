@@ -13,6 +13,7 @@ import yt_dlp
 from yt_dlp.utils import sanitize_filename
 
 from . import APP_NAME, VERSION, actualizador, aria2, biblioteca, captura, notificar, sponsor, ventana
+from . import registro_app
 from .ajustes import Ajustes, carpeta_datos, carpeta_local
 from .argumentos import ArgumentosInvalidos, interpretar
 from .colecciones import ColeccionInvalida, Colecciones
@@ -29,6 +30,18 @@ from .utilidades import (abrir_en_explorador, error_amigable, es_manifiesto, es_
 
 def _ok(**datos):
     return {'ok': True, **datos}
+
+
+def ocultar_origen(origen):
+    """Para el log: magnets solo con su nombre (dn) y rutas locales solo con el nombre del archivo."""
+    origen = str(origen or '').strip()
+    if origen.lower().startswith('magnet:'):
+        import urllib.parse
+        nombre = (urllib.parse.parse_qs(origen[8:]).get('dn') or ['?'])[0]
+        return f'magnet «{nombre[:100]}»'
+    if not origen.lower().startswith(('http://', 'https://')):
+        return f'archivo «{os.path.basename(origen)[:120]}»'
+    return origen[:300]
 
 
 def _fallo(e):
@@ -71,6 +84,10 @@ class Api:
     def __init__(self):
         limpiar_temporales_huerfanos()
         self._ajustes = Ajustes()
+        registro_app.iniciar(bool(self._ajustes.get('log_app')))
+        import platform
+        registro_app.info('JabsDLP %s · %s %s · Python %s', VERSION, platform.system(), platform.release(),
+                          platform.python_version())
         self._herr = Herramientas(self._ajustes)
         self._analizador = Analizador(self._ajustes)
         self._icono_avisos = self._copiar_icono()
@@ -210,6 +227,17 @@ class Api:
 
     # ---------- analizar ----------
     def analizar(self, url, modo='auto', prefs=None, origen=None):
+        inicio = time.time()
+        r = self._analizar(url, modo, prefs, origen)
+        if r.get('ok'):
+            d = r.get('datos') or {}
+            registro_app.info('Analizar %s: %s «%s» (%.1f s)', (url or '').strip()[:300], d.get('tipo'),
+                              str(d.get('titulo') or '')[:120], time.time() - inicio)
+        else:
+            registro_app.error('Analizar %s: %s', (url or '').strip()[:300], r.get('error'))
+        return r
+
+    def _analizar(self, url, modo='auto', prefs=None, origen=None):
         url = (url or '').strip()
         if es_torrent(url):
             return _ok(datos={'tipo': 'torrent', 'id': None, 'url': url, 'titulo': nombre_torrent(url),
@@ -469,7 +497,33 @@ class Api:
             self._gestor._guardar_cola()
         if 'ffmpeg_ruta' in (cambios or {}):
             threading.Thread(target=self._herr.detectar_gpu, kwargs={'forzar': True}, daemon=True).start()
+        if 'log_app' in (cambios or {}):
+            registro_app.activar(bool(todo.get('log_app')))
         return todo
+
+    # ---------- log propio (Ajustes → Avanzado) ----------
+    def log_texto(self):
+        return registro_app.texto()
+
+    def borrar_log(self):
+        registro_app.borrar()
+        return True
+
+    def abrir_log(self):
+        """PC: abre la carpeta del log con el archivo seleccionado."""
+        ruta = registro_app.ruta_actual()
+        if not os.path.isfile(ruta):
+            registro_app.info('Log abierto desde Ajustes')
+        return abrir_en_explorador(ruta if os.path.isfile(ruta) else registro_app.carpeta(), seleccionar=True)
+
+    def log_ui(self, texto, nivel='error'):
+        """Errores y avisos de la interfaz (JavaScript) al log propio."""
+        texto = str(texto or '')[:4000]
+        if nivel == 'info':
+            registro_app.info('Interfaz: %s', texto)
+        else:
+            registro_app.error('Interfaz: %s', texto)
+        return True
 
     def elegir_carpeta(self):
         ruta = self._dialogo('FOLDER', directory=self._ajustes.carpeta())
@@ -570,6 +624,20 @@ class Api:
         return opciones
 
     def ver(self, origen, referer=None):
+        inicio = time.time()
+        r = self._ver(origen, referer)
+        corto = ocultar_origen(origen)
+        if r.get('ok'):
+            d = r.get('datos') or {}
+            registro_app.info('Ver %s: %s, modo %s, «%s», %d subtítulos, %d pistas de audio (%.1f s)', corto,
+                              'torrent' if d.get('torrent') else 'local' if not str(origen).lower().startswith(('http', 'magnet'))
+                              else 'enlace', d.get('modo'), str(d.get('titulo') or '')[:120], len(d.get('subtitulos') or []),
+                              len(d.get('audios') or []), time.time() - inicio)
+        else:
+            registro_app.error('Ver %s: %s', corto, r.get('error'), detalle=r.get('detalle'))
+        return r
+
+    def _ver(self, origen, referer=None):
         """Prepara un enlace o un archivo local para reproducirlo en la pestaña Ver."""
         from . import ver as ver_mod
         from .cookies import borrar_temporal, opciones_cookies
@@ -647,6 +715,12 @@ class Api:
     def _cerrar_torrent(self):
         """Quita el torrent que se estaba viendo y borra su caché: no se sigue compartiendo."""
         if self._torrent_actual and self._torrents is not None:
+            try:
+                e = self._torrents.estado(self._torrent_actual) or {}
+                registro_app.info('Torrent cerrado: «%s», %d pares, %.0f %% descargado, sin compartir',
+                                  str(e.get('nombre') or '')[:120], e.get('pares') or 0, (e.get('progreso') or 0) * 100)
+            except Exception:  # noqa: BLE001
+                pass
             self._torrents.cerrar(self._torrent_actual)
         self._torrent_actual = None
 
@@ -696,6 +770,54 @@ class Api:
 
     def agregar_a_coleccion(self, id_, items):
         return self._col(self._colecciones.agregar, id_, items)
+
+    def coleccion_completar(self, id_, maximo=12):
+        """Busca título, miniatura y duración de los enlaces guardados sin analizar (o incompletos).
+        Torrents: el nombre del magnet (dn) o del .torrent; .m3u8/.mpd: su nombre. Devuelve la colección."""
+        c = self._colecciones.obtener(id_)
+        if not c:
+            return {'ok': False, 'error': 'Esa colección ya no existe.'}
+        pendientes = [i['url'] for i in c['items'] if i.get('url') and not i.get('intentado')
+                      and not (i.get('titulo') and (i.get('miniatura') or es_torrent(i['url'])))][:maximo]
+        datos = {}
+        for url in pendientes:
+            try:
+                datos[url] = self._datos_enlace(url)
+            except Exception as e:  # noqa: BLE001 - un enlace roto no frena a los demás
+                registro_app.error('Completar datos de %s: %s', url[:300], error_amigable(e))
+                datos[url] = {}
+        if datos:
+            self._colecciones.completar(id_, datos)
+            registro_app.info('Colección: datos completados de %d enlaces', len(datos))
+        return _ok(coleccion=self._colecciones.obtener(id_), quedan=len(pendientes) >= maximo)
+
+    def _datos_enlace(self, url):
+        import urllib.parse
+        if url.lower().startswith('magnet:'):
+            nombre = (urllib.parse.parse_qs(url[8:]).get('dn') or [''])[0]
+            return {'titulo': nombre or 'Torrent'}
+        if es_torrent(url):
+            return {'titulo': nombre_torrent(url)}
+        if es_manifiesto(url):
+            return {'titulo': nombre_manifiesto(url)}
+        import yt_dlp
+        from .cookies import borrar_temporal, opciones_cookies
+        opciones = dict(self._opciones_ver(), skip_download=True, extract_flat='in_playlist', noplaylist=False)
+        extra, temporal = opciones_cookies(self._ajustes)
+        opciones.update(extra)
+        try:
+            with yt_dlp.YoutubeDL(opciones) as ydl:
+                info = ydl.extract_info(url, download=False)
+        finally:
+            borrar_temporal(temporal)
+        info = info or {}
+        mini = info.get('thumbnail') or next((t.get('url') for t in reversed(info.get('thumbnails') or []) if t.get('url')), None)
+        es_lista = info.get('_type') in ('playlist', 'multi_video')
+        if es_lista and not mini:
+            primera = next(iter(info.get('entries') or []), None) or {}
+            mini = primera.get('thumbnail') or next((t.get('url') for t in reversed(primera.get('thumbnails') or [])), None)
+        return {'titulo': info.get('title'), 'miniatura': mini, 'duracion': None if es_lista else info.get('duration'),
+                'canal': info.get('channel') or info.get('uploader'), 'tipo': 'playlist' if es_lista else None}
 
     def quitar_de_coleccion(self, id_, item):
         return self._col(self._colecciones.quitar, id_, item)

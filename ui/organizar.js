@@ -535,18 +535,77 @@ async function pintarColeccion(id) {
       ${c.fija ? '' : `<button class="btn chico icono" data-accion="col-renombrar" title="Renombrar">${ico('pencil', 'sm')}</button>
       <button class="btn chico icono peligro" data-accion="col-borrar" title="Borrar colección">${ico('trash', 'sm')}</button>`}
     </div>
+    <div class="pc-pegar">
+      <input class="entrada" id="pc-enlace" type="text" spellcheck="false" autocomplete="off" placeholder="Pega un enlace, magnet o .torrent">
+      <button class="btn chico icono" data-accion="col-pegar" title="Pegar desde el portapapeles y añadir">${ico('clipboard', 'sm')}</button>
+      <button class="btn chico primario" data-accion="col-anadir-enlace">${ico('plus', 'sm')}Añadir</button>
+    </div>
     <div class="pc-lista pc-items">${c.items.map((i, n) => `
       <div class="pc-elemento ${i.ruta && !i.existe ? 'perdido' : ''}" draggable="true" data-pos="${n}">
         <span class="asa" title="Arrastra para reordenar">${ico('grip', 'sm')}</span>
         ${i.miniatura ? `<img src="${esc(i.miniatura)}" alt="" loading="lazy" referrerpolicy="no-referrer">`
           : `<span class="sin-img">${ico(i.ruta ? 'file' : 'link', 'sm')}</span>`}
         <span class="txt"><b class="no-traducir" title="${esc(i.titulo || i.url || i.ruta)}">${esc(i.titulo || i.url || i.ruta.split(/[\\/]/).pop())}</b>
-          <small>${i.ruta ? (i.existe ? 'Archivo descargado' : 'No encontrado (¿lo moviste o borraste?)') : esc(new URL(i.url).hostname.replace(/^www\./, ''))}${i.duracion ? ' · ' + fmt.dur(i.duracion) : ''}</small></span>
+          <small>${tipoElemento(i)}${i.duracion ? ' · ' + fmt.dur(i.duracion) : ''}</small></span>
         ${i.url || i.existe ? `<button class="btn chico icono" data-col-uno="${n}" title="Ver solo este">${ico('play', 'sm')}</button>` : ''}
         <button class="btn chico icono" data-col-quitar="${n}" title="Quitar de la colección">${ico('x', 'sm')}</button>
       </div>`).join('') || '<small class="dim">Vacía. Añade videos con «Guardar en colección» desde Descargar, el stack o la Biblioteca.</small>'}
     </div>`;
   panel.dataset.items = JSON.stringify(c.items.map(i => i.url ? { url: i.url } : { ruta: i.ruta }));
+  completarColeccion(c);
+}
+
+// Texto pequeño de cada elemento: qué es (y de dónde)
+function tipoElemento(i) {
+  if (i.ruta) {
+    if (!i.existe) return 'No encontrado (¿lo moviste o borraste?)';
+    return /\.(mp3|m4a|opus|ogg|flac|wav|aac)$/i.test(i.ruta) ? 'Audio descargado' : 'Video descargado';
+  }
+  const url = i.url || '';
+  const host = (() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; } })();
+  const pendiente = !i.intentado && !i.titulo ? ' · Obteniendo datos…' : '';
+  if (/^magnet:\?/i.test(url) || /\.torrent$/i.test(url.split(/[?#]/)[0])) return 'Torrent' + pendiente;
+  const directo = url.split(/[?#]/)[0].match(/\.(m3u8|mpd)$/i);
+  if (directo) return `Enlace directo .${directo[1].toLowerCase()}${host ? ' · ' + esc(host) : ''}`;
+  return `${i.tipo === 'playlist' ? 'Playlist' : 'Video'}${host ? ' · ' + esc(host) : ''}${pendiente}`;
+}
+
+// Los enlaces guardados sin analizar se completan en segundo plano (título, miniatura, duración)
+const completando = new Set();
+async function completarColeccion(c) {
+  const falta = c.items.some(i => i.url && !i.intentado && !(i.titulo && (i.miniatura || /^magnet:/i.test(i.url))));
+  if (!falta || completando.has(c.id)) return;
+  completando.add(c.id);
+  try {
+    const r = await API.coleccion_completar(c.id);
+    if (r.ok && C.abierta === c.id && $('#panel-colecciones').classList.contains('abierto')) {
+      await pintarColeccion(c.id);
+      cargarColecciones();
+    }
+  } finally {
+    completando.delete(c.id);
+  }
+}
+
+// Torrents y enlaces que se guardan sin analizar: un título provisional (el nombre del magnet)
+function itemDeEnlace(url) {
+  const m = url.match(/[?&]dn=([^&]+)/);
+  return m && /^magnet:/i.test(url) ? { url, titulo: decodeURIComponent(m[1].replace(/\+/g, ' ')) } : { url };
+}
+
+function enlacesDe(texto) {
+  return [...new Set((texto || '').split(/\s+/).map(t => t.trim()).filter(t => /^(https?:\/\/|magnet:\?)/i.test(t)))];
+}
+
+async function anadirEnlacesColeccion(texto) {
+  const urls = enlacesDe(texto);
+  if (!urls.length) return toast('Pega un enlace (http, magnet o .torrent).', 'err');
+  const r = await API.agregar_a_coleccion(C.abierta, urls.map(itemDeEnlace));
+  if (!r.ok) return toast(esc(r.error), 'err');
+  toast(r.resultado ? `${r.resultado} ${r.resultado === 1 ? 'añadido' : 'añadidos'}.` : 'Ya estaba en la colección.', r.resultado ? 'ok' : '');
+  C.lista = r.colecciones || C.lista;
+  pintarContadorColecciones();
+  await pintarColeccion(C.abierta);
 }
 
 async function trasCambio(r, mensaje) {
@@ -559,9 +618,17 @@ async function trasCambio(r, mensaje) {
 }
 
 document.addEventListener('click', async e => {
+  const accionCol = e.target.closest('[data-accion]')?.dataset.accion;
+  if (accionCol === 'col-anadir-enlace') { const campo = $('#pc-enlace'); await anadirEnlacesColeccion(campo.value); return; }
+  if (accionCol === 'col-pegar') return anadirEnlacesColeccion(((await API.portapapeles()) || '').trim());
+  if (accionCol === 'guardar-enlace-col') {
+    const urls = enlacesDe($('#url').value);
+    if (!urls.length) return toast('Pega primero un enlace en el campo de búsqueda.', 'err');
+    return abrirColecciones({ agregar: urls.map(itemDeEnlace), nombre: '' });
+  }
   // tocar un elemento (o su ▶) lo reproduce solo; el botón «Ver» de arriba reproduce la colección entera
   const uno = e.target.closest('[data-col-uno]') || (!e.target.closest('button, .asa') && e.target.closest('#panel-colecciones .pc-elemento'));
-  if (uno && C.abierta) {
+  if (uno && C.abierta && !e.target.closest('.pc-pegar')) {
     const n = uno.dataset.colUno ?? uno.dataset.pos;
     return verUnoDeColeccion(C.abierta, +n);
   }
@@ -675,7 +742,8 @@ function itemsParaColeccion() {
 
 /* ================= BIBLIOTECA ================= */
 const B = { carpetas: [], raiz: null, sub: '', datos: null, minis: {}, sel: new Set(), soloFavs: false, ultimo: null,
-            recursivo: (() => { try { return localStorage.getItem('jabsdlp.bib.subcarpetas') === '1'; } catch { return false; } })() };
+            recursivo: (() => { try { return localStorage.getItem('jabsdlp.bib.subcarpetas') === '1'; } catch { return false; } })(),
+            tamano: (() => { try { return localStorage.getItem('jabsdlp.bib.tamano') || 'mediano'; } catch { return 'mediano'; } })() };
 let observadorMinis = null;
 
 async function abrirBiblioteca() {
@@ -782,6 +850,8 @@ function pintarSeleccionBib() {
   const barra = $('#bib-seleccion');
   const n = B.sel.size;
   $('#bib-rejilla')?.classList.toggle('modo-sel', n > 0);
+  $('#bib-rejilla')?.setAttribute('data-tamano', B.tamano);
+  if ($('#bib-tamano')) $('#bib-tamano').value = B.tamano;
   barra.classList.toggle('oculto', !n);
   if (!n) return;
   barra.innerHTML = `<span><b>${n}</b> ${n === 1 ? 'seleccionado' : 'seleccionados'}</span>
@@ -823,6 +893,7 @@ document.addEventListener('click', async e => {
     B.ultimo = ruta;
     return pintarBiblioteca();
   }
+  if (B.ignorarClic) { B.ignorarClic = false; return; }   // fin de una selección arrastrando
   // Modo selección: con algo marcado, tocar cualquier tarjeta la marca o desmarca
   const tarjeta = t.closest('.bib-archivo');
   if (tarjeta && B.sel.size && !t.closest('button')) {
@@ -831,6 +902,7 @@ document.addEventListener('click', async e => {
     B.ultimo = ruta;
     return pintarBiblioteca();
   }
+  if (tarjeta && B.tamano === 'pequeno' && !t.closest('button, .casilla')) return verLocal(tarjeta.dataset.bibRuta);
   const fav = t.closest('[data-bib-fav]');
   if (fav) {
     const r = await API.alternar_favorito({ ruta: fav.dataset.bibFav, titulo: fav.dataset.bibFav.split(/[\\/]/).pop() });
@@ -910,13 +982,17 @@ function prepararAjustes() {
   const rejilla = $('#vista-ajustes .rejilla-ajustes');
   if (!rejilla || $('#buscar-ajustes')) return;
   rejilla.insertAdjacentHTML('beforebegin', `<div class="buscar-ajustes">
-      <input id="buscar-ajustes" class="entrada" type="search" spellcheck="false" autocomplete="off" placeholder="Buscar en los ajustes">
+      <span class="campo-buscar-ajustes"><input id="buscar-ajustes" class="entrada" type="search" spellcheck="false" autocomplete="off" placeholder="Buscar en los ajustes">
+        <button class="btn chico icono fantasma oculto" data-accion="ajustes-limpiar-busqueda" title="Borrar la búsqueda">${ico('x', 'sm')}</button></span>
       <button class="btn chico" data-accion="ajustes-plegar" title="Plegar todas las secciones (o toca el título de cada una)">${ico('minimizar', 'sm')}Plegar todo</button>
       <button class="btn chico" data-accion="ajustes-desplegar" title="Desplegar todas las secciones">${ico('maximizar', 'sm')}Desplegar todo</button></div>`);
   const plegadas = seccionesPlegadas();
   [...rejilla.children].forEach((card, n) => {
     card.dataset.seccion = n;
     if (plegadas.has(String(n))) card.classList.add('plegada');
+    // botón propio para plegar (grande para el dedo; antes era una flecha dibujada en el borde)
+    card.querySelector(':scope > .titulo-seccion')?.insertAdjacentHTML('beforeend',
+      `<button class="btn-plegar" data-accion="plegar-seccion" title="Plegar o desplegar" aria-label="Plegar o desplegar">${ico('chevron', 'sm')}</button>`);
   });
 }
 
@@ -924,6 +1000,7 @@ function normalizarTexto(t) { return (t || '').toLowerCase().normalize('NFD').re
 
 function filtrarAjustes() {
   const q = normalizarTexto($('#buscar-ajustes')?.value.trim());
+  $('[data-accion="ajustes-limpiar-busqueda"]')?.classList.toggle('oculto', !q);   // búsqueda activa: X para borrarla
   $$('#vista-ajustes .rejilla-ajustes > .card').forEach(card => {
     if (!q) {
       card.classList.remove('sin-coincidencias');
@@ -946,12 +1023,17 @@ function filtrarAjustes() {
 document.addEventListener('input', e => { if (e.target.id === 'buscar-ajustes') filtrarAjustes(); });
 document.addEventListener('click', e => {
   const titulo = e.target.closest('#vista-ajustes .rejilla-ajustes > .card > .titulo-seccion');
-  if (titulo && !e.target.closest('button, a, input, label, select')) {
-    if ($('#buscar-ajustes')?.value.trim()) return;
-    const card = titulo.parentNode, plegadas = seccionesPlegadas();
+  if (titulo && (e.target.closest('.btn-plegar') || !e.target.closest('button, a, input, label, select'))) {
+    const card = titulo.parentNode;
     card.classList.toggle('plegada');
+    if ($('#buscar-ajustes')?.value.trim()) return;   // con una búsqueda funciona igual, pero no se recuerda
+    const plegadas = seccionesPlegadas();
     if (card.classList.contains('plegada')) plegadas.add(card.dataset.seccion); else plegadas.delete(card.dataset.seccion);
     return guardarPlegadas(plegadas);
+  }
+  if (e.target.closest('[data-accion="ajustes-limpiar-busqueda"]')) {
+    $('#buscar-ajustes').value = '';
+    return filtrarAjustes();
   }
   const accion = e.target.closest('[data-accion]')?.dataset.accion;
   if (accion === 'ajustes-plegar' || accion === 'ajustes-desplegar') {
@@ -964,3 +1046,85 @@ document.addEventListener('click', e => {
   }
 });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', prepararAjustes); else prepararAjustes();
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.id === 'pc-enlace') anadirEnlacesColeccion(e.target.value);
+});
+
+/* ================= Biblioteca: tamaño de los iconos y seleccionar arrastrando (1.7.4) ================= */
+document.addEventListener('change', e => {
+  if (e.target.id !== 'bib-tamano') return;
+  B.tamano = e.target.value;
+  try { localStorage.setItem('jabsdlp.bib.tamano', B.tamano); } catch { /* sin almacenamiento */ }
+  $('#bib-rejilla').setAttribute('data-tamano', B.tamano);
+});
+
+// Mantener pulsado (dedo o ratón) sobre un archivo lo marca; sin soltar, al pasar por otros también se marcan
+// (o se desmarcan si el primero ya estaba marcado). Cerca del borde la lista se desplaza sola.
+const ARRASTRE = { timer: null, activo: false, x: 0, y: 0, marcar: true, scroll: null, ultimaY: 0, tactil: false };
+
+function marcarTarjeta(tarjeta) {
+  if (!tarjeta) return;
+  const ruta = tarjeta.dataset.bibRuta;
+  if (ARRASTRE.marcar) B.sel.add(ruta); else B.sel.delete(ruta);
+  tarjeta.classList.toggle('sel', ARRASTRE.marcar);
+  tarjeta.querySelector('.casilla')?.classList.toggle('on', ARRASTRE.marcar);
+  B.ultimo = ruta;
+  pintarSeleccionBib();
+}
+
+function finArrastre() {
+  clearTimeout(ARRASTRE.timer);
+  clearInterval(ARRASTRE.scroll);
+  if (ARRASTRE.activo) {
+    ARRASTRE.activo = false;
+    B.ignorarClic = true;
+    setTimeout(() => { B.ignorarClic = false; }, 400);
+    document.body.classList.remove('arrastrando-sel');
+  }
+}
+
+document.addEventListener('pointerdown', e => {
+  const tarjeta = e.target.closest('#bib-rejilla .bib-archivo');
+  if (!tarjeta || e.target.closest('button, .estrella') || (e.pointerType === 'mouse' && e.button !== 0)) return;
+  ARRASTRE.x = e.clientX; ARRASTRE.y = e.clientY; ARRASTRE.tactil = e.pointerType !== 'mouse';
+  clearTimeout(ARRASTRE.timer);
+  ARRASTRE.timer = setTimeout(() => {
+    ARRASTRE.activo = true;
+    ARRASTRE.marcar = !B.sel.has(tarjeta.dataset.bibRuta);
+    document.body.classList.add('arrastrando-sel');
+    marcarTarjeta(tarjeta);
+    if (navigator.vibrate) try { navigator.vibrate(12); } catch { /* sin vibración */ }
+    const cont = $('.contenido');
+    ARRASTRE.ultimaY = ARRASTRE.y;
+    ARRASTRE.scroll = setInterval(() => {   // desplazamiento automático cerca de los bordes
+      const r = cont.getBoundingClientRect();
+      if (ARRASTRE.ultimaY < r.top + 70) cont.scrollTop -= 14;
+      else if (ARRASTRE.ultimaY > r.bottom - 90) cont.scrollTop += 14;
+    }, 30);
+  }, e.pointerType === 'mouse' ? 350 : 450);
+});
+
+function moverArrastre(x, y) {
+  if (!ARRASTRE.activo) {
+    // si se mueve antes de tiempo es un desplazamiento normal (o un clic que se arrastra): no se selecciona
+    if (Math.hypot(x - ARRASTRE.x, y - ARRASTRE.y) > 10) clearTimeout(ARRASTRE.timer);
+    return false;
+  }
+  ARRASTRE.ultimaY = y;
+  const tarjeta = document.elementFromPoint(x, y)?.closest('#bib-rejilla .bib-archivo');
+  if (tarjeta && B.sel.has(tarjeta.dataset.bibRuta) !== ARRASTRE.marcar) marcarTarjeta(tarjeta);
+  return true;
+}
+
+document.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') moverArrastre(e.clientX, e.clientY); });
+// con el dedo, durante la selección se bloquea el desplazamiento de la página (si no, el navegador se lo queda)
+document.addEventListener('touchmove', e => {
+  const t = e.touches[0];
+  if (t && moverArrastre(t.clientX, t.clientY)) e.preventDefault();
+}, { passive: false });
+['pointerup', 'pointercancel', 'touchend', 'touchcancel'].forEach(ev => document.addEventListener(ev, () => {
+  if (ev === 'pointercancel' && ARRASTRE.tactil && ARRASTRE.activo) return;   // el navegador cancela el puntero al mover el dedo
+  finArrastre();
+}));
+document.addEventListener('contextmenu', e => { if (e.target.closest('#bib-rejilla .bib-archivo')) e.preventDefault(); });

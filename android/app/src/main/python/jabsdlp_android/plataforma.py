@@ -153,6 +153,39 @@ def _ruta_libre(carpeta, nombre):
     return ruta
 
 
+def rescatar_temporal(trabajo):
+    """Tras reinstalar la app, los archivos de la instalación anterior ya no son «suyos» y Android no deja
+    reemplazarlos: si la descarga falla al renombrar «X.temp.mp4» a «X.mp4» porque X.mp4 ya existe, se guarda
+    como «X (2).mp4» en vez de dar error."""
+    if getattr(trabajo, 'estado', None) != 'error':
+        return
+    texto = f'{trabajo.error or ""}\n{getattr(trabajo, "error_detalle", "") or ""}'
+    if 'Operation not permitted' not in texto:
+        return
+    m = re.search(r"'([^']+\.temp\.\w+)' -> '([^']+)'", texto)
+    if not m or not os.path.isfile(m.group(1)) or not os.path.exists(m.group(2)):
+        return
+    temporal, final = m.group(1), m.group(2)
+    nuevo = _ruta_libre(os.path.dirname(final), os.path.basename(final))
+    try:
+        os.rename(temporal, nuevo)
+    except OSError:
+        return
+    trabajo.archivo = nuevo
+    trabajo.estado = 'completado'
+    trabajo.error = None
+    trabajo.error_detalle = None
+    trabajo.progreso = 1.0
+    trabajo.fase = ''
+    escanear(nuevo)
+    try:
+        from jabsdlp import registro_app
+        registro_app.info('Ya existía «%s» de una instalación anterior (Android no deja reemplazarlo): guardado como «%s»',
+                          os.path.basename(final), os.path.basename(nuevo))
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _escribible(carpeta):
     """os.access no es fiable con el almacenamiento de Android (FUSE): se prueba a crear un archivo."""
     prueba = os.path.join(carpeta, f'.jabsdlp-prueba-{os.getpid()}')

@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Desempacar android/ (instalación inicial)
         id: paquete
@@ -57,12 +57,12 @@ jobs:
           if [[ "$GITHUB_REF_TYPE" == "tag" || "$GITHUB_EVENT_NAME" == "workflow_dispatch" || "${{ steps.paquete.outputs.instalado }}" == "true" ]]; then publicar=true; fi
           echo "publicar=$publicar" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         id: python
         with:
           python-version: '3.13'
@@ -75,7 +75,7 @@ jobs:
 
       - name: Caché de ffmpeg y QuickJS
         id: cache-nativos
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: android/nativos
           key: nativos-${{ runner.os }}-${{ hashFiles('android/scripts/compilar_nativos.sh') }}
@@ -99,7 +99,7 @@ jobs:
             echo "::warning::Falta el secreto JABSDLP_KEYSTORE_B64: el APK se firma con una clave de prueba."
           fi
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.14.3'
 
@@ -120,7 +120,7 @@ jobs:
           cp "$origen" "$destino"
           echo "archivo=$destino" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: JabsDLP-${{ steps.version.outputs.version }}-android
           path: ${{ steps.apk.outputs.archivo }}

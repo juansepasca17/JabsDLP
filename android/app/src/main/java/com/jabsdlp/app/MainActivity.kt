@@ -349,8 +349,18 @@ class MainActivity : ComponentActivity() {
         val texto = Runtime.getRuntime().exec(arrayOf("logcat", "-d", "-v", "time", "--pid=${android.os.Process.myPid()}", *filtros))
             .inputStream.bufferedReader().use { it.readText() }
         val version = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "?"
+        // El log propio de la app (jabsdlp/registro_app.py): LOCALAPPDATA/JabsDLP/logs
+        val carpetaLog = File(filesDir, "local/JabsDLP/logs")
+        val propio = listOf("jabsdlp-anterior.log" to "Sesión anterior", "jabsdlp.log.1" to "Sesión actual",
+            "jabsdlp.log" to "Sesión actual").mapNotNull { (nombre, titulo) ->
+            runCatching { File(carpetaLog, nombre).takeIf { it.isFile }?.readText()?.trim() }.getOrNull()
+                ?.takeIf { it.isNotEmpty() }?.let { "===== $titulo =====\n$it" }
+        }.joinToString("\n\n")
         return "JabsDLP $version · Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · ${Build.MODEL}\n\n" +
-            ocultarTokens(texto.takeLast(2_000_000)).ifBlank { "(sin mensajes de la app todavía)" }
+            "########## Log de la app ##########\n" +
+            ocultarTokens(propio).ifBlank { "(vacío: no ha pasado nada todavía o «Guardar log de la app» está apagado)" } +
+            "\n\n########## Log del sistema (solo JabsDLP) ##########\n" +
+            ocultarTokens(texto.takeLast(1_000_000)).ifBlank { "(sin mensajes)" }
     }
 
     /** Guarda el log en Descargas/JabsDLP para poder mandarlo por WhatsApp, correo, etc. Devuelve la ruta o "". */

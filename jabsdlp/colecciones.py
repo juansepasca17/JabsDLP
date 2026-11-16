@@ -33,9 +33,9 @@ def limpiar_item(item, permitir_rutas=True):
     limpio = {}
     url = item.get('url')
     ruta = item.get('ruta')
-    if isinstance(url, str) and url.strip().lower().startswith(('http://', 'https://')) and len(url.strip()) <= 2000 \
-            and not any(c in url for c in '\r\n\t '):
-        limpio['url'] = url.strip()
+    if isinstance(url, str) and url.strip().lower().startswith(('http://', 'https://', 'magnet:?')) \
+            and len(url.strip()) <= 4000 and not any(c in url.strip() for c in '\r\n\t '):
+        limpio['url'] = url.strip()   # enlaces http(s) y magnets (torrents para ver o descargar)
     elif permitir_rutas and isinstance(ruta, str) and ruta.strip() and len(ruta) <= 1000 and os.path.isabs(ruta.strip()):
         limpio['ruta'] = os.path.normpath(ruta.strip())
     else:
@@ -56,6 +56,10 @@ def limpiar_item(item, permitir_rutas=True):
         limpio['miniatura'] = mini
     if item.get('visto') is True:
         limpio['visto'] = True
+    if item.get('tipo') == 'playlist':
+        limpio['tipo'] = 'playlist'
+    if item.get('intentado') is True:   # ya se intentó completar su título/miniatura (no se repite)
+        limpio['intentado'] = True
     try:
         if item.get('posicion'):
             limpio['posicion'] = max(0.0, float(item['posicion']))
@@ -202,6 +206,23 @@ class Colecciones:
                         i['posicion'] = round(float(segundos), 1)
                     self._guardar()
                     return
+
+    def completar(self, id_, datos):
+        """datos: {url: {titulo, miniatura, duracion, canal, tipo}}. Rellena lo que falte y marca «intentado»."""
+        cambios = 0
+        with self._lock:
+            for i in self._buscar(id_)['items']:
+                nuevo = datos.get(i.get('url'))
+                if nuevo is None:
+                    continue
+                completo = limpiar_item({**i, **{k: v for k, v in nuevo.items() if v and not i.get(k)}, 'intentado': True})
+                if completo and completo != i:
+                    i.clear()
+                    i.update(completo)
+                    cambios += 1
+            if cambios:
+                self._guardar()
+        return cambios
 
     def es_favorito(self, item):
         limpio = limpiar_item(item)

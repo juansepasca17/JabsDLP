@@ -64,10 +64,27 @@ class Gestor:
             threading.Thread(target=self._correr, args=(pendiente, activos), daemon=True).start()
 
     def _correr(self, trabajo, activos):
+        from . import registro_app
         limite_aria2 = mb_a_bytes(self._ajustes.get('limite_velocidad')) // max(1, activos)
+        inicio = time.time()
+        registro_app.info('Descarga empieza: «%s» (%s)', str(trabajo.titulo or trabajo.url)[:120], trabajo.titulo_formato or '-')
         try:
             ejecutar(trabajo, self._ajustes, self._herr, self.cubeta, limite_aria2)
         finally:
+            duracion = time.time() - inicio
+            if trabajo.estado == 'completado':
+                tamano = 0
+                try:
+                    tamano = os.path.getsize(trabajo.archivo) if trabajo.archivo else 0
+                except OSError:
+                    pass
+                registro_app.info('Descarga terminada: «%s», %.1f MB en %.0f s', str(trabajo.titulo or '')[:120],
+                                  tamano / 1e6, duracion)
+            elif trabajo.estado == 'error':
+                registro_app.error('Descarga con error: «%s» tras %.0f s: %s', str(trabajo.titulo or trabajo.url)[:120],
+                                   duracion, trabajo.error, detalle=getattr(trabajo, 'error_detalle', None))
+            else:
+                registro_app.info('Descarga %s: «%s»', trabajo.estado, str(trabajo.titulo or trabajo.url)[:120])
             with self._cv:
                 self._activos.discard(trabajo.id)
                 self._programar_reintento(trabajo)

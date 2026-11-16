@@ -18,3 +18,6 @@ burbuja_soltar = true
 
 # No la llama la interfaz: en Android la llama Kotlin al quitar la app de recientes (puente.cerrar)
 cerrar = true
+
+# En Android el log se guarda en Descargas o se comparte (android.js)
+abrir_log = false

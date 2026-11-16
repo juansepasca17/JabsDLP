@@ -52,6 +52,7 @@
             </div>
             <label class="chip-stack" title="Modo stack: los enlaces se van sumando a una lista para descargarlos juntos en una carpeta">
               <input type="checkbox" data-ajuste="modo_stack"><span><i data-ico="layers" class="sm"></i>Stack</span></label>
+            <button class="btn icono" data-accion="guardar-enlace-col" title="Guardar el enlace en una colección (sin analizarlo)"><i data-ico="bookmark"></i></button>
             <button class="btn primario" data-accion="analizar" id="btn-analizar"><i data-ico="search"></i>Analizar</button>
           </div>
         </div>
@@ -165,6 +166,9 @@
             </select>
             <button class="btn chico" id="bib-favs" data-accion="bib-favs" title="Solo favoritos"><i data-ico="star" class="sm"></i>Favoritos</button>
             <button class="btn chico" id="bib-subcarpetas" data-accion="bib-subcarpetas" title="Mostrar también los archivos de todas las subcarpetas"><i data-ico="folder" class="sm"></i>Subcarpetas</button>
+            <select class="entrada chica" id="bib-tamano" title="Tamaño de los iconos">
+              <option value="pequeno">Iconos pequeños</option><option value="mediano">Iconos medianos</option><option value="grande">Iconos grandes</option>
+            </select>
             <button class="btn chico icono" data-accion="bib-recargar" title="Actualizar"><i data-ico="refresh" class="sm"></i></button>
           </div>
         </div>
@@ -473,6 +477,14 @@
             <div class="ajuste">
               <div class="txt"><b>Suplantar navegador (impersonation)</b><small>Hace que las peticiones parezcan venir de Chrome. Ayuda con sitios que bloquean descargas con errores 403/410. Requiere el componente curl_cffi.<span id="aj-impersonar-motivo"></span></small></div>
               <label class="switch"><input type="checkbox" data-ajuste="impersonar" id="aj-impersonar"><span></span></label>
+            </div>
+            <div class="ajuste" id="aj-fila-log-app">
+              <div class="txt"><b>Guardar log de la app</b><small>Anota lo que pasa (videos que abres en Ver, torrents, descargas y errores) en un archivo, para enviarlo si algo falla. Empieza uno nuevo cada vez que abres la app y guarda solo la sesión anterior. Las URLs con tokens se ocultan.</small>
+                <div class="acciones-log" id="aj-acciones-log">
+                  <button class="btn chico solo-pc" data-accion="abrir-log"><i data-ico="folder" class="sm"></i>Abrir log</button>
+                  <button class="btn chico" data-accion="borrar-log"><i data-ico="trash" class="sm"></i>Borrar log</button>
+                </div></div>
+              <label class="switch"><input type="checkbox" data-ajuste="log_app"><span></span></label>
             </div>
             <div class="ajuste">
               <div class="txt"><b>Mostrar log completo (debug)</b><small>Ejecuta yt-dlp con <code>-v</code> y añade en la Cola «Ver detalle», con el error completo (p. ej. <code>caused by SSLError(…)</code>) para buscarlo y un botón «Copiar log». Los tokens de las URLs se ocultan.</small></div>

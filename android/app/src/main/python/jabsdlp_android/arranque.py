@@ -105,6 +105,17 @@ def preparar(datos, cache, descargas, nativos, nativo=None):
     plataforma._miniatura_pc = biblioteca.miniatura
     biblioteca.miniatura = plataforma.miniatura
 
+    # Descargas: si Android no deja reemplazar un archivo de una instalación anterior, se guarda con otro nombre
+    from jabsdlp import gestor
+    ejecutar_pc = gestor.ejecutar
+
+    def ejecutar(trabajo, *args, **kwargs):
+        try:
+            ejecutar_pc(trabajo, *args, **kwargs)
+        finally:
+            plataforma.rescatar_temporal(trabajo)
+    gestor.ejecutar = ejecutar
+
     # Ver torrents: libtorrent4j (Kotlin) en lugar del libtorrent de Python, que no existe para Android
     from jabsdlp import ver_torrent
     from .torrents import TorrentsAndroid
