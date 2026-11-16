@@ -26,6 +26,14 @@ y [ffmpeg](https://ffmpeg.org).
   - Puede buscar actualizaciones al abrir, como mucho una vez al día.
   - Solo guarda la última versión descargada. La que va dentro del `.exe` queda siempre como respaldo y la app vuelve a ella si la descargada falla.
 
+### Novedades de la 1.7.5
+
+- **Burbuja del portapapeles** (PC): además de *Descargar* (y *Al stack*), un botón **Ver** que abre el enlace en la
+  pestaña Ver. También recuerda los atajos de Captura rápida, que funcionan con el enlace que acabas de copiar sin
+  seleccionar nada: Ctrl + Alt + X para descargarlo y Ctrl + Alt + V para verlo.
+- **El stack no se esconde**: si apagas el modo stack y tiene enlaces, su pestaña sigue en el borde derecho (más
+  tenue) para que no se te olvide. Al tocarla (o con Ctrl + J) vuelve el modo stack con el panel abierto.
+
 ### Novedades de la 1.7.4
 
 - **Log de la app** (*Ajustes → Avanzado → Guardar log de la app*, activado por defecto): anota lo que pasa (videos

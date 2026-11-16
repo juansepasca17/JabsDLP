@@ -376,7 +376,7 @@
     // 1.7.3
     'Esta versión no trae aria2, así que no puede descargar torrents. Puedes verlos sin descargar con el botón de abajo.':
       'This version doesn\'t include aria2, so it can\'t download torrents. You can watch them without downloading with the button below.',
-    'Tamaño de los subtítulos': 'Subtitle size', 'Buscar idioma': 'Search language', 'Colecciones (Ctrl + K)': 'Collections (Ctrl + K)', 'Atajos de teclado': 'Keyboard shortcuts',
+    'Tamaño de los subtítulos': 'Subtitle size', 'Buscar idioma': 'Search language', 'Abrir el stack (Ctrl + J)': 'Open the stack (Ctrl + J)', 'El stack sigue ahí: tócalo para volver a usarlo': 'The stack is still there: tap it to use it again', 'Colecciones (Ctrl + K)': 'Collections (Ctrl + K)', 'Atajos de teclado': 'Keyboard shortcuts',
     'Funcionan con JabsDLP abierto y en primer plano.': 'They work while JabsDLP is open and in front.',
     'Abrir o cerrar Colecciones': 'Open or close Collections', 'Abrir o cerrar el stack (en Descargar, con el modo stack)': 'Open or close the stack (in Download, with stack mode)',
     'Pantalla completa': 'Full screen', 'Ver: reproducir o pausar': 'Watch: play or pause', 'Ver: 5 o 10 s atrás o adelante': 'Watch: 5 or 10 s back or forward',

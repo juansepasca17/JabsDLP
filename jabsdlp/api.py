@@ -1054,6 +1054,8 @@ class Api:
         self._sugerida = url
         datos = {'url': url, 'dominio': (urlsplit(url).hostname or '').removeprefix('www.'),
                  'stack': bool(self._ajustes.get('modo_stack')), 'idioma': self.idioma(),
+                 'tecla_descargar': self._ajustes.get('captura_tecla') if self._atajo and not self._atajo.error else None,
+                 'tecla_ver': self._ajustes.get('captura_tecla_ver') if self._atajo_ver and not self._atajo_ver.error else None,
                  'claro': self._ajustes.get('tema') == 'claro'}
         try:
             self._burbuja.evaluate_js(f'mostrar({json.dumps(datos)})')
@@ -1063,7 +1065,7 @@ class Api:
         if hwnd:
             izq, arriba, der, abajo = captura.area_trabajo()
             esc = ventana.escala(hwnd)
-            ancho, alto = int(372 * esc), int(104 * esc)
+            ancho, alto = int(440 * esc), int(112 * esc)
             x, y = der - ancho - int(16 * esc), abajo - alto - int(16 * esc)
             ventana.mostrar_sin_foco(hwnd, x, y, ancho, alto)
             # La primera vez que se muestra, WinForms la recoloca: se vuelve a poner en su sitio
@@ -1089,11 +1091,13 @@ class Api:
                 pass
 
     def burbuja_accion(self, accion):
-        """Botones de la burbuja: 'stack' | 'descargar' | 'cerrar'."""
+        """Botones de la burbuja: 'stack' | 'ver' | 'descargar' | 'cerrar'."""
         url = self._sugerida
         self._ocultar_burbuja()
         if url and accion in ('stack', 'descargar'):
             self._enviar_a_la_interfaz([url], accion)
+        elif url and accion == 'ver':
+            self._recibir_para_ver([url])
         return True
 
     def burbuja_mantener(self):

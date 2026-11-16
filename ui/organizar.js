@@ -336,11 +336,16 @@ function pintarPanelStack() {
     pestana.dataset.accion = 'stack-abrir';
     document.body.appendChild(pestana);
   }
-  const hay = S.vista === 'descargar' && S.ajustes?.modo_stack && S.stack.items.length > 0;
-  const visible = hay && S.stackAbierto;
+  // con enlaces en el stack, su pestaña se ve aunque el modo stack esté apagado (más tenue): así no se olvida.
+  // Tocarla vuelve a activar el modo stack y abre el panel.
+  const hay = S.vista === 'descargar' && S.stack.items.length > 0;
+  const activo = !!S.ajustes?.modo_stack;
+  const visible = hay && activo && S.stackAbierto;
   document.body.classList.toggle('con-stack', !!visible);
   panel.classList.toggle('abierto', !!visible);
   pestana.classList.toggle('oculto', !hay || visible);
+  pestana.classList.toggle('apagado', hay && !activo);
+  pestana.title = activo ? 'Abrir el stack (Ctrl + J)' : 'El stack sigue ahí: tócalo para volver a usarlo';
   const analizando = S.stack.items.some(i => i.estado === 'analizando');
   pestana.innerHTML = `${ico('chevron-izq', 'sm')}${ico(analizando ? 'loader' : 'layers', analizando ? 'sm spin' : 'sm')}<span>Stack</span><b>${S.stack.items.length}</b>`;
   pestana.title = 'Mostrar el stack';
@@ -399,7 +404,11 @@ document.addEventListener('click', async e => {
     if (ver) return seleccionarStack(ver.dataset.stackVer);
   }
   const accion = t.closest('[data-accion]')?.dataset.accion;
-  if (accion === 'stack-abrir') { S.stackAbierto = true; return pintarPanelStack(); }
+  if (accion === 'stack-abrir') {
+    S.stackAbierto = true;
+    if (!S.ajustes.modo_stack) return guardarAjuste({ modo_stack: true });   // vuelve al modo stack con su panel abierto
+    return pintarPanelStack();
+  }
   if (accion === 'stack-cerrar') { S.stackAbierto = false; return pintarPanelStack(); }
   if (accion === 'stack-descargar') return descargarStack();
   if (accion === 'stack-quitar-actual') return quitarDelStack(S.stack.sel);
@@ -1138,8 +1147,9 @@ document.addEventListener('keydown', e => {
     if ($('#panel-colecciones')?.classList.contains('abierto')) cerrarColecciones(); else abrirColecciones();
   } else if (tecla === 'j') {   // stack
     e.preventDefault();
-    if (!S.ajustes.modo_stack || !S.stack.items.length) return toast('El stack está vacío (actívalo con el botón «Stack» de Descargar).');
+    if (!S.stack.items.length) return toast('El stack está vacío (actívalo con el botón «Stack» de Descargar).');
     if (S.vista !== 'descargar') irA('descargar');
+    if (!S.ajustes.modo_stack) { S.stackAbierto = true; return guardarAjuste({ modo_stack: true }); }
     S.stackAbierto = !S.stackAbierto;
     pintarPanelStack();
   }

@@ -97,7 +97,7 @@ def main():
 
     # Burbuja para sugerir enlaces copiados (Ajustes → Captura rápida). Oculta hasta que haga falta.
     api._burbuja = webview.create_window(
-        'JabsDLP · enlace', url=recurso('ui', 'burbuja.html'), js_api=api, width=372, height=104,
+        'JabsDLP · enlace', url=recurso('ui', 'burbuja.html'), js_api=api, width=440, height=112,
         frameless=True, on_top=True, hidden=True, focus=False, resizable=False,
         background_color='#f4f4f7' if claro else '#111115')
 

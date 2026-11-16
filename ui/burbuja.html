@@ -16,6 +16,8 @@
     .burbuja .txt small { display: block; font-size: 12px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .burbuja .botones { display: flex; gap: 6px; flex: none; }
     .burbuja .btn { padding: 6px 10px; font-size: 12.5px; }
+    .burbuja .txt small.atajos-burbuja { margin-top: 2px; font-size: 11px; color: var(--muted); white-space: normal; overflow: visible; line-height: 1.3; }
+    .burbuja .txt small.atajos-burbuja:empty { display: none; }
     .burbuja .cerrar { position: absolute; top: 4px; right: 6px; background: none; border: 0; color: var(--dim); cursor: pointer; font-size: 14px; }
     .barra-tiempo { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--accent); width: 100%; transform-origin: left; }
     .barra-tiempo.corre { transition: transform 6.5s linear; transform: scaleX(0); }
@@ -24,9 +26,11 @@
 <body>
   <div class="burbuja">
     <img src="logo.png" alt="">
-    <div class="txt"><b id="titulo">¿Enviar a JabsDLP?</b><small id="dominio" class="no-traducir"></small></div>
+    <div class="txt"><b id="titulo">¿Enviar a JabsDLP?</b><small id="dominio" class="no-traducir"></small>
+      <small id="atajos" class="atajos-burbuja"></small></div>
     <div class="botones">
       <button class="btn chico" id="btn-stack" data-accion="stack">Al stack</button>
+      <button class="btn chico" data-accion="ver">Ver</button>
       <button class="btn chico primario" data-accion="descargar">Descargar</button>
     </div>
     <button class="cerrar" data-accion="cerrar" title="Descartar">✕</button>
