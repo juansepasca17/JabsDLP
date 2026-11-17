@@ -241,7 +241,8 @@ function actualizarBotonesVer() {
   $('#rp-subs').classList.toggle('oculto', !(V.datos?.subtitulos || []).length);
   $('#rp-calidad').classList.toggle('oculto', !(nivelesCalidad().length > 1));
   $('#rp-audio').classList.toggle('oculto', !(V.hls?.audioTracks?.length > 1 || (!V.hls && V.datos?.audios?.length > 1)));
-  $$('[data-rp="anterior"], [data-rp="siguiente"]').forEach(b => b.classList.toggle('oculto', V.lista.length < 2));
+  $$('[data-rp="anterior"], [data-rp="siguiente"], [data-rp="aleatorio"]').forEach(b => b.classList.toggle('oculto', V.lista.length < 2));
+  $('#rp-aleatorio')?.classList.toggle('activo', !!V.aleatorio);
 }
 
 function pintarTiempo() {
@@ -786,6 +787,7 @@ document.addEventListener('click', async e => {
     if (a === 'anterior') return anteriorVer();
     if (a === 'completa') return alternarCompletaVer();
     if (a === 'pip') return alternarPip();
+    if (a === 'aleatorio') { V.aleatorio = !V.aleatorio; actualizarBotonesVer(); pintarListaVer(); avisarMusica(); return toast(V.aleatorio ? 'Orden aleatorio' : 'En orden'); }
     if (['velocidad', 'subs', 'calidad', 'audio'].includes(a)) return abrirMenuVer(a, rpBtn);
   }
   const opcion = t.closest('[data-rp-opcion]');
@@ -825,7 +827,7 @@ document.addEventListener('click', async e => {
       return;
     case 'ver-lista-panel': $('#ver-lista').classList.toggle('oculto'); await cargarColecciones(); return pintarListaVer();
     case 'ver-lista-cerrar': $('#ver-lista').classList.add('oculto'); return;
-    case 'ver-aleatorio': V.aleatorio = !V.aleatorio; return pintarListaVer();
+    case 'ver-aleatorio': V.aleatorio = !V.aleatorio; actualizarBotonesVer(); return pintarListaVer();
     case 'ver-repetir': V.repetir = { no: 'lista', lista: 'uno', uno: 'no' }[V.repetir]; return pintarListaVer();
     case 'ver-desde-cero': return saltarA(0);
     case 'ver-cerrar': return cerrarVer();

@@ -945,16 +945,16 @@ document.addEventListener('click', async e => {
   }
   const verBib = t.closest('[data-bib-ver]');
   if (verBib) {
-    // Una canción de la Biblioteca sigue con las demás canciones que se ven (como en una app de música)
-    const lista = filtrarBib().filter(a => a.tipo === 'audio');
+    // Sigue con los demás archivos del mismo tipo que se ven: canciones con canciones, videos con videos
+    const tocado = filtrarBib().find(a => a.ruta === verBib.dataset.bibVer);
+    const lista = filtrarBib().filter(a => a.tipo === tocado?.tipo);
     const n = lista.findIndex(a => a.ruta === verBib.dataset.bibVer);
     if (n < 0 || lista.length < 2) return verLocal(verBib.dataset.bibVer);
     guardarProgresoVer();
     V.lista = lista.map(a => ({ ruta: a.ruta, titulo: a.nombre.replace(/\.[^.]+$/, ''), miniatura: B.minis[a.ruta] || undefined, existe: true }));
     V.coleccion = null;
     V.nombreLista = B.sub ? B.sub.split('/').pop() : (B.carpetas.find(c => c.ruta === B.raiz)?.nombre || 'Biblioteca');
-    V.aleatorio = false;
-    irA('ver');
+    irA('ver');   // aleatorio o en orden: lo que tuvieras elegido (botón de la barra del reproductor)
     return abrirItemLista(n);
   }
   const pap = t.closest('[data-bib-papelera]');
