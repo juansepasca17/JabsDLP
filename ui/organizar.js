@@ -949,7 +949,7 @@ document.addEventListener('click', async e => {
     const tocado = filtrarBib().find(a => a.ruta === verBib.dataset.bibVer);
     const lista = filtrarBib().filter(a => a.tipo === tocado?.tipo);
     const n = lista.findIndex(a => a.ruta === verBib.dataset.bibVer);
-    if (n < 0 || lista.length < 2) return verLocal(verBib.dataset.bibVer);
+    if (n < 0 || lista.length < 2 || S.ajustes?.ver_seguir_lista === false) return verLocal(verBib.dataset.bibVer);
     guardarProgresoVer();
     V.lista = lista.map(a => ({ ruta: a.ruta, titulo: a.nombre.replace(/\.[^.]+$/, ''), miniatura: B.minis[a.ruta] || undefined, existe: true }));
     V.coleccion = null;
@@ -1047,7 +1047,7 @@ const PESTANAS_AJUSTES = [
   ['captura', 'Captura', 'zap'], ['avanzado', 'Avanzado', 'terminal'],
 ];
 const PESTANA_CLAVE = 'jabsdlp.ajustes.pestana';
-const AJUSTES_REPRODUCTOR = ['ver_gestos', 'ver_menu', 'ver_subs', 'ver_portada', 'ver_notificacion', 'ver_pip_auto', 'ver_video_fondo', 'ver_siguiente'];
+const AJUSTES_REPRODUCTOR = ['ver_gestos', 'ver_menu', 'ver_subs', 'ver_portada', 'ver_notificacion', 'ver_pip_auto', 'ver_video_fondo', 'ver_seguir_lista', 'ver_siguiente'];
 
 function crearPestanasAjustes(rejilla) {
   const cards = [...rejilla.children];

@@ -241,8 +241,7 @@ function actualizarBotonesVer() {
   $('#rp-subs').classList.toggle('oculto', !(V.datos?.subtitulos || []).length);
   $('#rp-calidad').classList.toggle('oculto', !(nivelesCalidad().length > 1));
   $('#rp-audio').classList.toggle('oculto', !(V.hls?.audioTracks?.length > 1 || (!V.hls && V.datos?.audios?.length > 1)));
-  $$('[data-rp="anterior"], [data-rp="siguiente"], [data-rp="aleatorio"]').forEach(b => b.classList.toggle('oculto', V.lista.length < 2));
-  $('#rp-aleatorio')?.classList.toggle('activo', !!V.aleatorio);
+  $$('[data-rp="anterior"], [data-rp="siguiente"]').forEach(b => b.classList.toggle('oculto', V.lista.length < 2));
 }
 
 function pintarTiempo() {
@@ -532,7 +531,7 @@ async function verUnoDeColeccion(id, n) {
   if (!item || !(item.url || item.existe)) return toast('Ese elemento no se puede ver (¿se movió o borró el archivo?).', 'err');
   guardarProgresoVer();
   // empieza por el elegido y sigue con los demás de la colección (anterior/siguiente, también desde la notificación)
-  const items = r.coleccion.items.filter(i => i.url || i.existe);
+  const items = S.ajustes?.ver_seguir_lista === false ? [item] : r.coleccion.items.filter(i => i.url || i.existe);
   V.lista = items; V.coleccion = r.coleccion.id; V.nombreLista = r.coleccion.nombre;
   cerrarColecciones();
   if (S.vista !== 'ver') irA('ver');
@@ -787,7 +786,6 @@ document.addEventListener('click', async e => {
     if (a === 'anterior') return anteriorVer();
     if (a === 'completa') return alternarCompletaVer();
     if (a === 'pip') return alternarPip();
-    if (a === 'aleatorio') { V.aleatorio = !V.aleatorio; actualizarBotonesVer(); pintarListaVer(); avisarMusica(); return toast(V.aleatorio ? 'Orden aleatorio' : 'En orden'); }
     if (['velocidad', 'subs', 'calidad', 'audio'].includes(a)) return abrirMenuVer(a, rpBtn);
   }
   const opcion = t.closest('[data-rp-opcion]');
