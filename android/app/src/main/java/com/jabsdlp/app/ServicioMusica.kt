@@ -48,7 +48,11 @@ class ServicioMusica : Service() {
                 override fun onPause() = MainActivity.controlMusica("pausa")
                 override fun onSkipToNext() = MainActivity.controlMusica("siguiente")
                 override fun onSkipToPrevious() = MainActivity.controlMusica("anterior")
-                override fun onSeekTo(pos: Long) = MainActivity.controlMusica("ir", pos / 1000.0)
+                override fun onSeekTo(pos: Long) {
+                    // la barra se mueve al momento (también en pausa) y la página salta a ese punto
+                    ultimo?.let { runCatching { it.put("posicion", pos / 1000.0); mostrar(it) } }
+                    MainActivity.controlMusica("ir", pos / 1000.0)
+                }
                 override fun onStop() = MainActivity.controlMusica("pausa")
                 override fun onCustomAction(action: String?, extras: android.os.Bundle?) { if (action == CERRAR) cerrar() }
             })

@@ -160,3 +160,6 @@ html.android .reproductor:not(.controles-visibles) .rp-controles { pointer-event
   html.android .bib-rejilla[data-tamano="diminuto"] { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
   html.android .bib-rejilla[data-tamano="diminuto"] .bib-mini .casilla { top: 3px; left: 3px; transform: scale(.8); }
 }
+/* Ajustes: todas las pestañas a la vista (en dos filas si no caben), sin deslizar de lado */
+html.android .pestanas-ajustes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; }
+html.android .pestana-aj { justify-content: center; }

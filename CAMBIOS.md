@@ -11,10 +11,12 @@ Lo nuevo de cada versión, de la más reciente a la más antigua. Los `.exe` y l
     pase solo a la ventanita al salir de la app, como en YouTube.
 - **Ajustes con pestañas**: General, Descargas, Reproductor, Captura (PC) y Avanzado, con el buscador de siempre arriba.
   Las opciones del reproductor tienen su propia sección. No se pierde ni cambia ningún ajuste.
+  En el celular se ven todas las pestañas a la vez, sin deslizar.
 - **Portadas por todas partes**: la portada o miniatura de tus archivos sale en *Vistos recientemente*, en las
   colecciones y, aunque abras una canción suelta, de fondo en el reproductor y en la notificación.
 - **Arreglos**:
   - La notificación ya no muestra "null" debajo del título.
+  - En Android se puede adelantar o atrasar desde la barra de la notificación, también en pausa.
   - Al cancelar un torrent se borra la carpeta a medias que había creado.
   - Fuera el botón de marcador de la barra de Descargar: los enlaces se guardan desde Colecciones.
   - Menos ruido en el log: ya no anota como error que el reproductor corte una petición al saltar o cambiar de canción.
