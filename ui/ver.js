@@ -887,7 +887,7 @@ function infoMusica() {
     titulo, artista, portada, sonando: !v.paused || !!V.cargando, posicion: tiempoVer() || 0, velocidad: v.playbackRate || 1,
     duracion: (d.duracion || (isFinite(v.duration) ? v.duration : 0)) || 0,
     mantener: !!d.solo_audio || S.ajustes?.ver_video_fondo !== 'pausa',
-    anterior: true, siguiente: V.lista.length > 1 && (V.aleatorio || V.repetir === 'lista' || V.actual < V.lista.length - 1),
+    anterior: true, siguiente: true, favorito: !!V.favorito,
   };
 }
 let musicaClave = '', musicaTimer = null;
@@ -922,10 +922,33 @@ window.controlMusica = (orden, valor) => {
   else if (orden === 'siguiente') siguienteVer(true);
   else if (orden === 'anterior') anteriorVer();
   else if (orden === 'ir' && valor != null) saltarA(+valor);
+  else if (orden === 'favorito') alternarFavoritoActual();
 };
+// ★ Favoritos de lo que suena (el corazón de la notificación)
+function itemFavorito() {
+  const d = V.datos;
+  if (!d?.origen) return null;
+  return esRutaLocal(d.origen) ? { ruta: d.origen, titulo: d.titulo } : { url: d.origen, titulo: d.titulo, miniatura: d.miniatura, duracion: d.duracion };
+}
+async function revisarFavoritoActual() {
+  const item = itemFavorito();
+  try { V.favorito = item ? !!(await API.es_favorito(item)) : false; } catch { V.favorito = false; }
+  avisarMusica();
+}
+async function alternarFavoritoActual() {
+  const item = itemFavorito();
+  if (!item) return;
+  const r = await API.alternar_favorito(item);
+  if (r?.ok) {
+    V.favorito = !!r.resultado;
+    if (r.colecciones && typeof C !== 'undefined') C.lista = r.colecciones;
+    avisarMusica();
+  }
+}
 (() => {
   const v = video();
   ['play', 'pause', 'loadedmetadata', 'seeked', 'ratechange', 'emptied'].forEach(ev => v.addEventListener(ev, () => setTimeout(avisarMusica, 0)));
+  v.addEventListener('loadedmetadata', () => revisarFavoritoActual());
   const ms = navigator.mediaSession;
   if (ms) {
     const acciones = { play: 'play', pause: 'pausa', nexttrack: 'siguiente', previoustrack: 'anterior' };

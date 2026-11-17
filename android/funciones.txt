@@ -48,6 +48,7 @@ agregar_a_coleccion
 quitar_de_coleccion
 reordenar_coleccion
 alternar_favorito
+es_favorito
 exportar_coleccion
 importar_coleccion
 descargar_coleccion

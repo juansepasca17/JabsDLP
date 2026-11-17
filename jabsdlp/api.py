@@ -851,6 +851,12 @@ class Api:
     def alternar_favorito(self, item):
         return self._col(self._colecciones.alternar_favorito, item)
 
+    def es_favorito(self, item):
+        try:
+            return bool(self._colecciones.es_favorito(item))
+        except Exception:  # noqa: BLE001
+            return False
+
     def exportar_coleccion(self, id_, tipo='jabs', progreso=False):
         c = self._colecciones.obtener(id_)
         if not c:

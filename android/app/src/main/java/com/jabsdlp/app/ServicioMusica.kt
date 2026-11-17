@@ -54,7 +54,9 @@ class ServicioMusica : Service() {
                     MainActivity.controlMusica("ir", pos / 1000.0)
                 }
                 override fun onStop() = MainActivity.controlMusica("pausa")
-                override fun onCustomAction(action: String?, extras: android.os.Bundle?) { if (action == CERRAR) cerrar() }
+                override fun onCustomAction(action: String?, extras: android.os.Bundle?) {
+                    if (action == CERRAR) cerrar() else if (action == FAVORITO) MainActivity.controlMusica("favorito")
+                }
             })
             isActive = true
         }
@@ -102,12 +104,15 @@ class ServicioMusica : Service() {
         if (d.optBoolean("siguiente")) acciones = acciones or PlaybackStateCompat.ACTION_SKIP_TO_NEXT
         sesion.setPlaybackState(PlaybackStateCompat.Builder()
             .setActions(acciones)
+            .addCustomAction(PlaybackStateCompat.CustomAction.Builder(FAVORITO,
+                if (d.optBoolean("favorito")) "Quitar de favoritos" else "Añadir a favoritos",
+                if (d.optBoolean("favorito")) R.drawable.ic_estrella_llena else R.drawable.ic_estrella).build())
             .addCustomAction(PlaybackStateCompat.CustomAction.Builder(CERRAR, "Cerrar", android.R.drawable.ic_menu_close_clear_cancel).build())
             .setState(if (sonando) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED,
                 (d.optDouble("posicion", 0.0) * 1000).toLong(), if (sonando) d.optDouble("velocidad", 1.0).toFloat() else 0f)
             .build())
 
-        val aviso = construir(titulo, artista, sonando, d.optBoolean("siguiente"))
+        val aviso = construir(titulo, artista, sonando, d.optBoolean("siguiente"), d.optBoolean("favorito"))
         if (sonando) {
             val tipo = if (Build.VERSION.SDK_INT >= 29) ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK else 0
             try {
@@ -133,7 +138,7 @@ class ServicioMusica : Service() {
         Intent(this, ServicioMusica::class.java).setAction(ACCION).putExtra("orden", orden),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
-    private fun construir(titulo: String, artista: String, sonando: Boolean, haySiguiente: Boolean): Notification {
+    private fun construir(titulo: String, artista: String, sonando: Boolean, haySiguiente: Boolean, favorito: Boolean): Notification {
         val abrir = PendingIntent.getActivity(this, 20,
             Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
@@ -156,6 +161,8 @@ class ServicioMusica : Service() {
             .addAction(if (sonando) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play,
                 if (sonando) "Pausa" else "Reproducir", accion(if (sonando) "pausa" else "play", 23))
         if (haySiguiente) b.addAction(android.R.drawable.ic_media_next, "Siguiente", accion("siguiente", 24))
+        b.addAction(if (favorito) R.drawable.ic_estrella_llena else R.drawable.ic_estrella,
+            if (favorito) "Quitar de favoritos" else "Favorito", accion("favorito", 26))
         b.addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cerrar", accion(CERRAR, 25))
         b.setStyle(MediaStyle().setMediaSession(sesion.sessionToken)
             .setShowActionsInCompactView(*if (haySiguiente) intArrayOf(0, 1, 2) else intArrayOf(0, 1)))
@@ -217,6 +224,7 @@ class ServicioMusica : Service() {
         /** Mientras suena, la página sigue «visible» con la app en segundo plano (los videos no se pausan). */
         @Volatile var mantener = false
         private const val CERRAR = "cerrar"
+        private const val FAVORITO = "favorito"
 
         /** Desde la interfaz: lo que suena ahora (o null para quitar la notificación). */
         fun actualizar(c: Context, json: String?) {
