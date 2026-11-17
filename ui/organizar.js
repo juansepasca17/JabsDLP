@@ -890,6 +890,21 @@ function reproducirSeleccion(aleatorio) {
   abrirItemLista(aleatorio ? Math.floor(Math.random() * V.lista.length) : 0);
 }
 
+// Reproducir un archivo de la Biblioteca (con su lista: los demás del mismo tipo que se ven)
+function verDesdeBiblioteca(ruta) {
+  // Sigue con los demás archivos del mismo tipo que se ven: canciones con canciones, videos con videos
+  const tocado = filtrarBib().find(a => a.ruta === ruta);
+  const lista = filtrarBib().filter(a => a.tipo === tocado?.tipo);
+  const n = lista.findIndex(a => a.ruta === ruta);
+  if (n < 0 || lista.length < 2 || S.ajustes?.ver_seguir_lista === false) return verLocal(ruta);
+  guardarProgresoVer();
+  V.lista = lista.map(a => ({ ruta: a.ruta, titulo: a.nombre.replace(/\.[^.]+$/, ''), miniatura: B.minis[a.ruta] || undefined, existe: true }));
+  V.coleccion = null;
+  V.nombreLista = B.sub ? B.sub.split('/').pop() : (B.carpetas.find(c => c.ruta === B.raiz)?.nombre || 'Biblioteca');
+  irA('ver');   // aleatorio o en orden: lo que tuvieras elegido en la lista de reproducción
+  return abrirItemLista(n);
+}
+
 function itemsBib(rutas) {
   const porRuta = Object.fromEntries((B.datos?.archivos || []).map(a => [a.ruta, a]));
   return rutas.map(r => ({ ruta: r, titulo: porRuta[r]?.nombre.replace(/\.[^.]+$/, '') || r.split(/[\\/]/).pop() }));
@@ -930,7 +945,7 @@ document.addEventListener('click', async e => {
     B.ultimo = ruta;
     return pintarBiblioteca();
   }
-  if (tarjeta && ['pequeno', 'diminuto'].includes(B.tamano) && !t.closest('button, .casilla')) return verLocal(tarjeta.dataset.bibRuta);
+  if (tarjeta && ['pequeno', 'diminuto'].includes(B.tamano) && !t.closest('button, .casilla')) return verDesdeBiblioteca(tarjeta.dataset.bibRuta);
   const fav = t.closest('[data-bib-fav]');
   if (fav) {
     const r = await API.alternar_favorito({ ruta: fav.dataset.bibFav, titulo: fav.dataset.bibFav.split(/[\\/]/).pop() });
@@ -944,19 +959,7 @@ document.addEventListener('click', async e => {
     return;
   }
   const verBib = t.closest('[data-bib-ver]');
-  if (verBib) {
-    // Sigue con los demás archivos del mismo tipo que se ven: canciones con canciones, videos con videos
-    const tocado = filtrarBib().find(a => a.ruta === verBib.dataset.bibVer);
-    const lista = filtrarBib().filter(a => a.tipo === tocado?.tipo);
-    const n = lista.findIndex(a => a.ruta === verBib.dataset.bibVer);
-    if (n < 0 || lista.length < 2 || S.ajustes?.ver_seguir_lista === false) return verLocal(verBib.dataset.bibVer);
-    guardarProgresoVer();
-    V.lista = lista.map(a => ({ ruta: a.ruta, titulo: a.nombre.replace(/\.[^.]+$/, ''), miniatura: B.minis[a.ruta] || undefined, existe: true }));
-    V.coleccion = null;
-    V.nombreLista = B.sub ? B.sub.split('/').pop() : (B.carpetas.find(c => c.ruta === B.raiz)?.nombre || 'Biblioteca');
-    irA('ver');   // aleatorio o en orden: lo que tuvieras elegido (botón de la barra del reproductor)
-    return abrirItemLista(n);
-  }
+  if (verBib) return verDesdeBiblioteca(verBib.dataset.bibVer);
   const pap = t.closest('[data-bib-papelera]');
   if (pap) return papeleraBib([pap.dataset.bibPapelera]);
   const quitar = t.closest('[data-bib-quitar]');
