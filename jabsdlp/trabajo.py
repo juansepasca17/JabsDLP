@@ -432,6 +432,30 @@ def _eta_segundos(texto):
     return total or None
 
 
+def _borrar_torrent_parcial(carpeta, antes):
+    """Al cancelar un torrent no queda su carpeta a medias: se borra solo lo nuevo que tenga su «.aria2» (lo que
+    creó aria2 para este torrent), nunca otros archivos que hayan aparecido mientras tanto en la carpeta."""
+    import shutil
+    import time
+    for _ in range(6):   # en Windows el proceso tarda un instante en soltar los archivos
+        try:
+            nuevos = set(os.listdir(carpeta)) - antes
+        except OSError:
+            return
+        suyos = {n for n in nuevos if n.endswith('.aria2') or n + '.aria2' in nuevos}
+        if not suyos:
+            return
+        for n in sorted(suyos, key=lambda x: x.endswith('.aria2')):   # primero lo descargado, luego su .aria2
+            r = os.path.join(carpeta, n)
+            if n.endswith('.aria2') and os.path.exists(r[:-6]):
+                continue   # lo descargado aún no se pudo borrar: el .aria2 se queda para reconocerlo en la siguiente vuelta
+            try:
+                shutil.rmtree(r) if os.path.isdir(r) else os.unlink(r)
+            except OSError:
+                pass
+        time.sleep(0.5)
+
+
 def ejecutar_torrent(trabajo, ajustes, limite_bytes=0):
     """Torrent o magnet con aria2: sin seed al terminar y con la subida limitada."""
     import subprocess
@@ -469,6 +493,8 @@ def ejecutar_torrent(trabajo, ajustes, limite_bytes=0):
     finally:
         trabajo.proceso = None
     if trabajo.cancelado:
+        if not trabajo.pausar:
+            _borrar_torrent_parcial(carpeta, antes)
         raise Cancelado()
     if proc.returncode != 0:
         ultima = next((l for l in reversed(trabajo.registro) if l), '')

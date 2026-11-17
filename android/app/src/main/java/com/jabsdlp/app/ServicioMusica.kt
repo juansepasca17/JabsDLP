@@ -75,7 +75,8 @@ class ServicioMusica : Service() {
         Companion.sonando = sonando
         mantener = sonando && d.optBoolean("mantener", true)
         if (antes && !mantener && !MainActivity.visible) MainActivity.ocultarPagina()   // en pausa ya no hace falta
-        val titulo = d.optString("titulo").ifBlank { "JabsDLP" }
+        val titulo = texto(d, "titulo") ?: "JabsDLP"
+        val artista = texto(d, "artista") ?: ""
         val clave = d.optString("portada")
         if (clave != portadaClave) {
             portadaClave = clave
@@ -87,7 +88,7 @@ class ServicioMusica : Service() {
         }
         val meta = MediaMetadataCompat.Builder()
             .putString(MediaMetadataCompat.METADATA_KEY_TITLE, titulo)
-            .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, d.optString("artista"))
+            .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artista.ifBlank { "JabsDLP" })
             .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, (d.optDouble("duracion", 0.0) * 1000).toLong().coerceAtLeast(0))
         portada?.let { meta.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, it) }
         sesion.setMetadata(meta.build())
@@ -102,7 +103,7 @@ class ServicioMusica : Service() {
                 (d.optDouble("posicion", 0.0) * 1000).toLong(), if (sonando) d.optDouble("velocidad", 1.0).toFloat() else 0f)
             .build())
 
-        val aviso = construir(titulo, d.optString("artista"), sonando, d.optBoolean("siguiente"))
+        val aviso = construir(titulo, artista, sonando, d.optBoolean("siguiente"))
         if (sonando) {
             val tipo = if (Build.VERSION.SDK_INT >= 29) ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK else 0
             try {
@@ -119,6 +120,10 @@ class ServicioMusica : Service() {
             runCatching { NotificationManagerCompat.from(this).notify(ID, aviso) }
         }
     }
+
+    /** optString devuelve "null" (texto) si el valor es null en JSON: se trata como vacío. */
+    private fun texto(d: JSONObject, clave: String): String? =
+        if (d.isNull(clave)) null else d.optString(clave).takeUnless { it.isBlank() || it == "null" }
 
     private fun accion(orden: String, codigo: Int) = PendingIntent.getService(this, codigo,
         Intent(this, ServicioMusica::class.java).setAction(ACCION).putExtra("orden", orden),

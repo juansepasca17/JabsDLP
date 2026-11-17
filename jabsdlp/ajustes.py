@@ -103,6 +103,7 @@ AJUSTES_POR_DEFECTO = {
     'ver_portada': 'nitida',            # música en Ver: portada nítida sobre fondo borroso | sobre negro | solo fondo borroso
     'ver_notificacion': True,           # Android: notificación con lo que suena en Ver (anterior / pausa / siguiente)
     'ver_video_fondo': 'sonido',        # Android, videos con la app en segundo plano: sonido (siguen sonando) | pausa
+    'ver_pip_auto': False,              # Android: el video pasa solo a la ventanita al salir de la app
     'ver_siguiente': True,              # al terminar un elemento de la lista, pasar solo al siguiente (si no, se pausa)
     'log_app': True,                    # guardar el log propio de la app (Ajustes → Avanzado)             # celular: menús del reproductor junto al botón (flotante) o desde abajo (panel)
     'perfiles': [],                     # perfiles de descarga guardados: [{id, nombre, prefs}]               # tamaño de los subtítulos en Ver: pequeno | normal | grande
@@ -115,7 +116,7 @@ AJUSTES_POR_DEFECTO = {
 BOOLEANOS = ('subcarpeta_playlist', 'paralelo', 'decodificar_gpu', 'recomendacion', 'ytdlp_auto', 'retomar_cola',
              'notificaciones', 'bandeja_al_minimizar', 'numerar_playlist', 'no_repetir', 'corte_exacto',
              'impersonar', 'args_extra_activo', 'log_completo', 'modo_stack', 'stack_auto', 'captura_atajo',
-             'captura_portapapeles', 'pantalla_completa', 'ver_gestos', 'log_app', 'captura_atajo_ver', 'ver_siguiente', 'ver_notificacion')
+             'captura_portapapeles', 'pantalla_completa', 'ver_gestos', 'log_app', 'captura_atajo_ver', 'ver_siguiente', 'ver_notificacion', 'ver_pip_auto')
 ENTEROS = {'max_paralelo': (0, 999), 'fragmentos': (1, 32), 'max_conversiones': (1, 16), 'calidad': (10, 45),
            'reintentos': (0, 10), 'subida_torrent_kb': (1, 100000)}
 AVISOS = ('torrent', 'torrent_ver', 'http', 'generico', 'ejecutable', 'aria2')

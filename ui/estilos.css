@@ -828,3 +828,19 @@ body.arrastrando-sel #bib-rejilla { cursor: crosshair; }
 :root[data-portada-ver="negro"] .reproductor.solo-audio.con-portada::before { display: none; }
 :root[data-portada-ver="borrosa"] .reproductor.solo-audio.con-portada::after { content: "♪"; inset: 0; transform: none; height: auto; aspect-ratio: auto;
   background: none; box-shadow: none; border-radius: 0; }
+/* Android, ventanita (picture in picture): solo el video, a todo el tamaño de la ventanita */
+html.ver-pip, html.ver-pip body { overflow: hidden !important; background: #000 !important; }
+html.ver-pip body * { visibility: hidden !important; }
+html.ver-pip #reproductor { visibility: visible !important; position: fixed !important; inset: 0 !important; z-index: 99999;
+  width: 100vw !important; height: 100vh !important; max-height: none !important; margin: 0 !important; border-radius: 0 !important;
+  aspect-ratio: auto !important; background: #000 !important; }
+html.ver-pip #video { visibility: visible !important; width: 100% !important; height: 100% !important; object-fit: contain; }
+/* Pestañas de Ajustes (con una búsqueda se ven todas las secciones que coinciden) */
+.pestanas-ajustes { display: flex; gap: 6px; margin: 0 0 14px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.pestanas-ajustes::-webkit-scrollbar { display: none; }
+.pestana-aj { display: inline-flex; align-items: center; gap: 7px; flex: none; padding: 8px 14px; border-radius: 999px;
+  border: 1px solid var(--border); background: transparent; color: var(--text-2, inherit); font: inherit; font-size: 13px; cursor: pointer; }
+.pestana-aj:hover { background: var(--card-2, rgba(255,255,255,.04)); }
+.pestana-aj.activa { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent, inherit); font-weight: 600; }
+html.buscando-ajustes .pestanas-ajustes { opacity: .45; }
+.rejilla-ajustes > .card.fuera-pestana { display: none !important; }

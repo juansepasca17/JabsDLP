@@ -918,7 +918,9 @@ class Api:
         return _ok(**datos)
 
     def biblioteca_miniatura(self, ruta):
-        if not ruta or not biblioteca.dentro_de(ruta, self._raices()):
+        # De las carpetas de la Biblioteca o de cualquier video/audio que se esté viendo (Vistos, colecciones)
+        if not ruta or not (biblioteca.dentro_de(ruta, self._raices())
+                            or (os.path.isfile(ruta) and biblioteca.tipo_archivo(ruta) in ('video', 'audio'))):
             return None
         return biblioteca.miniatura(ruta, self._herr.ffmpeg())
 

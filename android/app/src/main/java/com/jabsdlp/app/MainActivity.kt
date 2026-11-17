@@ -2,7 +2,9 @@ package com.jabsdlp.app
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
+import android.app.PendingIntent
 import android.content.pm.ActivityInfo
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
@@ -163,11 +165,12 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         visible = true
+        web.dispatchWindowVisibilityChanged(View.VISIBLE)   // por si quedó «oculta» en segundo plano
         principal.post(vigilar)
     }
 
     override fun onPause() {
-        visible = false
+        visible = Build.VERSION.SDK_INT >= 24 && isInPictureInPictureMode   // en la ventanita sigue viéndose
         principal.removeCallbacks(vigilar)
         super.onPause()
     }
@@ -405,7 +408,78 @@ class MainActivity : ComponentActivity() {
         barrasOcultas(completa || videoCompleto)
     }
 
+    // ---------- ventanita (picture in picture) ----------
+    private var pipSonando = false
+    private var pipSiguiente = false
+    private var pipAuto = false
+    private var pipProporcion = android.util.Rational(16, 9)
+    private var receptorPip: android.content.BroadcastReceiver? = null
+
+    private fun proporcion(ancho: Int, alto: Int): android.util.Rational {
+        val r = ancho.coerceAtLeast(1).toDouble() / alto.coerceAtLeast(1)
+        // Android solo admite entre 1:2,39 y 2,39:1
+        return when {
+            r > 2.39 -> android.util.Rational(239, 100)
+            r < 1 / 2.39 -> android.util.Rational(100, 239)
+            else -> android.util.Rational(ancho.coerceAtLeast(1), alto.coerceAtLeast(1))
+        }
+    }
+
+    private fun accionPip(orden: String, icono: Int, titulo: String, codigo: Int): android.app.RemoteAction {
+        val i = PendingIntent.getBroadcast(this, codigo, Intent(ACCION_PIP).setPackage(packageName).putExtra("orden", orden),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        return android.app.RemoteAction(android.graphics.drawable.Icon.createWithResource(this, icono), titulo, titulo, i)
+    }
+
+    private fun parametrosPip(): android.app.PictureInPictureParams {
+        val acciones = mutableListOf(accionPip("anterior", android.R.drawable.ic_media_previous, "Anterior", 40),
+            if (pipSonando) accionPip("pausa", android.R.drawable.ic_media_pause, "Pausa", 41)
+            else accionPip("play", android.R.drawable.ic_media_play, "Reproducir", 41))
+        if (pipSiguiente) acciones.add(accionPip("siguiente", android.R.drawable.ic_media_next, "Siguiente", 42))
+        val b = android.app.PictureInPictureParams.Builder().setAspectRatio(pipProporcion).setActions(acciones)
+        if (Build.VERSION.SDK_INT >= 31) b.setAutoEnterEnabled(pipAuto).setSeamlessResizeEnabled(true)
+        return b.build()
+    }
+
+    fun entrarPip(ancho: Int, alto: Int) {
+        if (Build.VERSION.SDK_INT < 26) return
+        pipProporcion = proporcion(ancho, alto)
+        runCatching { enterPictureInPictureMode(parametrosPip()) }
+    }
+
+    fun estadoPip(json: String) {
+        val d = runCatching { JSONObject(json) }.getOrNull() ?: return
+        pipSonando = d.optBoolean("sonando")
+        pipSiguiente = d.optBoolean("siguiente")
+        pipAuto = d.optBoolean("auto")
+        pipProporcion = proporcion(d.optInt("ancho", 16), d.optInt("alto", 9))
+        if (Build.VERSION.SDK_INT >= 26) runCatching { setPictureInPictureParams(parametrosPip()) }
+    }
+
+    /** Android 8–11: entrar en la ventanita al salir de la app (en 12+ lo hace el sistema con setAutoEnterEnabled). */
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (pipAuto && Build.VERSION.SDK_INT in 26..30) runCatching { enterPictureInPictureMode(parametrosPip()) }
+    }
+
+    override fun onPictureInPictureModeChanged(enPip: Boolean, nuevaConfig: android.content.res.Configuration) {
+        super.onPictureInPictureModeChanged(enPip, nuevaConfig)
+        if (enPip) { visible = true; web.dispatchWindowVisibilityChanged(View.VISIBLE) }
+        if (enPip && receptorPip == null) {
+            receptorPip = object : android.content.BroadcastReceiver() {
+                override fun onReceive(c: Context?, i: Intent?) { i?.getStringExtra("orden")?.let { controlMusica(it) } }
+            }
+            androidx.core.content.ContextCompat.registerReceiver(this, receptorPip, android.content.IntentFilter(ACCION_PIP),
+                androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
+        } else if (!enPip) {
+            receptorPip?.let { runCatching { unregisterReceiver(it) } }
+            receptorPip = null
+        }
+        web.evaluateJavascript("window.modoPip && modoPip($enPip)", null)
+    }
+
     companion object {
+        private const val ACCION_PIP = "com.jabsdlp.app.PIP"
         @Volatile private var actual: java.lang.ref.WeakReference<MainActivity>? = null
         /** La app está delante: solo entonces Android deja crear un servicio en primer plano. */
         @Volatile var visible = false
@@ -413,7 +487,9 @@ class MainActivity : ComponentActivity() {
         /** La app está en segundo plano y ya no suena nada: la página pasa a oculta, como siempre. */
         fun ocultarPagina() {
             val a = actual?.get() ?: return
-            a.runOnUiThread { if (!visible) a.web.dispatchWindowVisibilityChanged(View.INVISIBLE) }
+            a.runOnUiThread {
+                if (!visible && !(Build.VERSION.SDK_INT >= 24 && a.isInPictureInPictureMode)) a.web.dispatchWindowVisibilityChanged(View.INVISIBLE)
+            }
         }
 
         /** Botones de la notificación de música (y de los auriculares): se los pasa a la pestaña Ver. */

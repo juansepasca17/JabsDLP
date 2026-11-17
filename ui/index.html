@@ -52,7 +52,6 @@
             </div>
             <label class="chip-stack" title="Modo stack: los enlaces se van sumando a una lista para descargarlos juntos en una carpeta">
               <input type="checkbox" data-ajuste="modo_stack"><span><i data-ico="layers" class="sm"></i>Stack</span></label>
-            <button class="btn icono" data-accion="guardar-enlace-col" title="Guardar el enlace en una colección (sin analizarlo)"><i data-ico="bookmark"></i></button>
             <button class="btn primario" data-accion="analizar" id="btn-analizar"><i data-ico="search"></i>Analizar</button>
           </div>
         </div>
@@ -135,6 +134,7 @@
                   <button class="rp-btn oculto" data-rp="audio" id="rp-audio" title="Idioma del audio"><i data-ico="languages"></i></button>
                   <button class="rp-btn" data-rp="subs" id="rp-subs" title="Subtítulos (C)"><i data-ico="subtitulos"></i></button>
                   <button class="rp-btn" data-rp="calidad" id="rp-calidad" title="Calidad"><i data-ico="settings"></i></button>
+                  <button class="rp-btn" data-rp="pip" id="rp-pip" title="Ventanita (picture in picture)"><i data-ico="pip"></i></button>
                   <button class="rp-btn" data-rp="completa" title="Pantalla completa (F)"><i data-ico="maximizar"></i></button>
                 </div>
               </div>
@@ -457,6 +457,10 @@
             <div class="ajuste solo-tactil">
               <div class="txt"><b>Controles en la notificación</b><small>Lo que suena en Ver, con su portada, anterior, pausa y siguiente, en la notificación y en la pantalla de bloqueo.</small></div>
               <label class="switch"><input type="checkbox" data-ajuste="ver_notificacion"><span></span></label>
+            </div>
+            <div class="ajuste solo-tactil">
+              <div class="txt"><b>Ventanita al salir de la app</b><small>Si sales de la app con un video sonando, pasa solo a una ventanita flotante, como en YouTube. También puedes abrirla con el botón de los dos cuadraditos del reproductor.</small></div>
+              <label class="switch"><input type="checkbox" data-ajuste="ver_pip_auto"><span></span></label>
             </div>
             <div class="ajuste solo-tactil">
               <div class="txt"><b>Videos en segundo plano</b><small>Si sales de la app o apagas la pantalla con un video sonando. La música siempre sigue sonando. Seguir sonando gasta un poco más de batería que solo el audio.</small></div>

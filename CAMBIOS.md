@@ -2,6 +2,24 @@
 
 Lo nuevo de cada versión, de la más reciente a la más antigua. Los `.exe` y los APK están en [Releases](https://github.com/juansepasca17/JabsDLP/releases).
 
+## 1.8.0
+
+- **Ventanita (picture in picture)**: botón de dos cuadraditos en el reproductor. El video pasa a una ventanita
+  flotante encima de todo, que puedes mover y hacer más grande o más pequeña.
+  - **PC**: la ventanita del navegador, abajo a la derecha, con pausa, anterior y siguiente.
+  - **Android**: la ventanita del sistema, con anterior, pausa y siguiente. En *Ajustes* puedes hacer que el video
+    pase solo a la ventanita al salir de la app, como en YouTube.
+- **Ajustes con pestañas**: General, Descargas, Reproductor, Captura (PC) y Avanzado, con el buscador de siempre arriba.
+  Las opciones del reproductor tienen su propia sección. No se pierde ni cambia ningún ajuste.
+- **Portadas por todas partes**: la portada o miniatura de tus archivos sale en *Vistos recientemente*, en las
+  colecciones y, aunque abras una canción suelta, de fondo en el reproductor y en la notificación.
+- **Arreglos**:
+  - La notificación ya no muestra "null" debajo del título.
+  - Al cancelar un torrent se borra la carpeta a medias que había creado.
+  - Fuera el botón de marcador de la barra de Descargar: los enlaces se guardan desde Colecciones.
+  - Menos ruido en el log: ya no anota como error que el reproductor corte una petición al saltar o cambiar de canción.
+  - En Android, la página ya no se queda congelada al volver de la ventanita o del segundo plano.
+
 ## 1.7.9
 
 - **Controles en la notificación** (Android, *Ajustes*, activado por defecto): lo que suena en Ver aparece en la

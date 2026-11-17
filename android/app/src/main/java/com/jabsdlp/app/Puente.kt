@@ -70,6 +70,18 @@ class Puente(private val contexto: Context, private val web: WebView) {
     @JavascriptInterface
     fun musica(json: String) = ServicioMusica.actualizar(contexto, json.ifBlank { null })
 
+    /** Ventanita (picture in picture) con la proporción del video. */
+    @JavascriptInterface
+    fun pip(ancho: Int, alto: Int) {
+        (contexto as? MainActivity)?.let { a -> a.runOnUiThread { a.entrarPip(ancho, alto) } }
+    }
+
+    /** Estado para la ventanita: botones (pausa/siguiente) y si debe entrar sola al salir de la app. */
+    @JavascriptInterface
+    fun pipEstado(json: String) {
+        (contexto as? MainActivity)?.let { a -> a.runOnUiThread { a.estadoPip(json) } }
+    }
+
     private fun leerAsset(ruta: String) = contexto.assets.open(ruta).bufferedReader().use { it.readText() }
 }
 

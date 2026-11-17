@@ -553,7 +553,7 @@ async function pintarColeccion(id) {
       <div class="pc-elemento ${i.ruta && !i.existe ? 'perdido' : ''}" draggable="true" data-pos="${n}">
         <span class="asa" title="Arrastra para reordenar">${ico('grip', 'sm')}</span>
         ${i.miniatura ? `<img src="${esc(i.miniatura)}" alt="" loading="lazy" referrerpolicy="no-referrer">`
-          : `<span class="sin-img">${ico(i.ruta ? 'file' : 'link', 'sm')}</span>`}
+          : `<span class="sin-img" ${i.ruta && i.existe ? `data-mini-local="${esc(i.ruta)}"` : ''}>${ico(i.ruta ? 'file' : 'link', 'sm')}</span>`}
         <span class="txt"><b class="no-traducir" title="${esc(i.titulo || i.url || i.ruta)}">${esc(i.titulo || i.url || i.ruta.split(/[\\/]/).pop())}</b>
           <small>${tipoElemento(i)}${i.duracion ? ' · ' + fmt.dur(i.duracion) : ''}</small></span>
         ${i.url || i.existe ? `<button class="btn chico icono" data-col-uno="${n}" title="Ver solo este">${ico('play', 'sm')}</button>` : ''}
@@ -561,6 +561,7 @@ async function pintarColeccion(id) {
       </div>`).join('') || '<small class="dim">Vacía. Añade videos con «Guardar en colección» desde Descargar, el stack o la Biblioteca.</small>'}
     </div>`;
   panel.dataset.items = JSON.stringify(c.items.map(i => i.url ? { url: i.url } : { ruta: i.ruta }));
+  if (typeof cargarMinisLocales === 'function') cargarMinisLocales(panel);
   completarColeccion(c);
 }
 
@@ -1015,6 +1016,7 @@ function prepararAjustes() {
         <button class="btn chico icono fantasma oculto" data-accion="ajustes-limpiar-busqueda" title="Borrar la búsqueda">${ico('x', 'sm')}</button></span>
       <button class="btn chico" data-accion="ajustes-plegar" title="Plegar todas las secciones (o toca el título de cada una)">${ico('minimizar', 'sm')}Plegar todo</button>
       <button class="btn chico" data-accion="ajustes-desplegar" title="Desplegar todas las secciones">${ico('maximizar', 'sm')}Desplegar todo</button></div>`);
+  crearPestanasAjustes(rejilla);
   const plegadas = seccionesPlegadas();
   [...rejilla.children].forEach((card, n) => {
     card.dataset.seccion = n;
@@ -1025,12 +1027,68 @@ function prepararAjustes() {
   });
 }
 
+/* ---------- pestañas de Ajustes ----------
+   Las secciones se reparten en pestañas (General, Descargas, Reproductor, Captura, Avanzado). Las opciones del
+   reproductor salen de «Ventana, avisos y apariencia» a su propia sección. Con una búsqueda se ve todo. */
+const PESTANAS_AJUSTES = [
+  ['general', 'General', 'settings'], ['descargas', 'Descargas', 'download'], ['reproductor', 'Reproductor', 'play'],
+  ['captura', 'Captura', 'zap'], ['avanzado', 'Avanzado', 'terminal'],
+];
+const PESTANA_CLAVE = 'jabsdlp.ajustes.pestana';
+const AJUSTES_REPRODUCTOR = ['ver_gestos', 'ver_menu', 'ver_subs', 'ver_portada', 'ver_notificacion', 'ver_pip_auto', 'ver_video_fondo', 'ver_siguiente'];
+
+function crearPestanasAjustes(rejilla) {
+  const cards = [...rejilla.children];
+  const titulo = c => normalizarTexto(c.querySelector(':scope > .titulo-seccion')?.textContent);
+  // sección nueva «Reproductor» con las filas del reproductor
+  const filas = AJUSTES_REPRODUCTOR.map(k => rejilla.querySelector(`[data-ajuste="${k}"]`)?.closest('.ajuste')).filter(Boolean);
+  if (filas.length) {
+    const nueva = document.createElement('div');
+    nueva.className = 'card pad';
+    nueva.innerHTML = `<h2 class="titulo-seccion">${ico('play')}Reproductor (Ver)</h2>`;
+    filas.forEach(f => nueva.appendChild(f));
+    const ventana = cards.find(c => titulo(c).includes('ventana'));
+    rejilla.insertBefore(nueva, ventana ? ventana.nextSibling : null);
+  }
+  [...rejilla.children].forEach(c => {
+    const t = titulo(c);
+    c.dataset.pestana = t.startsWith('reproductor') ? 'reproductor'
+      : t.startsWith('captura') ? 'captura'
+      : (t.startsWith('herramientas') || t.startsWith('avanzado')) ? 'avanzado'
+      : (t.startsWith('red') || t.includes('paralelo') || t.includes('aceleracion') || t.startsWith('cookies')) ? 'descargas'
+      : 'general';
+  });
+  const android = document.documentElement.classList.contains('android');
+  rejilla.insertAdjacentHTML('beforebegin', `<div class="pestanas-ajustes" role="tablist">${PESTANAS_AJUSTES
+    .filter(([id]) => !(android && id === 'captura'))
+    .map(([id, nombre, icono]) => `<button class="pestana-aj" role="tab" data-pestana-aj="${id}">${ico(icono, 'sm')}${nombre}</button>`).join('')}</div>`);
+  let guardada = 'general';
+  try { guardada = localStorage.getItem(PESTANA_CLAVE) || 'general'; } catch { /* sin almacenamiento */ }
+  if (android && guardada === 'captura') guardada = 'general';
+  mostrarPestanaAjustes(guardada, false);
+}
+
+function mostrarPestanaAjustes(id, recordar = true) {
+  if (!PESTANAS_AJUSTES.some(([p]) => p === id)) id = 'general';
+  document.documentElement.dataset.pestanaAj = id;
+  $$('.pestana-aj').forEach(b => { const si = b.dataset.pestanaAj === id; b.classList.toggle('activa', si); b.setAttribute('aria-selected', si); });
+  if (recordar) try { localStorage.setItem(PESTANA_CLAVE, id); } catch { /* sin almacenamiento */ }
+  filtrarAjustes();
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-pestana-aj]');
+  if (b) { mostrarPestanaAjustes(b.dataset.pestanaAj); b.scrollIntoView({ block: 'nearest', inline: 'center' }); }
+});
+
 function normalizarTexto(t) { return (t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
 
 function filtrarAjustes() {
   const q = normalizarTexto($('#buscar-ajustes')?.value.trim());
   $('[data-accion="ajustes-limpiar-busqueda"]')?.classList.toggle('oculto', !q);   // búsqueda activa: X para borrarla
+  const pestana = document.documentElement.dataset.pestanaAj || 'general';
+  document.documentElement.classList.toggle('buscando-ajustes', !!q);
   $$('#vista-ajustes .rejilla-ajustes > .card').forEach(card => {
+    card.classList.toggle('fuera-pestana', !q && !!card.dataset.pestana && card.dataset.pestana !== pestana);
     if (!q) {
       card.classList.remove('sin-coincidencias');
       card.querySelectorAll('.no-coincide').forEach(el => el.classList.remove('no-coincide'));

@@ -38,9 +38,9 @@ android {
         applicationId = "com.jabsdlp.app"
         minSdk = 24
         targetSdk = 35
-        // Mismo número que la versión de PC. versionCode: 1.7.9 -> 10709
-        versionName = "1.7.9"
-        versionCode = 10709
+        // Mismo número que la versión de PC. versionCode: 1.8.0 -> 10800
+        versionName = "1.8.0"
+        versionCode = 10800
         // Python 3.12+ en Android solo existe para 64 bits. El APK publicado es arm64-v8a;
         // JABSDLP_ABIS=x86_64 compila uno para el emulador del PC (ver PORTAR.md).
         ndk { abiFilters += (System.getenv("JABSDLP_ABIS") ?: "arm64-v8a").split(",").map { it.trim() } }

@@ -10,6 +10,7 @@ const ICONOS = {
   volumen: '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/>',
   'volumen-x': '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/>',
   subtitulos: '<rect width="18" height="14" x="3" y="5" rx="2"/><path d="M7 15h4M15 15h2M7 11h2M13 11h4"/>',
+  pip: '<rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="11" width="8" height="7" rx="1"/>',
   maximizar: '<path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/>',
   minimizar: '<path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3"/>',
   aleatorio: '<path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/><path d="m18 14 4 4-4 4"/>',
@@ -1240,7 +1241,8 @@ function pintarAjustes() {
   document.documentElement.dataset.subs = S.ajustes.ver_subs || 'normal';   // tamaño de los subtítulos en Ver
   document.documentElement.dataset.menuVer = S.ajustes.ver_menu || 'flotante';
   document.documentElement.dataset.portadaVer = S.ajustes.ver_portada || 'nitida';
-  if (typeof avisarMusica === 'function') avisarMusica();   // el ajuste de la notificación de música   // cómo se ve la portada de la música
+  if (typeof avisarMusica === 'function') avisarMusica();
+  if (typeof avisarPipAndroid === 'function') avisarPipAndroid();   // el ajuste de la notificación de música   // cómo se ve la portada de la música
   pintarPerfilesAjustes();
   pintarDestinosAjustes();
   const a = S.ajustes;

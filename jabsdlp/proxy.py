@@ -60,6 +60,13 @@ class Proxy:
         proxy = self
 
         class Manejador(BaseHTTPRequestHandler):
+            def handle(self):
+                # El reproductor corta peticiones al saltar o cambiar de canción: no es un error, no se anota
+                try:
+                    super().handle()
+                except (ConnectionResetError, BrokenPipeError, ConnectionAbortedError):
+                    pass
+
             protocol_version = 'HTTP/1.1'
 
             def log_message(self, *args):   # silencioso

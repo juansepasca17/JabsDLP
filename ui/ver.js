@@ -141,6 +141,7 @@ function cargarFuente(datos, desde) {
   $('#reproductor').style.setProperty('--fondo-audio', portada ? `url("${portada.replace(/"/g, '')}")` : 'none');
   $('#reproductor').classList.toggle('con-portada', !!portada);
   if (!portada && V.lista[V.actual]?.ruta) miniaturaLocal(V.lista[V.actual]);
+  else if (!portada && esRutaLocal(datos.origen)) portadaArchivo(datos.origen);
   V.audioElegido = false;
   V.audioRemux = 0;
   try { v.currentTime = 0; } catch { /* sin medio */ }   // el siguiente empieza en 0:00, no donde iba el anterior
@@ -231,6 +232,7 @@ function pintarInfoVer() {
 
 function actualizarBotonesVer() {
   const v = video();
+  $('#rp-pip')?.classList.toggle('oculto', !pipDisponible());
   $('#rp-play').innerHTML = ico(v.paused ? 'play' : 'pause');
   $('#rp-silencio').innerHTML = ico(v.muted || v.volume === 0 ? 'volumen-x' : 'volumen');
   $('#rp-vol').value = v.muted ? 0 : v.volume;
@@ -584,12 +586,44 @@ function guardarProgresoVer(final = false) {
 
 // Los archivos de la Biblioteca no traen miniatura: se pide (la misma caché que la Biblioteca) solo para lo que se ve
 const minisPedidas = new Map();
+const esRutaLocal = o => typeof o === 'string' && /^(\/|[A-Za-z]:[\\/])/.test(o);
+function pedirMiniLocal(ruta) {
+  if (typeof B !== 'undefined' && B.minis[ruta]) return Promise.resolve(B.minis[ruta]);
+  if (!minisPedidas.has(ruta)) minisPedidas.set(ruta, Promise.resolve(API.biblioteca_miniatura(ruta)).catch(() => null));
+  return minisPedidas.get(ruta);
+}
+// Archivo abierto solo (Abrir archivo, Vistos, Cola): su portada de fondo y en la notificación
+function portadaArchivo(ruta) {
+  pedirMiniLocal(ruta).then(src => {
+    if (!src || !V.datos || V.datos.origen !== ruta || V.datos.miniatura) return;
+    V.datos.miniatura = src;
+    $('#reproductor').style.setProperty('--fondo-audio', `url("${src}")`);
+    $('#reproductor').classList.add('con-portada');
+    avisarMusica();
+  });
+}
+// Cualquier elemento con data-mini-local="ruta" (Vistos recientemente, colecciones) recibe su miniatura al verse
+let obsMinisLocales = null;
+function cargarMinisLocales(raiz = document) {
+  obsMinisLocales ??= new IntersectionObserver(entradas => {
+    for (const en of entradas) {
+      if (!en.isIntersecting) continue;
+      obsMinisLocales.unobserve(en.target);
+      const el = en.target;
+      pedirMiniLocal(el.dataset.miniLocal).then(src => {
+        if (!src || el.querySelector('img')) return;
+        el.querySelector('svg')?.remove();
+        el.insertAdjacentHTML('afterbegin', `<img src="${src}" alt="">`);
+      });
+    }
+  }, { rootMargin: '300px' });
+  raiz.querySelectorAll('[data-mini-local]').forEach(el => { if (!el.querySelector('img')) obsMinisLocales.observe(el); });
+}
 function miniaturaLocal(item) {
   const ruta = item.ruta;
   if (!ruta || item.miniatura) return;
   if (typeof B !== 'undefined' && B.minis[ruta]) { item.miniatura = B.minis[ruta]; return ponerMiniLocal(item); }
-  if (!minisPedidas.has(ruta)) minisPedidas.set(ruta, Promise.resolve(API.biblioteca_miniatura(ruta)).catch(() => null));
-  minisPedidas.get(ruta).then(src => {
+  pedirMiniLocal(ruta).then(src => {
     if (!src) return;
     if (typeof B !== 'undefined') B.minis[ruta] = src;
     item.miniatura = src;
@@ -667,9 +701,10 @@ async function pintarInicioVer() {
     ${vistos.length ? `<div class="etiqueta-grupo" style="margin-top:22px">${ico('clock', 'sm')}Vistos recientemente</div>
     <div class="ver-recientes">${vistos.map(v => `
       <div class="ver-reciente ${v.local && !v.existe ? 'perdido' : ''}" data-ver-origen="${esc(v.origen)}" title="${esc(v.titulo)}">
-        <span class="vl-mini">${v.miniatura ? `<img src="${esc(v.miniatura)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ico(v.local ? 'file' : 'video', 'sm')}</span>
+        <span class="vl-mini" ${!v.miniatura && v.local && v.existe !== false ? `data-mini-local="${esc(v.origen)}"` : ''}>${v.miniatura ? `<img src="${esc(v.miniatura)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ico(v.local ? 'file' : 'video', 'sm')}</span>
         <span class="txt"><b class="no-traducir">${esc(v.titulo || v.origen)}</b><small>${v.local ? 'Archivo de tu equipo' : esc(hostDe(v.origen))}${v.duracion ? ' · ' + fmt.dur(v.duracion) : ''}</small></span>
       </div>`).join('')}</div>` : ''}`;
+  setTimeout(() => cargarMinisLocales($('#ver-inicio') || document), 0);
 }
 
 /* ---------- eventos ---------- */
@@ -748,6 +783,7 @@ document.addEventListener('click', async e => {
     if (a === 'siguiente') return siguienteVer(true);
     if (a === 'anterior') return anteriorVer();
     if (a === 'completa') return alternarCompletaVer();
+    if (a === 'pip') return alternarPip();
     if (['velocidad', 'subs', 'calidad', 'audio'].includes(a)) return abrirMenuVer(a, rpBtn);
   }
   const opcion = t.closest('[data-rp-opcion]');
@@ -896,4 +932,52 @@ window.controlMusica = (orden, valor) => {
     for (const [a, o] of Object.entries(acciones)) { try { ms.setActionHandler(a, () => window.controlMusica(o)); } catch { /* no soportada */ } }
     try { ms.setActionHandler('seekto', e => window.controlMusica('ir', e.seekTime)); } catch { /* no soportada */ }
   }
+})();
+
+/* ---------- ventanita (picture in picture) ----------
+   PC: la ventanita propia del navegador (se mueve y cambia de tamaño; anterior/siguiente por Media Session).
+   Android: la ventanita del sistema; la página muestra solo el video mientras está en ella. */
+function pipDisponible() {
+  const d = V.datos;
+  if (!d || d.solo_audio) return false;   // con música no hay nada que ver en la ventanita
+  if (esAndroid()) return !!window.JabsAndroid?.pip;
+  return !!document.pictureInPictureEnabled;
+}
+async function alternarPip() {
+  const v = video();
+  if (esAndroid()) {
+    try { window.JabsAndroid.pip(v.videoWidth || 16, v.videoHeight || 9); } catch { /* sin PiP */ }
+    return;
+  }
+  try {
+    if (document.pictureInPictureElement) await document.exitPictureInPicture();
+    else await v.requestPictureInPicture();
+  } catch (e) { toast('No se pudo abrir la ventanita: ' + (e.message || e), 'err'); }
+}
+// Android avisa al entrar y salir de la ventanita
+window.modoPip = activo => {
+  document.documentElement.classList.toggle('ver-pip', !!activo);
+  if (activo) { cerrarMenuVer?.(); $('#reproductor').classList.remove('controles-visibles'); }
+  else mostrarControles();
+  avisarPipAndroid();
+};
+// Estado para Android: botones de la ventanita (pausa/play, siguiente) y entrar sola al salir de la app
+let pipClave = '';
+function avisarPipAndroid() {
+  if (!esAndroid() || !window.JabsAndroid?.pipEstado) return;
+  const v = video(), d = V.datos;
+  const esVideo = !!d && !d.solo_audio;
+  const estado = {
+    sonando: !v.paused, siguiente: V.lista.length > 1, ancho: v.videoWidth || 16, alto: v.videoHeight || 9,
+    auto: esVideo && !v.paused && S.ajustes?.ver_pip_auto === true,
+  };
+  const clave = JSON.stringify(estado);
+  if (clave === pipClave) return;
+  pipClave = clave;
+  try { window.JabsAndroid.pipEstado(clave); } catch { /* sin PiP */ }
+}
+(() => {
+  const v = video();
+  ['play', 'pause', 'loadedmetadata', 'emptied'].forEach(ev => v.addEventListener(ev, () => setTimeout(avisarPipAndroid, 0)));
+  v.addEventListener('leavepictureinpicture', () => mostrarControles());
 })();
