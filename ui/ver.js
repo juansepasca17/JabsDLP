@@ -530,10 +530,12 @@ async function verUnoDeColeccion(id, n) {
   const item = r.coleccion.items[n];
   if (!item || !(item.url || item.existe)) return toast('Ese elemento no se puede ver (¿se movió o borró el archivo?).', 'err');
   guardarProgresoVer();
-  V.lista = [item]; V.coleccion = r.coleccion.id; V.nombreLista = r.coleccion.nombre;
+  // empieza por el elegido y sigue con los demás de la colección (anterior/siguiente, también desde la notificación)
+  const items = r.coleccion.items.filter(i => i.url || i.existe);
+  V.lista = items; V.coleccion = r.coleccion.id; V.nombreLista = r.coleccion.nombre;
   cerrarColecciones();
   if (S.vista !== 'ver') irA('ver');
-  await abrirItemLista(0, true);   // con su progreso: «continúa donde lo dejaste»
+  await abrirItemLista(Math.max(0, items.indexOf(item)), true);   // con su progreso: «continúa donde lo dejaste»
 }
 
 function verUnoDelStack(uid) {

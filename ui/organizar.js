@@ -556,7 +556,7 @@ async function pintarColeccion(id) {
           : `<span class="sin-img" ${i.ruta && i.existe ? `data-mini-local="${esc(i.ruta)}"` : ''}>${ico(i.ruta ? 'file' : 'link', 'sm')}</span>`}
         <span class="txt"><b class="no-traducir" title="${esc(i.titulo || i.url || i.ruta)}">${esc(i.titulo || i.url || i.ruta.split(/[\\/]/).pop())}</b>
           <small>${tipoElemento(i)}${i.duracion ? ' · ' + fmt.dur(i.duracion) : ''}</small></span>
-        ${i.url || i.existe ? `<button class="btn chico icono" data-col-uno="${n}" title="Ver solo este">${ico('play', 'sm')}</button>` : ''}
+        ${i.url || i.existe ? `<button class="btn chico icono" data-col-uno="${n}" title="Reproducir desde aquí">${ico('play', 'sm')}</button>` : ''}
         <button class="btn chico icono" data-col-quitar="${n}" title="Quitar de la colección">${ico('x', 'sm')}</button>
       </div>`).join('') || '<small class="dim">Vacía. Añade videos con «Guardar en colección» desde Descargar, el stack o la Biblioteca.</small>'}
     </div>`;
@@ -944,7 +944,19 @@ document.addEventListener('click', async e => {
     return;
   }
   const verBib = t.closest('[data-bib-ver]');
-  if (verBib) return verLocal(verBib.dataset.bibVer);
+  if (verBib) {
+    // Una canción de la Biblioteca sigue con las demás canciones que se ven (como en una app de música)
+    const lista = filtrarBib().filter(a => a.tipo === 'audio');
+    const n = lista.findIndex(a => a.ruta === verBib.dataset.bibVer);
+    if (n < 0 || lista.length < 2) return verLocal(verBib.dataset.bibVer);
+    guardarProgresoVer();
+    V.lista = lista.map(a => ({ ruta: a.ruta, titulo: a.nombre.replace(/\.[^.]+$/, ''), miniatura: B.minis[a.ruta] || undefined, existe: true }));
+    V.coleccion = null;
+    V.nombreLista = B.sub ? B.sub.split('/').pop() : (B.carpetas.find(c => c.ruta === B.raiz)?.nombre || 'Biblioteca');
+    V.aleatorio = false;
+    irA('ver');
+    return abrirItemLista(n);
+  }
   const pap = t.closest('[data-bib-papelera]');
   if (pap) return papeleraBib([pap.dataset.bibPapelera]);
   const quitar = t.closest('[data-bib-quitar]');

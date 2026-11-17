@@ -18,6 +18,8 @@ Lo nuevo de cada versión, de la más reciente a la más antigua. Los `.exe` y l
   - La notificación ya no muestra "null" debajo del título.
   - En Android se puede adelantar o atrasar desde la barra de la notificación, también en pausa.
   - La notificación de Android tiene siempre anterior y siguiente, y una ★ para añadir o quitar de Favoritos lo que suena.
+  - Al reproducir algo de una colección (por ejemplo ★ Favoritos) sigue con lo demás de la colección, y una canción
+    de la Biblioteca sigue con las demás canciones de esa carpeta: anterior y siguiente en el reproductor y en la notificación.
   - Al cancelar un torrent se borra la carpeta a medias que había creado.
   - Fuera el botón de marcador de la barra de Descargar: los enlaces se guardan desde Colecciones.
   - Menos ruido en el log: ya no anota como error que el reproductor corte una petición al saltar o cambiar de canción.

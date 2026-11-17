@@ -419,7 +419,7 @@
     'Perfiles de descarga': 'Download profiles',
     'Preferencias de formato guardadas con un nombre (p. ej. «Solo audio MP3» o «720p para el celular»). Se eligen en Descargar, junto a «Preferencias de formato»: «Actual» son las que tengas puestas.':
       'Format preferences saved with a name (e.g. "MP3 audio only" or "720p for my phone"). Pick them in Download, next to "Format preferences": "Current" are the ones you have set.',
-    'Aún no tienes perfiles. Guárdalos desde Descargar, junto a «Preferencias de formato».': 'No profiles yet. Save them from Download, next to "Format preferences".', 'Ver solo este': 'Watch only this one',
+    'Aún no tienes perfiles. Guárdalos desde Descargar, junto a «Preferencias de formato».': 'No profiles yet. Save them from Download, next to "Format preferences".', 'Ver solo este': 'Watch only this one', 'Reproducir desde aquí': 'Play from here',
     'Ese elemento no se puede ver (¿se movió o borró el archivo?).': 'That item can\'t be played (was the file moved or deleted?).',
     'YouTube no dejó descargar esa traducción automática ahora (limita cuántas se piden). Prueba en un rato u otro idioma.': 'YouTube didn\'t allow downloading that auto-translation right now (it limits how many are requested). Try again later or another language.', 'En la pestaña Ver.': 'In the Watch tab.', 'Pequeño': 'Small', 'Grande': 'Large', 'No se pudieron cargar los subtítulos.': 'Could not load the subtitles.', 'Torrent · sin seed': 'Torrent · no seeding', 'Buscar en los ajustes': 'Search settings',
     'Plegar todo': 'Collapse all', 'Desplegar todo': 'Expand all', 'Gestos en el reproductor': 'Player gestures',
