@@ -1091,10 +1091,7 @@ function ponerZoom(z, mostrar = true) {
   const max = Math.max(3, llenar);
   z = Math.min(max, Math.max(1, z));
   if (Math.abs(z - 1) < 0.04) z = 1;
-  // Como YouTube: entre el original y llenar la pantalla no hay pasos intermedios. Abrir los dedos llena la pantalla de
-  // una y cerrarlos vuelve al original; más allá de llenar se puede seguir ampliando para ver detalles
-  if (llenar > 1.02 && z > 1 && z < llenar) z = z >= Z.escala ? llenar : (Z.base > llenar + 0.01 ? llenar : 1);
-  Z.escala = z;
+  Z.escala = z;   // mientras pellizcas, el video sigue tus dedos; al soltar se acomoda (soltarZoom)
   aplicarTransformacion();
   if (!mostrar) return;
   let chip = $('#rp-zoom');
@@ -1103,6 +1100,20 @@ function ponerZoom(z, mostrar = true) {
   chip.classList.add('visible');
   clearTimeout(Z.timer);
   Z.timer = setTimeout(() => chip.classList.remove('visible'), 1100);
+}
+// Al soltar los dedos, como YouTube: desde el original queda en «Llenar pantalla»; desde llenar, cerrar vuelve al original
+// y abrir deja el zoom donde lo dejes; desde un zoom mayor, cerrar por debajo de llenar se queda en llenar
+function soltarZoom() {
+  const llenar = escalaLlenar(), desde = Z.base, z = Z.escala;
+  let final = z;
+  if (llenar > 1.02) {
+    if (desde < 1.02) final = z > 1.02 ? llenar : 1;
+    else if (Math.abs(desde - llenar) < 0.03) final = z < llenar - 0.01 ? 1 : z;
+    else final = z < llenar ? llenar : z;
+  }
+  video().style.transition = 'transform .22s ease-out';
+  ponerZoom(final);
+  setTimeout(() => { video().style.transition = ''; }, 260);
 }
 (() => {
   const rp = $('#reproductor');
@@ -1133,7 +1144,7 @@ function ponerZoom(z, mostrar = true) {
     }
   }, { passive: false });
   rp.addEventListener('touchend', e => {
-    if (e.touches.length < 2) Z.inicio = 0;
+    if (e.touches.length < 2 && Z.inicio) { Z.inicio = 0; soltarZoom(); }
     if (!e.touches.length) {
       if (Z.movido) Z.ignorarHasta = Date.now() + 450;   // el clic que llega justo después de arrastrar no cuenta
       Z.arrastre = null; Z.movido = false; video().style.transition = '';
