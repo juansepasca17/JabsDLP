@@ -1091,7 +1091,9 @@ function ponerZoom(z, mostrar = true) {
   const max = Math.max(3, llenar);
   z = Math.min(max, Math.max(1, z));
   if (Math.abs(z - 1) < 0.04) z = 1;
-  if (llenar > 1.02 && Math.abs(z - llenar) < 0.06) z = llenar;   // se «engancha» a llenar la pantalla
+  // Como YouTube: entre el original y llenar la pantalla no hay pasos intermedios. Abrir los dedos llena la pantalla de
+  // una y cerrarlos vuelve al original; más allá de llenar se puede seguir ampliando para ver detalles
+  if (llenar > 1.02 && z > 1 && z < llenar) z = z >= Z.escala ? llenar : (Z.base > llenar + 0.01 ? llenar : 1);
   Z.escala = z;
   aplicarTransformacion();
   if (!mostrar) return;

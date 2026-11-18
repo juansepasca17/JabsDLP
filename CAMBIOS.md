@@ -17,7 +17,7 @@ Lo nuevo de cada versión, de la más reciente a la más antigua. Los `.exe` y l
 - **Aviso de «Siguiente»**: en los últimos 5 segundos de un video de una lista, arriba a la derecha sale el siguiente con
   un círculo que se va consumiendo, y botones para pasar ya o quedarte en este. Se puede apagar en *Ajustes → Reproductor*.
 - **Zoom con dos dedos** (Android): abre los dedos sobre el video para ampliarlo o llenar la pantalla; un círculo
-  muestra el zoom (Original, 1.2×, Llenar pantalla). Con zoom, arrastra con un dedo para moverte por el video y ver los
+  muestra el zoom (Original, Llenar pantalla o más). Abrir los dedos llena la pantalla de una, como en YouTube. Con zoom, arrastra con un dedo para moverte por el video y ver los
   detalles. Se puede apagar en *Ajustes → Reproductor*.
 - **Al salir de pantalla completa en Android** con el teléfono en horizontal, la app vuelve a vertical.
 - **Reproductor a la forma del video** (*Ajustes → Reproductor*, apagado por defecto): con videos verticales el
