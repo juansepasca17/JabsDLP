@@ -93,3 +93,35 @@ El emulador del PC es x86_64; el APK publicado es solo arm64-v8a. Para el emulad
    - La interfaz se puede inspeccionar con `chrome://inspect` si el APK es debug.
 
 `android/nativos/` no se sube al repo (está en `.gitignore`).
+
+### Volver a montar el emulador para probar en este PC
+Para publicar no hace falta: el APK lo compila GitHub (etiqueta `vX-android` o *Actions → Android → Run workflow*).
+Esto es solo para probar en el emulador antes de publicar, como en la 1.7.2–1.8.0. Ocupa unos **20 GB**.
+Se borró el 18-11-2026 y se puede volver a montar así:
+
+1. **Descargas** (en `%USERPROFILE%\AndroidDev`). La red de este PC corta las descargas grandes: usar
+   `curl.exe -L -C - --retry 20 --retry-all-errors -o <archivo> <url>` para que se reanuden.
+   - **Java 17** (Temurin, zip para Windows x64) → `AndroidDev\jdk17`.
+   - **Gradle 8.14.3** (`gradle-8.14.3-bin.zip`) → `AndroidDev\gradle-8.14.3`.
+   - **Command-line tools del SDK de Android** (`commandlinetools-win-*_latest.zip`) → `AndroidDev\sdk\cmdline-tools\latest`.
+     Luego, con `sdkmanager`:
+     `"platform-tools" "platforms;android-35" "build-tools;35.0.0" "emulator" "system-images;android-34;google_apis;x86_64"`
+     (y `sdkmanager --licenses`).
+   - **Emulador:** `avdmanager create avd -n JabsPrueba -k "system-images;android-34;google_apis;x86_64" -d pixel_6`.
+2. **Solo si hay que recompilar ffmpeg, aria2 o QuickJS** (`android/scripts/compilar_nativos.sh`, para x86_64):
+   - `wsl --install` falla en esta red: descargar la imagen `.wsl` de Ubuntu e importarla con
+     `wsl --import JabsUbuntu %USERPROFILE%\AndroidDev\wsl-ubuntu <imagen.wsl>`.
+   - Dentro de Ubuntu: el **NDK r27c para Linux** en `/opt` y `apt install build-essential meson ninja-build nasm pkg-config`.
+   - `compilar_nativos.sh` debe tener saltos de línea LF (lo asegura `.gitattributes`); con CRLF falla en WSL.
+3. **Compilar el APK del emulador** (PowerShell, en la carpeta del proyecto):
+   ```
+   $d="$env:USERPROFILE\AndroidDev"; $env:JAVA_HOME="$d\jdk17"; $env:ANDROID_HOME="$d\sdk"
+   $env:JABSDLP_ABIS="x86_64"; $env:JABSDLP_BUILD_PYTHON="$PWD\.venv\Scripts\python.exe"
+   $env:Path="$d\jdk17\bin;$d\gradle-8.14.3\bin;$env:Path"; cd android; gradle assembleDebug
+   ```
+   - `JABSDLP_BUILD_PYTHON` es necesario: Chaquopy no ve el Python de la Microsoft Store (alias de WindowsApps)
+     y en este PC no hay `py`. El del `.venv` (3.13) sirve.
+   - Arrancar: `emulator -avd JabsPrueba -no-snapshot-save -no-boot-anim`, instalar con
+     `adb install -r app\build\outputs\apk\debug\app-debug.apk`.
+   - Para simular girar el teléfono: `adb emu sensor set acceleration 9.81:0:0` (horizontal) y `0:9.81:0` (vertical).
+   - Archivos de prueba en `/sdcard/Download/JabsDLP` con `adb push` (videos cortos: `ffmpeg -f lavfi -i testsrc2…`).
