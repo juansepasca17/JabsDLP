@@ -251,6 +251,7 @@
     async renombrar_coleccion(id, nombre) { coleccionesMock.find(x => x.id === id).nombre = nombre; return { ok: true, colecciones: await this.colecciones() }; },
     async borrar_coleccion(id) { coleccionesMock = coleccionesMock.filter(x => x.id !== id); return { ok: true, colecciones: await this.colecciones() }; },
     async reordenar_coleccion(id, a, b) { const c = coleccionesMock.find(x => x.id === id); c.items.splice(b, 0, c.items.splice(a, 1)[0]); return { ok: true, colecciones: await this.colecciones() }; },
+    async biblioteca_borrar_carpeta() { return { ok: true }; },
     async es_favorito(item) { return coleccionesMock[0].items.some(x => x.ruta === item.ruta || (x.url && x.url === item.url)); },
     async alternar_favorito(item) { const f = coleccionesMock[0]; const i = f.items.findIndex(x => x.ruta === item.ruta); if (i >= 0) f.items.splice(i, 1); else f.items.push(item); return { ok: true, resultado: i < 0, colecciones: await this.colecciones() }; },
     async exportar_coleccion() { return { ok: true, ruta: 'C:\\Users\\usuario\\Documents\\Clips.jabs', exportados: 4, omitidos: 0 }; },

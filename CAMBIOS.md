@@ -14,7 +14,17 @@ Lo nuevo de cada versión, de la más reciente a la más antigua. Los `.exe` y l
   En el celular se ven todas las pestañas a la vez, sin deslizar.
 - **Portadas por todas partes**: la portada o miniatura de tus archivos sale en *Vistos recientemente*, en las
   colecciones y, aunque abras una canción suelta, de fondo en el reproductor y en la notificación.
+- **Aviso de «Siguiente en 5»**: al terminar un video de una lista, arriba a la derecha sale el siguiente con un círculo
+  que se va consumiendo, y botones para pasar ya o cancelar. Con música (o en segundo plano) pasa directo.
+- **Zoom con dos dedos** (Android): abre los dedos sobre el video para ampliarlo o llenar la pantalla; un círculo
+  muestra el zoom (Original, 1.2×, Llenar pantalla). Se puede apagar en *Ajustes → Reproductor*.
+- **Reproductor a la forma del video** (*Ajustes → Reproductor*, apagado por defecto): con videos verticales el
+  reproductor se hace más alto.
+- **El stack va a tu carpeta de descargas** (y lo ves en la Biblioteca). Si prefieres su carpeta aparte, actívalo en
+  *Ajustes → General → Stack en una carpeta aparte*.
+- **Eliminar carpetas vacías** desde la Biblioteca: en una carpeta sin videos ni audios sale «Eliminar esta carpeta».
 - **Arreglos**:
+  - Al cancelar un torrent o un magnet ya no queda su carpeta, aunque se cancele justo al empezar.
   - La notificación ya no muestra "null" debajo del título.
   - En Android se puede adelantar o atrasar desde la barra de la notificación, también en pausa.
   - La notificación de Android tiene siempre anterior y siguiente, y una ★ para añadir o quitar de Favoritos lo que suena.

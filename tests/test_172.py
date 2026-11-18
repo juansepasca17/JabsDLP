@@ -106,7 +106,7 @@ def test_stack_acepta_torrents_y_enlaces_directos(tmp_path, monkeypatch):
     assert not r['ok'] and 'aria2' in r['error'] and not agregados
     monkeypatch.setattr(aria2, 'ruta', lambda ajustes=None: 'aria2c.exe')
     r = api.descargar({'tipo': 'stack', 'nombre': 'Prueba', 'prefs': {}, 'items': items})
-    assert r['ok'] and r['agregados'] == 3
+    assert r['ok'] and r['agregados'] == 3, r
     tipos = sorted(t.prefs.get('tipo') or 'video' for t in agregados)
     assert tipos == ['manifiesto', 'torrent', 'video']
     api.cerrar()

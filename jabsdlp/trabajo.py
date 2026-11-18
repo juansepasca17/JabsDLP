@@ -432,6 +432,16 @@ def _eta_segundos(texto):
     return total or None
 
 
+def _carpeta_vacia(ruta):
+    """True si es una carpeta sin ningún archivo dentro (solo subcarpetas vacías)."""
+    if not os.path.isdir(ruta):
+        return False
+    for _, _, archivos in os.walk(ruta):
+        if archivos:
+            return False
+    return True
+
+
 def _borrar_torrent_parcial(carpeta, antes):
     """Al cancelar un torrent no queda su carpeta a medias: se borra solo lo nuevo que tenga su «.aria2» (lo que
     creó aria2 para este torrent), nunca otros archivos que hayan aparecido mientras tanto en la carpeta."""
@@ -442,7 +452,8 @@ def _borrar_torrent_parcial(carpeta, antes):
             nuevos = set(os.listdir(carpeta)) - antes
         except OSError:
             return
-        suyos = {n for n in nuevos if n.endswith('.aria2') or n + '.aria2' in nuevos}
+        suyos = {n for n in nuevos if n.endswith('.aria2') or n + '.aria2' in nuevos
+                 or _carpeta_vacia(os.path.join(carpeta, n))}   # un magnet cancelado al empezar deja la carpeta vacía
         if not suyos:
             return
         for n in sorted(suyos, key=lambda x: x.endswith('.aria2')):   # primero lo descargado, luego su .aria2

@@ -1242,7 +1242,8 @@ function pintarAjustes() {
   document.documentElement.dataset.menuVer = S.ajustes.ver_menu || 'flotante';
   document.documentElement.dataset.portadaVer = S.ajustes.ver_portada || 'nitida';
   if (typeof avisarMusica === 'function') avisarMusica();
-  if (typeof avisarPipAndroid === 'function') avisarPipAndroid();   // el ajuste de la notificación de música   // cómo se ve la portada de la música
+  if (typeof avisarPipAndroid === 'function') avisarPipAndroid();
+  if (typeof aplicarFormaVideo === 'function') aplicarFormaVideo();   // el ajuste de la notificación de música   // cómo se ve la portada de la música
   pintarPerfilesAjustes();
   pintarDestinosAjustes();
   const a = S.ajustes;

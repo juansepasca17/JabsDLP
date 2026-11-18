@@ -358,14 +358,15 @@ class Api:
                     elif url.lower().startswith(('http://', 'https://')):
                         normales.append(item)
                 items = normales
+                aparte = bool(solicitud.get('coleccion') or self._ajustes.get('stack_subcarpeta'))
                 for n, item in enumerate(items, start=1):
                     propias = item.get('prefs') if isinstance(item.get('prefs'), dict) else {}
-                    p = dict(normalizar({**prefs, **propias}), _stack=True)  # _stack: siempre en su subcarpeta
+                    p = dict(normalizar({**prefs, **propias}), _stack=aparte)  # _stack: en su subcarpeta
                     spec = item.get('spec') if _spec_valido(item.get('spec')) else None   # formato elegido a mano
                     trabajos.append(Trabajo(item['url'], p, item.get('titulo') or None, item.get('miniatura'),
                                             item.get('canal'), item.get('duracion'), formato=spec,
                                             titulo_formato='Manual · Stack' if spec else 'Auto · Stack',
-                                            subcarpeta=nombre, grupo_id=grupo,
+                                            subcarpeta=nombre if aparte else None, grupo_id=grupo,
                                             indice=n, total_grupo=len(items)))
             elif tipo == 'lote':
                 urls = solicitud.get('urls') or []
@@ -892,7 +893,7 @@ class Api:
         if not enlaces:
             return {'ok': False, 'error': 'La colección no tiene enlaces para descargar (solo archivos ya descargados).'}
         return self.descargar({'tipo': 'stack', 'items': enlaces, 'nombre': c['nombre'].replace('★', '').strip(),
-                               'prefs': prefs})
+                               'prefs': prefs, 'coleccion': True})
 
     # ---------- biblioteca ----------
     def _raices(self):
@@ -937,6 +938,23 @@ class Api:
         actuales = list(self._ajustes.get('carpetas_biblioteca') or [])
         self._ajustes.actualizar({'carpetas_biblioteca': actuales + [ruta]})
         return _ok(carpetas=self.biblioteca_carpetas(), ruta=os.path.abspath(ruta))
+
+    def biblioteca_borrar_carpeta(self, raiz, sub):
+        """Borra del dispositivo una subcarpeta VACÍA de la Biblioteca (nunca una con archivos ni la carpeta raíz)."""
+        raices = self._raices()
+        if not sub or not any(os.path.normcase(os.path.abspath(raiz or '')) == os.path.normcase(r) for r in raices):
+            return {'ok': False, 'error': 'Esa carpeta no está en la Biblioteca.'}
+        ruta = os.path.join(raiz, sub.replace('/', os.sep))
+        if (not biblioteca.dentro_de(ruta, [raiz])
+                or os.path.normcase(os.path.realpath(ruta)) == os.path.normcase(os.path.realpath(raiz))):
+            return {'ok': False, 'error': 'Esa carpeta no se puede borrar.'}
+        if not os.path.isdir(ruta):
+            return {'ok': False, 'error': 'Esa carpeta ya no existe.'}
+        try:
+            os.rmdir(ruta)   # solo si está vacía
+        except OSError:
+            return {'ok': False, 'error': 'La carpeta no está vacía (tiene otros archivos) o no se puede borrar.'}
+        return _ok()
 
     def biblioteca_quitar_carpeta(self, ruta):
         actuales = [c for c in (self._ajustes.get('carpetas_biblioteca') or [])

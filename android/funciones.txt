@@ -49,6 +49,7 @@ quitar_de_coleccion
 reordenar_coleccion
 alternar_favorito
 es_favorito
+biblioteca_borrar_carpeta
 exportar_coleccion
 importar_coleccion
 descargar_coleccion

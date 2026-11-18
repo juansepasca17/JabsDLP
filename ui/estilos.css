@@ -844,3 +844,23 @@ html.ver-pip #video { visibility: visible !important; width: 100% !important; he
 .pestana-aj.activa { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent, inherit); font-weight: 600; }
 html.buscando-ajustes .pestanas-ajustes { opacity: .45; }
 .rejilla-ajustes > .card.fuera-pestana { display: none !important; }
+/* Reproductor a la forma del video (videos verticales) */
+.reproductor.forma-video { aspect-ratio: var(--forma); width: auto; max-width: 100%; height: min(75vh, 720px); margin: 0 auto; }
+/* Zoom con dos dedos */
+.reproductor video { transition: transform .08s linear; transform-origin: center; }
+.rp-zoom { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 6; padding: 6px 14px; border-radius: 999px;
+  background: rgba(0,0,0,.62); color: #fff; font-size: 13px; font-weight: 600; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.rp-zoom.visible { opacity: 1; }
+/* Aviso «Siguiente en 5»: arriba a la derecha, con un círculo que se va consumiendo */
+.rp-aviso-sig { position: absolute; top: 12px; right: 12px; z-index: 7; display: flex; align-items: center; gap: 10px; max-width: min(360px, calc(100% - 24px));
+  padding: 8px 10px 8px 8px; border-radius: 14px; background: rgba(12,12,16,.82); color: #fff; backdrop-filter: blur(6px); }
+.rp-aviso-sig .anillo { width: 34px; height: 34px; flex: none; transform: rotate(-90deg); }
+.rp-aviso-sig .anillo circle { fill: none; stroke-width: 3; }
+.rp-aviso-sig .anillo .fondo { stroke: rgba(255,255,255,.18); }
+.rp-aviso-sig .anillo .arco { stroke: #fff; stroke-dasharray: 94.25; stroke-dashoffset: 0; stroke-linecap: round; }
+.rp-aviso-sig.corriendo .anillo .arco { stroke-dashoffset: 94.25; transition: stroke-dashoffset var(--dur, 5s) linear; }
+.rp-aviso-sig .cuenta { position: absolute; left: 8px; width: 34px; text-align: center; font-size: 13px; }
+.rp-aviso-sig .txt { display: flex; flex-direction: column; min-width: 0; }
+.rp-aviso-sig .txt small { opacity: .7; font-size: 11px; }
+.rp-aviso-sig .txt b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.ver-pip .rp-aviso-sig, html.ver-pip .rp-zoom { display: none !important; }

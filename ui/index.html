@@ -180,7 +180,7 @@
 
       <section class="vista" id="vista-ajustes">
         <div class="rejilla-ajustes">
-          <div class="card pad">
+          <div class="card pad" data-pestana="general">
             <h2 class="titulo-seccion"><i data-ico="folder"></i>Descargas</h2>
             <div class="ajuste">
               <div class="txt"><b>Carpeta de destino</b><div class="ruta" id="aj-carpeta">—</div></div>
@@ -233,7 +233,7 @@
             </div>
           </div>
 
-          <div class="card pad">
+          <div class="card pad" data-pestana="descargas">
             <h2 class="titulo-seccion"><i data-ico="gauge"></i>Red y velocidad</h2>
             <div class="ajuste">
               <div class="txt"><b>Límite de velocidad</b><small>Total, repartido entre todas las descargas, para no saturar tu internet.</small></div>
@@ -274,7 +274,7 @@
             </div>
           </div>
 
-          <div class="card pad">
+          <div class="card pad" data-pestana="descargas">
             <h2 class="titulo-seccion"><i data-ico="layers"></i>Descargas en paralelo</h2>
             <div class="ajuste">
               <div class="txt"><b>Activar descargas en paralelo</b><small>Si está apagado, se descarga un video detrás de otro.</small></div>
@@ -294,7 +294,7 @@
             </div>
           </div>
 
-          <div class="card pad">
+          <div class="card pad" data-pestana="descargas">
             <h2 class="titulo-seccion"><i data-ico="zap"></i>Aceleración por hardware</h2>
             <div class="ajuste">
               <div class="txt"><b>Codificador para H.265 / H.264</b><small id="aj-gpu-detectadas">Detectando…</small></div>
@@ -320,7 +320,7 @@
             </div>
           </div>
 
-          <div class="card pad">
+          <div class="card pad" data-pestana="descargas">
             <h2 class="titulo-seccion"><i data-ico="cookie"></i>Cookies</h2>
             <div class="ajuste">
               <div class="txt"><b>Origen de las cookies</b><small>Para videos privados, con restricción de edad o si YouTube pide iniciar sesión.</small></div>
@@ -348,7 +348,7 @@
             <div class="nota">El archivo se normaliza en una copia temporal que se borra al terminar cada descarga. La app solo guarda la <b>ruta</b>, nunca el contenido de las cookies. En Windows, Chrome y Edge cifran sus cookies y suelen fallar: usa Firefox o exporta un <code>cookies.txt</code>.</div>
           </div>
 
-          <div class="card pad">
+          <div class="card pad" data-pestana="avanzado">
             <h2 class="titulo-seccion"><i data-ico="wrench"></i>Herramientas</h2>
             <div class="ajuste">
               <div class="txt"><b>ffmpeg</b><div class="ruta" id="aj-ffmpeg">Buscando…</div></div>
@@ -387,7 +387,7 @@
             <div class="nota">Las preferencias de formato (códec, resolución, audio, metadatos…) se recuerdan solas cada vez que descargas.</div>
           </div>
 
-          <div class="card pad">
+          <div class="card pad" data-pestana="general">
             <h2 class="titulo-seccion"><i data-ico="monitor"></i>Ventana, avisos y apariencia</h2>
             <div class="ajuste">
               <div class="txt"><b>Notificaciones de Windows</b><small>Aviso al terminar, con botón para abrir la carpeta.</small></div>
@@ -469,6 +469,14 @@
                 <option value="pausa">Se pausan</option>
               </select>
             </div>
+            <div class="ajuste solo-tactil">
+              <div class="txt"><b>Zoom con dos dedos</b><small>Abre los dedos sobre el video para ampliarlo o llenar la pantalla, y ciérralos para verlo entero. Sale un círculo con el zoom (Original, 1.2×, Llenar pantalla).</small></div>
+              <label class="switch"><input type="checkbox" data-ajuste="ver_zoom_gesto"><span></span></label>
+            </div>
+            <div class="ajuste">
+              <div class="txt"><b>Reproductor a la forma del video</b><small>Con videos verticales (Shorts, TikTok) el reproductor se hace más alto, sin franjas negras grandes a los lados.</small></div>
+              <label class="switch"><input type="checkbox" data-ajuste="ver_ajustar_vertical"><span></span></label>
+            </div>
             <div class="ajuste">
               <div class="txt"><b>Seguir con los demás</b><small>Al tocar una canción o un video de una colección o de la Biblioteca, sigue con los demás de esa colección o carpeta (canciones con canciones, videos con videos). Apagado: se reproduce solo el que tocaste.</small></div>
               <label class="switch"><input type="checkbox" data-ajuste="ver_seguir_lista"><span></span></label>
@@ -494,7 +502,7 @@
             </div>
           </div>
 
-          <div class="card pad">
+          <div class="card pad" data-pestana="captura">
             <h2 class="titulo-seccion"><i data-ico="zap"></i>Captura rápida</h2>
             <div class="ajuste">
               <div class="txt"><b>Atajo para enviar enlaces</b><small>Selecciona un enlace en cualquier programa (o cópialo) y pulsa el atajo: se envía a JabsDLP sin copiar, pegar ni cambiar de ventana. Con el modo stack, se suma al stack.<span class="err-texto" id="aj-captura-error"></span></small></div>
@@ -526,9 +534,13 @@
               <div class="txt"><b>Descargar al añadir al stack</b><small>Cada enlace que se sume al stack empieza a descargarse al momento, con tu configuración actual. Apagado: se acumulan y los descargas juntos.</small></div>
               <label class="switch"><input type="checkbox" data-ajuste="stack_auto"><span></span></label>
             </div>
+            <div class="ajuste">
+              <div class="txt"><b>Stack en una carpeta aparte</b><small>Lo que descargas del stack va a su propia carpeta («Stack» con la fecha). Apagado: va a tu carpeta de descargas como cualquier descarga y lo ves en la Biblioteca.</small></div>
+              <label class="switch"><input type="checkbox" data-ajuste="stack_subcarpeta"><span></span></label>
+            </div>
           </div>
 
-          <div class="card pad">
+          <div class="card pad" data-pestana="avanzado">
             <h2 class="titulo-seccion"><i data-ico="terminal"></i>Avanzado</h2>
             <div class="ajuste">
               <div class="txt"><b>Corte exacto</b><small>Al recortar o quitar anuncios, corta en el fotograma exacto (recodifica los bordes, más lento). Apagado: corta en el fotograma clave más cercano.</small></div>

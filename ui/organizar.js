@@ -808,7 +808,8 @@ function pintarBiblioteca() {
   if (!carpetas.length && !archivos.length) {
     $('#bib-rejilla').innerHTML = `<div class="vacio"><div class="circulo">${ico('library')}</div>
       <b>${filtrando ? 'Nada coincide con los filtros' : 'Aquí aún no hay videos ni audios'}</b>
-      <small>${filtrando ? 'Prueba con otro nombre o quita los filtros.' : 'Lo que descargues aparecerá aquí.'}</small></div>`;
+      <small>${filtrando ? 'Prueba con otro nombre o quita los filtros.' : 'Lo que descargues aparecerá aquí.'}</small>
+      ${!filtrando && B.sub ? `<button class="btn chico peligro" data-accion="bib-borrar-carpeta">${ico('trash', 'sm')}Eliminar esta carpeta</button>` : ''}</div>`;
     pintarSeleccionBib();
     return;
   }
@@ -986,6 +987,15 @@ document.addEventListener('click', async e => {
       B.recursivo = !B.recursivo;
       try { localStorage.setItem('jabsdlp.bib.subcarpetas', B.recursivo ? '1' : '0'); } catch { /* sin almacenamiento */ }
       return cargarBiblioteca();
+    case 'bib-borrar-carpeta': {
+      const nombre = B.sub.split('/').pop();
+      if (!(await confirmar('Eliminar carpeta', `¿Eliminar la carpeta vacía «${nombre}» del dispositivo?`, 'Eliminar'))) return;
+      const r = await API.biblioteca_borrar_carpeta(B.raiz, B.sub);
+      if (!r.ok) return toast(esc(r.error), 'err');
+      toast('Carpeta eliminada.', 'ok');
+      B.sub = B.sub.includes('/') ? B.sub.slice(0, B.sub.lastIndexOf('/')) : '';
+      return cargarBiblioteca();
+    }
     case 'bib-sel-nada': B.sel.clear(); return pintarBiblioteca();
     case 'bib-sel-todo': filtrarBib().forEach(a => B.sel.add(a.ruta)); return pintarBiblioteca();
     case 'bib-reproducir': case 'bib-aleatorio': return reproducirSeleccion(accion === 'bib-aleatorio');
@@ -1050,29 +1060,27 @@ const PESTANAS_AJUSTES = [
   ['captura', 'Captura', 'zap'], ['avanzado', 'Avanzado', 'terminal'],
 ];
 const PESTANA_CLAVE = 'jabsdlp.ajustes.pestana';
-const AJUSTES_REPRODUCTOR = ['ver_gestos', 'ver_menu', 'ver_subs', 'ver_portada', 'ver_notificacion', 'ver_pip_auto', 'ver_video_fondo', 'ver_seguir_lista', 'ver_siguiente'];
+const AJUSTES_REPRODUCTOR = ['ver_gestos', 'ver_menu', 'ver_subs', 'ver_portada', 'ver_notificacion', 'ver_pip_auto', 'ver_video_fondo', 'ver_zoom_gesto', 'ver_ajustar_vertical', 'ver_seguir_lista', 'ver_siguiente'];
 
 function crearPestanasAjustes(rejilla) {
-  const cards = [...rejilla.children];
-  const titulo = c => normalizarTexto(c.querySelector(':scope > .titulo-seccion')?.textContent);
-  // sección nueva «Reproductor» con las filas del reproductor
+  // sección nueva «Reproductor» con las filas del reproductor (justo después de la sección de donde salen)
   const filas = AJUSTES_REPRODUCTOR.map(k => rejilla.querySelector(`[data-ajuste="${k}"]`)?.closest('.ajuste')).filter(Boolean);
   if (filas.length) {
+    const origen = filas[0].closest('.card');
     const nueva = document.createElement('div');
     nueva.className = 'card pad';
+    nueva.dataset.pestana = 'reproductor';
     nueva.innerHTML = `<h2 class="titulo-seccion">${ico('play')}Reproductor (Ver)</h2>`;
     filas.forEach(f => nueva.appendChild(f));
-    const ventana = cards.find(c => titulo(c).includes('ventana'));
-    rejilla.insertBefore(nueva, ventana ? ventana.nextSibling : null);
+    rejilla.insertBefore(nueva, origen ? origen.nextSibling : null);
   }
-  [...rejilla.children].forEach(c => {
-    const t = titulo(c);
-    c.dataset.pestana = t.startsWith('reproductor') ? 'reproductor'
-      : t.startsWith('captura') ? 'captura'
-      : (t.startsWith('herramientas') || t.startsWith('avanzado')) ? 'avanzado'
-      : (t.startsWith('red') || t.includes('paralelo') || t.includes('aceleracion') || t.startsWith('cookies')) ? 'descargas'
-      : 'general';
+  // Las opciones del stack (también hay stack en el celular) van con las de Descargas, no en Captura rápida (solo PC)
+  const descargas = $('#aj-carpeta')?.closest('.card');
+  if (descargas) ['stack_auto', 'stack_subcarpeta'].forEach(k => {
+    const fila = rejilla.querySelector(`[data-ajuste="${k}"]`)?.closest('.ajuste');
+    if (fila) descargas.appendChild(fila);
   });
+  [...rejilla.children].forEach(c => { c.dataset.pestana ||= 'general'; });
   const android = document.documentElement.classList.contains('android');
   rejilla.insertAdjacentHTML('beforebegin', `<div class="pestanas-ajustes" role="tablist">${PESTANAS_AJUSTES
     .filter(([id]) => !(android && id === 'captura'))
