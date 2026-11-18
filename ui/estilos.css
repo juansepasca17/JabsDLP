@@ -857,8 +857,7 @@ html.buscando-ajustes .pestanas-ajustes { opacity: .45; }
 .rp-aviso-sig .anillo { width: 34px; height: 34px; flex: none; transform: rotate(-90deg); }
 .rp-aviso-sig .anillo circle { fill: none; stroke-width: 3; }
 .rp-aviso-sig .anillo .fondo { stroke: rgba(255,255,255,.18); }
-.rp-aviso-sig .anillo .arco { stroke: #fff; stroke-dasharray: 94.25; stroke-dashoffset: 0; stroke-linecap: round; }
-.rp-aviso-sig.corriendo .anillo .arco { stroke-dashoffset: 94.25; transition: stroke-dashoffset var(--dur, 5s) linear; }
+.rp-aviso-sig .anillo .arco { stroke: #fff; stroke-dasharray: 94.25; stroke-dashoffset: 0; stroke-linecap: round; transition: stroke-dashoffset .3s linear; }
 .rp-aviso-sig .cuenta { position: absolute; left: 8px; width: 34px; text-align: center; font-size: 13px; }
 .rp-aviso-sig .txt { display: flex; flex-direction: column; min-width: 0; }
 .rp-aviso-sig .txt small { opacity: .7; font-size: 11px; }

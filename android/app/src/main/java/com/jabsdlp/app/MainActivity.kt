@@ -343,9 +343,30 @@ class MainActivity : ComponentActivity() {
     fun modoVideo(activa: Boolean, horizontal: Boolean) {
         videoCompleto = activa
         barrasOcultas(activa || completa)
-        requestedOrientation = if (activa && horizontal) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        vigiaGiro?.disable(); vigiaGiro = null
+        if (activa) {
+            requestedOrientation = if (horizontal) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            return
+        }
+        // Al salir con el teléfono en horizontal: la app vuelve a vertical (la navegación está pensada así) y se queda
+        // así hasta que pongas el teléfono derecho; desde ahí el giro vuelve a funcionar normal
+        if (resources.configuration.orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            return
+        }
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        val vigia = object : android.view.OrientationEventListener(this) {
+            override fun onOrientationChanged(grados: Int) {
+                if (grados == ORIENTATION_UNKNOWN || !(grados <= 25 || grados >= 335)) return
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                disable(); vigiaGiro = null
+            }
+        }
+        if (vigia.canDetectOrientation()) { vigia.enable(); vigiaGiro = vigia }
+        else requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     }
+    private var vigiaGiro: android.view.OrientationEventListener? = null
 
     /** Log de la app (logcat de este proceso: Python, la interfaz y Android) a un archivo y «Compartir». */
     /** Texto del log: solo lo de la app (Python, la interfaz, avisos y errores), sin el ruido del sistema

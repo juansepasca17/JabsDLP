@@ -108,6 +108,7 @@ AJUSTES_POR_DEFECTO = {
     'stack_subcarpeta': False,          # el stack en su propia carpeta «Stack …» (apagado: a la carpeta de descargas)
     'ver_zoom_gesto': True,             # celular: pellizcar el video para ampliarlo o llenar la pantalla
     'ver_ajustar_vertical': False,      # el reproductor toma la forma del video (más alto con videos verticales)
+    'ver_aviso_siguiente': True,        # en los últimos 5 s del video, aviso «Siguiente» con cuenta atrás
     'ver_siguiente': True,              # al terminar un elemento de la lista, pasar solo al siguiente (si no, se pausa)
     'log_app': True,                    # guardar el log propio de la app (Ajustes → Avanzado)             # celular: menús del reproductor junto al botón (flotante) o desde abajo (panel)
     'perfiles': [],                     # perfiles de descarga guardados: [{id, nombre, prefs}]               # tamaño de los subtítulos en Ver: pequeno | normal | grande
@@ -120,7 +121,7 @@ AJUSTES_POR_DEFECTO = {
 BOOLEANOS = ('subcarpeta_playlist', 'paralelo', 'decodificar_gpu', 'recomendacion', 'ytdlp_auto', 'retomar_cola',
              'notificaciones', 'bandeja_al_minimizar', 'numerar_playlist', 'no_repetir', 'corte_exacto',
              'impersonar', 'args_extra_activo', 'log_completo', 'modo_stack', 'stack_auto', 'captura_atajo',
-             'captura_portapapeles', 'pantalla_completa', 'ver_gestos', 'log_app', 'captura_atajo_ver', 'ver_siguiente', 'ver_notificacion', 'ver_pip_auto', 'ver_seguir_lista', 'stack_subcarpeta', 'ver_zoom_gesto', 'ver_ajustar_vertical')
+             'captura_portapapeles', 'pantalla_completa', 'ver_gestos', 'log_app', 'captura_atajo_ver', 'ver_siguiente', 'ver_notificacion', 'ver_pip_auto', 'ver_seguir_lista', 'stack_subcarpeta', 'ver_zoom_gesto', 'ver_ajustar_vertical', 'ver_aviso_siguiente')
 ENTEROS = {'max_paralelo': (0, 999), 'fragmentos': (1, 32), 'max_conversiones': (1, 16), 'calidad': (10, 45),
            'reintentos': (0, 10), 'subida_torrent_kb': (1, 100000)}
 AVISOS = ('torrent', 'torrent_ver', 'http', 'generico', 'ejecutable', 'aria2')

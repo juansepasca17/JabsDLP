@@ -731,9 +731,9 @@ function iniciarVer() {
     guardarProgresoVer(true);
     if (V.repetir === 'uno') return siguienteVer();
     if (S.ajustes?.ver_siguiente === false) return;
-    // Videos con la app a la vista: aviso «Siguiente en 5» (se puede pasar ya o cancelar). Música o en segundo plano: directo
-    if (!V.datos?.solo_audio && document.visibilityState === 'visible' && haySiguienteVer()) return avisoSiguiente();
-    siguienteVer();
+    const cancelado = A.cancelado;
+    cerrarAvisoSiguiente();
+    if (!cancelado) siguienteVer();   // con ✕ en el aviso se queda al final, sin pasar
   });
   v.addEventListener('loadedmetadata', aplicarFormaVideo);
   v.addEventListener('error', () => {
@@ -1012,44 +1012,49 @@ function avisarPipAndroid() {
   v.addEventListener('leavepictureinpicture', () => mostrarControles());
 })();
 
-/* ---------- aviso «Siguiente en 5» (círculo que se va consumiendo) ---------- */
+/* ---------- aviso «Siguiente en 5»: en los últimos 5 s del video, con un círculo que se va consumiendo ---------- */
 function haySiguienteVer() {
   if (V.lista.length < 2) return false;
   return V.aleatorio || V.repetir === 'lista' || V.actual < V.lista.length - 1;
 }
-let avisoTimer = null;
-function cerrarAvisoSiguiente() { clearInterval(avisoTimer); avisoTimer = null; $('#rp-siguiente-aviso')?.remove(); }
-function avisoSiguiente() {
-  cerrarAvisoSiguiente();
-  const n = V.aleatorio ? null : V.actual + 1;
-  const titulo = n != null && V.lista[n] ? (V.lista[n].titulo || '') : '';
-  const SEG = 5;
-  $('#reproductor').insertAdjacentHTML('beforeend', `<div class="rp-aviso-sig" id="rp-siguiente-aviso">
-      <svg class="anillo" viewBox="0 0 36 36"><circle class="fondo" cx="18" cy="18" r="15"/><circle class="arco" cx="18" cy="18" r="15"/></svg>
-      <b class="cuenta">${SEG}</b>
-      <span class="txt"><small>Siguiente</small><b class="no-traducir">${esc(titulo || 'en la lista')}</b></span>
-      <button class="btn chico primario" data-accion="ver-siguiente-ya">Ya</button>
-      <button class="btn chico icono" data-accion="ver-siguiente-no" title="Cancelar">${ico('x', 'sm')}</button></div>`);
-  const aviso = $('#rp-siguiente-aviso');
-  aviso.style.setProperty('--dur', `${SEG}s`);
-  requestAnimationFrame(() => aviso.classList.add('corriendo'));
-  let quedan = SEG;
-  avisoTimer = setInterval(() => {
-    quedan -= 1;
-    if (quedan <= 0) { cerrarAvisoSiguiente(); return siguienteVer(); }
-    aviso.querySelector('.cuenta').textContent = quedan;
-  }, 1000);
+const A = { cancelado: false, item: null };
+const AVISO_SEG = 5, ARCO = 94.25;
+function cerrarAvisoSiguiente() { A.cancelado = false; $('#rp-siguiente-aviso')?.remove(); }
+function vigilarAvisoSiguiente() {
+  const v = video(), d = V.datos;
+  const item = V.lista[V.actual];
+  if (A.item !== item) { A.item = item; A.cancelado = false; $('#rp-siguiente-aviso')?.remove(); }
+  const dur = duracionVer();
+  const quedan = dur ? dur - tiempoVer() : Infinity;
+  const aplica = d && !d.solo_audio && S.ajustes?.ver_siguiente !== false && S.ajustes?.ver_aviso_siguiente !== false
+    && V.repetir !== 'uno' && haySiguienteVer() && document.visibilityState === 'visible' && !A.cancelado;
+  let aviso = $('#rp-siguiente-aviso');
+  if (!aplica || !(quedan > 0 && quedan <= AVISO_SEG)) { if (aviso && !A.cancelado) aviso.remove(); return; }
+  if (!aviso) {
+    const n = V.aleatorio ? null : V.actual + 1;
+    const titulo = n != null && V.lista[n] ? (V.lista[n].titulo || '') : '';
+    $('#reproductor').insertAdjacentHTML('beforeend', `<div class="rp-aviso-sig" id="rp-siguiente-aviso">
+        <svg class="anillo" viewBox="0 0 36 36"><circle class="fondo" cx="18" cy="18" r="15"/><circle class="arco" cx="18" cy="18" r="15"/></svg>
+        <b class="cuenta"></b>
+        <span class="txt"><small>Siguiente</small><b class="no-traducir">${esc(titulo || 'en la lista')}</b></span>
+        <button class="btn chico primario" data-accion="ver-siguiente-ya">Ya</button>
+        <button class="btn chico icono" data-accion="ver-siguiente-no" title="Cancelar">${ico('x', 'sm')}</button></div>`);
+    aviso = $('#rp-siguiente-aviso');
+  }
+  aviso.querySelector('.cuenta').textContent = Math.ceil(quedan);
+  aviso.querySelector('.arco').style.strokeDashoffset = `${ARCO * (1 - quedan / AVISO_SEG)}`;
 }
 document.addEventListener('click', e => {
   const a = e.target.closest('[data-accion="ver-siguiente-ya"], [data-accion="ver-siguiente-no"]');
   if (!a) return;
   e.stopPropagation();
-  const ya = a.dataset.accion === 'ver-siguiente-ya';
-  cerrarAvisoSiguiente();
-  if (ya) siguienteVer();
+  if (a.dataset.accion === 'ver-siguiente-ya') { cerrarAvisoSiguiente(); return siguienteVer(true); }
+  A.cancelado = true;   // ✕: no pasa solo al terminar este video
+  $('#rp-siguiente-aviso')?.remove();
 }, true);
-video().addEventListener('play', cerrarAvisoSiguiente);
-video().addEventListener('emptied', cerrarAvisoSiguiente);
+video().addEventListener('timeupdate', vigilarAvisoSiguiente);
+video().addEventListener('seeked', vigilarAvisoSiguiente);
+video().addEventListener('emptied', () => $('#rp-siguiente-aviso')?.remove());
 
 /* ---------- el reproductor a la forma del video (ajuste, apagado por defecto) ---------- */
 function aplicarFormaVideo() {
@@ -1061,12 +1066,25 @@ function aplicarFormaVideo() {
 }
 
 /* ---------- zoom con dos dedos (celular): Original, 1.1×, 1.2×… o Llenar pantalla ---------- */
-const Z = { escala: 1, inicio: 0, base: 1, timer: null };
+const Z = { escala: 1, inicio: 0, base: 1, timer: null, x: 0, y: 0, arrastre: null, movido: false };
 function escalaLlenar() {
   const rp = $('#reproductor'), v = video();
   if (!v.videoWidth || !v.videoHeight) return 1;
   const ar = rp.clientWidth / rp.clientHeight, av = v.videoWidth / v.videoHeight;
   return Math.max(ar / av, av / ar);
+}
+// Con zoom, el video se puede mover sin salirse de sus bordes
+function aplicarTransformacion() {
+  const rp = $('#reproductor');
+  // límites según la imagen que se ve (sin contar las franjas negras), como en YouTube
+  const v = video(), W = rp.clientWidth, H = rp.clientHeight;
+  const av = v.videoWidth && v.videoHeight ? v.videoWidth / v.videoHeight : W / H;
+  const cw = Math.min(W, H * av), ch = Math.min(H, W / av);
+  const maxX = Math.max(0, (Z.escala * cw - W) / 2), maxY = Math.max(0, (Z.escala * ch - H) / 2);
+  Z.x = Math.max(-maxX, Math.min(maxX, Z.x));
+  Z.y = Math.max(-maxY, Math.min(maxY, Z.y));
+  if (Z.escala === 1) Z.x = Z.y = 0;
+  video().style.transform = Z.escala === 1 ? '' : `translate(${Z.x}px, ${Z.y}px) scale(${Z.escala})`;
 }
 function ponerZoom(z, mostrar = true) {
   const llenar = escalaLlenar();
@@ -1075,7 +1093,7 @@ function ponerZoom(z, mostrar = true) {
   if (Math.abs(z - 1) < 0.04) z = 1;
   if (llenar > 1.02 && Math.abs(z - llenar) < 0.06) z = llenar;   // se «engancha» a llenar la pantalla
   Z.escala = z;
-  video().style.transform = z === 1 ? '' : `scale(${z})`;
+  aplicarTransformacion();
   if (!mostrar) return;
   let chip = $('#rp-zoom');
   if (!chip) { $('#reproductor').insertAdjacentHTML('beforeend', '<div class="rp-zoom" id="rp-zoom"></div>'); chip = $('#rp-zoom'); }
@@ -1087,15 +1105,39 @@ function ponerZoom(z, mostrar = true) {
 (() => {
   const rp = $('#reproductor');
   const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  const enControles = e => e.target.closest('.rp-controles, .rp-aviso-sig, .rp-menu, button');
   rp.addEventListener('touchstart', e => {
-    if (e.touches.length !== 2 || S.ajustes?.ver_zoom_gesto === false || V.datos?.solo_audio) return;
-    Z.inicio = dist(e.touches); Z.base = Z.escala;
+    if (S.ajustes?.ver_zoom_gesto === false || V.datos?.solo_audio) return;
+    if (e.touches.length === 2) { Z.inicio = dist(e.touches); Z.base = Z.escala; Z.arrastre = null; return; }
+    // un dedo con zoom: mover el video para ver los detalles
+    if (e.touches.length === 1 && Z.escala > 1 && !enControles(e)) {
+      Z.arrastre = { x: e.touches[0].clientX, y: e.touches[0].clientY, ox: Z.x, oy: Z.y };
+      Z.movido = false;
+    }
   }, { passive: true });
   rp.addEventListener('touchmove', e => {
-    if (e.touches.length !== 2 || !Z.inicio) return;
-    e.preventDefault();
-    ponerZoom(Z.base * dist(e.touches) / Z.inicio);
+    if (e.touches.length === 2 && Z.inicio) {
+      e.preventDefault();
+      return ponerZoom(Z.base * dist(e.touches) / Z.inicio);
+    }
+    if (e.touches.length === 1 && Z.arrastre) {
+      const dx = e.touches[0].clientX - Z.arrastre.x, dy = e.touches[0].clientY - Z.arrastre.y;
+      if (!Z.movido && Math.hypot(dx, dy) < 8) return;
+      e.preventDefault();
+      Z.movido = true;
+      Z.x = Z.arrastre.ox + dx; Z.y = Z.arrastre.oy + dy;
+      video().style.transition = 'none';
+      aplicarTransformacion();
+    }
   }, { passive: false });
-  rp.addEventListener('touchend', e => { if (e.touches.length < 2) Z.inicio = 0; });
+  rp.addEventListener('touchend', e => {
+    if (e.touches.length < 2) Z.inicio = 0;
+    if (!e.touches.length) {
+      if (Z.movido) Z.ignorarHasta = Date.now() + 450;   // el clic que llega justo después de arrastrar no cuenta
+      Z.arrastre = null; Z.movido = false; video().style.transition = '';
+    }
+  });
+  // tras arrastrar, el toque no cuenta como «mostrar controles» ni como doble toque
+  rp.addEventListener('click', e => { if (Date.now() < (Z.ignorarHasta || 0)) { Z.ignorarHasta = 0; e.stopPropagation(); e.preventDefault(); } }, true);
   video().addEventListener('emptied', () => ponerZoom(1, false));   // cada video empieza sin zoom
 })();
