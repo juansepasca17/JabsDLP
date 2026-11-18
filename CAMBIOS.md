@@ -19,7 +19,9 @@ Lo nuevo de cada versión, de la más reciente a la más antigua. Los `.exe` y l
 - **Zoom con dos dedos** (Android): abre los dedos sobre el video para ampliarlo o llenar la pantalla; un círculo
   muestra el zoom (Original, Llenar pantalla o más). Abrir los dedos llena la pantalla de una, como en YouTube. Con zoom, arrastra con un dedo para moverte por el video y ver los
   detalles. Se puede apagar en *Ajustes → Reproductor*.
-- **Al salir de pantalla completa en Android** con el teléfono en horizontal, la app vuelve a vertical.
+- **Al salir de pantalla completa en Android** con el teléfono en horizontal, la app vuelve a vertical. Y con
+  *Ajustes → Reproductor → Girar con el celular* apagado, la app no gira nunca sin querer: la pantalla completa se
+  abre solo con su botón.
 - **Reproductor a la forma del video** (*Ajustes → Reproductor*, apagado por defecto): con videos verticales el
   reproductor se hace más alto.
 - **El stack va a tu carpeta de descargas** (y lo ves en la Biblioteca). Si prefieres su carpeta aparte, actívalo en

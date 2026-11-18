@@ -466,7 +466,7 @@ function completaCss(activar, bloquearGiro = true) {
 window.salirCompletaVer = () => { if (V.completaCss) { completaCss(false); return true; } return false; };
 if (window.matchMedia) {
   matchMedia('(orientation: landscape)').addEventListener('change', e => {
-    if (!esAndroid() || !V.datos || S.vista !== 'ver') return;
+    if (!esAndroid() || !V.datos || S.vista !== 'ver' || S.ajustes?.ver_giro_auto === false) return;
     if (e.matches && !V.completaCss) { completaCss(true, false); V.completaPorGiro = true; }   // girar el teléfono
     else if (!e.matches && V.completaCss && V.completaPorGiro) completaCss(false);
   });

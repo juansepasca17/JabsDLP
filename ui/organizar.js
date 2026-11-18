@@ -1060,7 +1060,7 @@ const PESTANAS_AJUSTES = [
   ['captura', 'Captura', 'zap'], ['avanzado', 'Avanzado', 'terminal'],
 ];
 const PESTANA_CLAVE = 'jabsdlp.ajustes.pestana';
-const AJUSTES_REPRODUCTOR = ['ver_gestos', 'ver_menu', 'ver_subs', 'ver_portada', 'ver_notificacion', 'ver_pip_auto', 'ver_video_fondo', 'ver_zoom_gesto', 'ver_ajustar_vertical', 'ver_seguir_lista', 'ver_siguiente', 'ver_aviso_siguiente'];
+const AJUSTES_REPRODUCTOR = ['ver_gestos', 'ver_menu', 'ver_subs', 'ver_portada', 'ver_notificacion', 'ver_pip_auto', 'ver_video_fondo', 'ver_giro_auto', 'ver_zoom_gesto', 'ver_ajustar_vertical', 'ver_seguir_lista', 'ver_siguiente', 'ver_aviso_siguiente'];
 
 function crearPestanasAjustes(rejilla) {
   // sección nueva «Reproductor» con las filas del reproductor (justo después de la sección de donde salen)

@@ -46,6 +46,12 @@ class Puente(private val contexto: Context, private val web: WebView) {
         (contexto as? MainActivity)?.let { a -> a.runOnUiThread { a.modoVideo(activa, horizontal) } }
     }
 
+    /** «Girar con el celular» apagado: la app se queda en vertical fuera de la pantalla completa. */
+    @JavascriptInterface
+    fun giroAuto(activo: Boolean) {
+        (contexto as? MainActivity)?.let { a -> a.runOnUiThread { a.fijarVertical(!activo) } }
+    }
+
     /** Exporta el log de la app (Python + interfaz, sacado del logcat de este proceso) con «Compartir». */
     @JavascriptInterface
     fun compartirLog(): Boolean = (contexto as? MainActivity)?.compartirLog() ?: false

@@ -346,9 +346,11 @@ class MainActivity : ComponentActivity() {
         vigiaGiro?.disable(); vigiaGiro = null
         if (activa) {
             requestedOrientation = if (horizontal) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            else if (soloVertical) ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
             return
         }
+        if (soloVertical) { requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT; return }
         // Al salir con el teléfono en horizontal: la app vuelve a vertical (la navegación está pensada así) y se queda
         // así hasta que pongas el teléfono derecho; desde ahí el giro vuelve a funcionar normal
         if (resources.configuration.orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
@@ -367,6 +369,15 @@ class MainActivity : ComponentActivity() {
         else requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     }
     private var vigiaGiro: android.view.OrientationEventListener? = null
+    private var soloVertical = false
+
+    /** Ajuste «Girar con el celular» apagado: siempre en vertical salvo en la pantalla completa del video. */
+    fun fijarVertical(fijar: Boolean) {
+        soloVertical = fijar
+        if (videoCompleto) return
+        vigiaGiro?.disable(); vigiaGiro = null
+        requestedOrientation = if (fijar) ActivityInfo.SCREEN_ORIENTATION_PORTRAIT else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+    }
 
     /** Log de la app (logcat de este proceso: Python, la interfaz y Android) a un archivo y «Compartir». */
     /** Texto del log: solo lo de la app (Python, la interfaz, avisos y errores), sin el ruido del sistema

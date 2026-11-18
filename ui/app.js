@@ -1243,7 +1243,8 @@ function pintarAjustes() {
   document.documentElement.dataset.portadaVer = S.ajustes.ver_portada || 'nitida';
   if (typeof avisarMusica === 'function') avisarMusica();
   if (typeof avisarPipAndroid === 'function') avisarPipAndroid();
-  if (typeof aplicarFormaVideo === 'function') aplicarFormaVideo();   // el ajuste de la notificación de música   // cómo se ve la portada de la música
+  if (typeof aplicarFormaVideo === 'function') aplicarFormaVideo();
+  try { window.JabsAndroid?.giroAuto?.(S.ajustes.ver_giro_auto !== false); } catch { /* fuera de Android */ }   // el ajuste de la notificación de música   // cómo se ve la portada de la música
   pintarPerfilesAjustes();
   pintarDestinosAjustes();
   const a = S.ajustes;
